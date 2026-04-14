@@ -1,0 +1,213 @@
+import axios from "axios";
+import axiosInstance from "./axios";
+import type {
+  ApiResponse,
+  AuthPayload,
+  BackendUser,
+  SessionUser,
+  UserRole,
+} from "@/types/auth";
+
+type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+type GoogleLoginRequest = {
+  id_token: string;
+  google_access_token?: string;
+  phone_verification_token?: string;
+};
+
+type RegisterRequest = {
+  full_name: string;
+  email: string;
+  password: string;
+  phone_number: string;
+  phone_verification_token: string;
+};
+
+type OtpRequestPayload = {
+  request_id: string;
+  phone_number: string;
+  expires_at?: string | null;
+  resend_available_at?: string | null;
+  debug_code?: string | null;
+};
+
+type OtpVerifyPayload = {
+  phone_number: string;
+  phone_verification_token: string;
+  expires_at?: string | null;
+};
+
+type ChangePasswordRequest = {
+  current_password: string;
+  new_password: string;
+  new_password_confirmation: string;
+};
+
+type AuthResult = {
+  user: SessionUser;
+  token: string;
+  refreshToken: string;
+  expiresAt?: string | null;
+};
+
+type RegisterResult = {
+  email: string;
+  phoneNumber: string;
+};
+
+const mapUser = (user: BackendUser): SessionUser => ({
+  id: user.id,
+  name: user.full_name,
+  email: user.email,
+  role: user.role,
+  avatar: user.profile_picture_url ?? null,
+});
+
+const mapAuthPayload = (payload: AuthPayload): AuthResult => ({
+  user: mapUser(payload.user),
+  token: payload.token,
+  refreshToken: payload.refresh_token,
+  expiresAt: payload.expires_at,
+});
+
+export const getDefaultRouteByRole = (role: UserRole) => {
+  if (role === "admin") {
+    return "/admin";
+  }
+
+  if (role === "owner") {
+    return "/owner";
+  }
+
+  return "/";
+};
+
+export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
+  if (!nextPath || !nextPath.startsWith("/")) {
+    return getDefaultRouteByRole(role);
+  }
+
+  const allowedPathByRole =
+    (role === "admin" && nextPath.startsWith("/admin")) ||
+    (role === "owner" && nextPath.startsWith("/owner"));
+
+  return allowedPathByRole ? nextPath : getDefaultRouteByRole(role);
+};
+
+export const login = async (data: LoginRequest): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/login",
+    data
+  );
+  return mapAuthPayload(res.data.data);
+};
+
+export const loginWithGoogle = async (
+  data: GoogleLoginRequest
+): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/google",
+    data
+  );
+
+  return mapAuthPayload(res.data.data);
+};
+
+export const requestTenantRegistrationOtp = async (phoneNumber: string) => {
+  const res = await axiosInstance.post<ApiResponse<OtpRequestPayload>>(
+    "/api/v1/auth/tenant/register/request_otp",
+    {
+      phone_number: phoneNumber,
+    }
+  );
+
+  return {
+    requestId: res.data.data.request_id,
+    phoneNumber: res.data.data.phone_number,
+    expiresAt: res.data.data.expires_at ?? null,
+    resendAvailableAt: res.data.data.resend_available_at ?? null,
+    debugCode: res.data.data.debug_code ?? null,
+  };
+};
+
+export const verifyTenantRegistrationOtp = async (payload: {
+  phoneNumber: string;
+  code: string;
+}) => {
+  const res = await axiosInstance.post<ApiResponse<OtpVerifyPayload>>(
+    "/api/v1/auth/tenant/register/verify_otp",
+    {
+      phone_number: payload.phoneNumber,
+      code: payload.code,
+    }
+  );
+
+  return {
+    phoneNumber: res.data.data.phone_number,
+    phoneVerificationToken: res.data.data.phone_verification_token,
+    expiresAt: res.data.data.expires_at ?? null,
+  };
+};
+
+export const registerTenant = async (
+  data: RegisterRequest
+): Promise<RegisterResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/tenant/register",
+    data
+  );
+
+  return {
+    email: res.data.data.user.email,
+    phoneNumber: res.data.data.user.phone_number || data.phone_number,
+  };
+};
+
+export const resendTenantRegistrationOtp = async (
+  phoneNumber: string
+): Promise<{
+  requestId: string;
+  phoneNumber: string;
+  expiresAt: string | null;
+  resendAvailableAt: string | null;
+  debugCode: string | null;
+}> => {
+  return requestTenantRegistrationOtp(phoneNumber);
+};
+
+export const getMe = async (): Promise<SessionUser> => {
+  const res = await axiosInstance.get<ApiResponse<BackendUser>>("/api/v1/auth/me");
+  return mapUser(res.data.data);
+};
+
+export const logoutUser = async (): Promise<void> => {
+  await axiosInstance.delete("/api/v1/auth/logout");
+};
+
+export const changePassword = async (
+  payload: ChangePasswordRequest
+): Promise<string> => {
+  try {
+    const res = await axiosInstance.patch<ApiResponse<never>>(
+      "/api/v1/auth/password",
+      payload
+    );
+
+    return res.data.message;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 403 || status === 404 || status === 405) {
+        throw new Error(
+          "Fitur ubah kata sandi tenant belum tersedia pada backend terbaru."
+        );
+      }
+    }
+
+    throw error;
+  }
+};

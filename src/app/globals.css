@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes companyFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes companyFloatDelay {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes companyPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+}
+
+@keyframes companyMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes companyShimmer {
+  0% {
+    transform: translateX(-140%);
+  }
+  100% {
+    transform: translateX(180%);
+  }
+}
+
+@keyframes companyRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.company-rise {
+  animation: companyRise 680ms ease-out both;
+}
+
+.company-float {
+  animation: companyFloat 5.5s ease-in-out infinite;
+}
+
+.company-float-delay {
+  animation: companyFloatDelay 6.5s ease-in-out infinite;
+}
+
+.company-pulse {
+  animation: companyPulse 2.2s ease-in-out infinite;
+}
+
+.company-marquee {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 8px;
+  animation: companyMarquee 24s linear infinite;
+}
+
+.company-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.company-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 45%,
+    transparent 70%
+  );
+  transform: translateX(-140%);
+  animation: companyShimmer 3.8s linear infinite;
+  pointer-events: none;
+}
+
+.scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-y, 22px), 0);
+  transition:
+    opacity 680ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 680ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
