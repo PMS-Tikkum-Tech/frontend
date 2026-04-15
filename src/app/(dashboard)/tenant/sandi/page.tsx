@@ -3,9 +3,13 @@
 import axios from "axios";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckCircle2, CircleAlert, KeyRound, LockKeyhole, Shield } from "lucide-react";
-import { changePassword } from "@/lib/auth";
+import {
+  CHANGE_PASSWORD_UNAVAILABLE_MESSAGE,
+  changePassword,
+} from "@/lib/auth";
 
 const MIN_PASSWORD_LENGTH = 8;
+const TENANT_PASSWORD_MANAGED_BY_BACKEND = true;
 
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
@@ -58,6 +62,11 @@ export default function TenantSandiPage() {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+
+    if (TENANT_PASSWORD_MANAGED_BY_BACKEND) {
+      setError(CHANGE_PASSWORD_UNAVAILABLE_MESSAGE);
+      return;
+    }
 
     if (!currentPassword || !newPassword || !newPasswordConfirmation) {
       setError("Semua kolom kata sandi wajib diisi.");
@@ -136,12 +145,19 @@ export default function TenantSandiPage() {
           <h2 className="text-lg font-semibold text-slate-800">Form Perubahan</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {TENANT_PASSWORD_MANAGED_BY_BACKEND ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                {CHANGE_PASSWORD_UNAVAILABLE_MESSAGE}
+              </div>
+            ) : null}
+
             <InputField
               label="Kata Sandi Saat Ini"
               value={currentPassword}
               onChange={setCurrentPassword}
               placeholder="Masukkan kata sandi saat ini"
               autoComplete="current-password"
+              disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
 
             <InputField
@@ -150,6 +166,7 @@ export default function TenantSandiPage() {
               onChange={setNewPassword}
               placeholder={`Minimal ${MIN_PASSWORD_LENGTH} karakter`}
               autoComplete="new-password"
+              disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
 
             <InputField
@@ -158,6 +175,7 @@ export default function TenantSandiPage() {
               onChange={setNewPasswordConfirmation}
               placeholder="Ulangi kata sandi baru"
               autoComplete="new-password"
+              disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
 
             {error && (
@@ -175,9 +193,13 @@ export default function TenantSandiPage() {
             <button
               type="submit"
               className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
+              disabled={isSubmitting || TENANT_PASSWORD_MANAGED_BY_BACKEND}
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Kata Sandi Baru"}
+              {TENANT_PASSWORD_MANAGED_BY_BACKEND
+                ? "Menunggu Dukungan Backend"
+                : isSubmitting
+                  ? "Menyimpan..."
+                  : "Simpan Kata Sandi Baru"}
             </button>
           </form>
         </article>
@@ -228,12 +250,14 @@ function InputField({
   onChange,
   placeholder,
   autoComplete,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   autoComplete: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block space-y-1.5">
@@ -245,6 +269,7 @@ function InputField({
         className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500"
         placeholder={placeholder}
         autoComplete={autoComplete}
+        disabled={disabled}
       />
     </label>
   );

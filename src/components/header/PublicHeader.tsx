@@ -26,13 +26,19 @@ export default function PublicHeader() {
 
   const nav = [
     { label: "Beranda", href: "/" },
+    { label: "Tentang", href: "/tentang" },
     { label: "Sewa", href: "/sewa" },
     { label: "Kerjasama", href: "/kerjasama" },
-    { label: "Tentang", href: "/tentang" },
   ];
 
   useEffect(() => {
-    setMobileMenuOpen(false);
+    const frameId = window.requestAnimationFrame(() => {
+      setMobileMenuOpen(false);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [pathname]);
 
   useEffect(() => {

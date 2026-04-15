@@ -8,7 +8,15 @@ import { loginSchema } from "@/schemas/login.schema";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { login, loginWithGoogle, resolveRoleRoute } from "@/lib/auth";
+import {
+  login,
+  loginWithGoogle,
+  requestTenantRegistrationOtp,
+  resendTenantRegistrationOtp,
+  resolveRoleRoute,
+  verifyTenantRegistrationOtp,
+} from "@/lib/auth";
+import { normalizePhoneNumber } from "@/lib/phone";
 import { useAuth } from "@/context/AuthContext";
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -54,6 +62,31 @@ declare global {
   }
 }
 
+type GooglePhoneVerificationData = {
+  requires_phone_verification?: boolean;
+  email?: string;
+  full_name?: string;
+  picture_url?: string;
+};
+
+type GoogleAuthErrorPayload = {
+  message?: string;
+  errors?: string[];
+  data?: GooglePhoneVerificationData;
+};
+
+type PendingGoogleVerification = {
+  idToken: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  otpCode: string;
+  otpRequested: boolean;
+  debugCode: string | null;
+};
+
+const PHONE_INPUT_PATTERN = /^[0-9+\-\s]+$/;
+
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
@@ -77,22 +110,34 @@ const getErrorMessage = (error: unknown) => {
   return "Terjadi kesalahan saat login.";
 };
 
+const getGooglePayload = (error: unknown) => {
+  if (!axios.isAxiosError(error)) {
+    return undefined;
+  }
+
+  return error.response?.data as GoogleAuthErrorPayload | undefined;
+};
+
+const getGooglePhoneVerificationData = (error: unknown) => {
+  const payload = getGooglePayload(error);
+
+  if (
+    payload?.message !== "Phone verification required" &&
+    !payload?.data?.requires_phone_verification
+  ) {
+    return null;
+  }
+
+  return payload?.data ?? null;
+};
+
 const getGoogleErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
       return "Tidak bisa terhubung ke server. Pastikan backend aktif di port 3001.";
     }
 
-    const payload = error.response?.data as
-      | { message?: string; errors?: string[]; data?: { requires_phone_verification?: boolean } }
-      | undefined;
-
-    if (
-      payload?.message === "Phone verification required" ||
-      payload?.data?.requires_phone_verification
-    ) {
-      return "Akun Google ini membutuhkan verifikasi nomor HP. Silakan daftar manual dulu (OTP WhatsApp), lalu login kembali.";
-    }
+    const payload = getGooglePayload(error);
 
     if (payload?.errors?.some((item) => item.includes("GOOGLE_OAUTH_CLIENT_IDS"))) {
       return "Login Google belum aktif di server. Hubungi admin sistem.";
@@ -116,7 +161,13 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleInfoMessage, setGoogleInfoMessage] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isRequestingGoogleOtp, setIsRequestingGoogleOtp] = useState(false);
+  const [isResendingGoogleOtp, setIsResendingGoogleOtp] = useState(false);
+  const [isVerifyingGoogleOtp, setIsVerifyingGoogleOtp] = useState(false);
+  const [pendingGoogleVerification, setPendingGoogleVerification] =
+    useState<PendingGoogleVerification | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -124,6 +175,8 @@ export default function LoginForm() {
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleInitializedRef = useRef(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || "";
+  const isGoogleOtpBusy =
+    isRequestingGoogleOtp || isResendingGoogleOtp || isVerifyingGoogleOtp;
 
   const completeSession = useCallback(
     (result: Awaited<ReturnType<typeof login>>) => {
@@ -140,6 +193,26 @@ export default function LoginForm() {
     [router, searchParams, setSession]
   );
 
+  const clearPendingGoogleVerification = useCallback(() => {
+    setPendingGoogleVerification(null);
+    setGoogleError(null);
+    setGoogleInfoMessage(null);
+  }, []);
+
+  const updatePendingGoogleVerification = useCallback(
+    (updates: Partial<PendingGoogleVerification>) => {
+      setPendingGoogleVerification((current) =>
+        current
+          ? {
+              ...current,
+              ...updates,
+            }
+          : current
+      );
+    },
+    []
+  );
+
   const {
     register,
     handleSubmit,
@@ -151,6 +224,7 @@ export default function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
     setGoogleError(null);
+    clearPendingGoogleVerification();
 
     try {
       const result = await login(data);
@@ -176,15 +250,177 @@ export default function LoginForm() {
         const result = await loginWithGoogle({
           id_token: response.credential,
         });
+        clearPendingGoogleVerification();
         completeSession(result);
       } catch (error) {
+        const phoneVerificationData = getGooglePhoneVerificationData(error);
+
+        if (phoneVerificationData) {
+          setPendingGoogleVerification({
+            idToken: response.credential,
+            email: phoneVerificationData.email ?? "",
+            fullName: phoneVerificationData.full_name ?? "",
+            phoneNumber: "",
+            otpCode: "",
+            otpRequested: false,
+            debugCode: null,
+          });
+          setGoogleInfoMessage(
+            "Nomor HP diperlukan untuk menyelesaikan login tenant via Google."
+          );
+          return;
+        }
+
         setGoogleError(getGoogleErrorMessage(error));
       } finally {
         setIsGoogleSubmitting(false);
       }
     },
-    [completeSession]
+    [clearPendingGoogleVerification, completeSession]
   );
+
+  const validateGooglePhoneNumber = () => {
+    const rawPhone = pendingGoogleVerification?.phoneNumber?.trim() ?? "";
+    if (!rawPhone) {
+      throw new Error("Masukkan nomor HP terlebih dahulu.");
+    }
+
+    if (!PHONE_INPUT_PATTERN.test(rawPhone)) {
+      throw new Error("Nomor HP hanya boleh berisi angka, spasi, atau tanda +.");
+    }
+
+    const digitLength = rawPhone.replace(/\D/g, "").length;
+    if (digitLength < 10 || digitLength > 20) {
+      throw new Error("Nomor HP harus berisi 10 sampai 20 digit.");
+    }
+
+    return normalizePhoneNumber(rawPhone);
+  };
+
+  const handleGooglePhoneChange = (value: string) => {
+    setGoogleError(null);
+    setGoogleInfoMessage(null);
+    updatePendingGoogleVerification({
+      phoneNumber: value,
+      otpCode: "",
+      otpRequested: false,
+      debugCode: null,
+    });
+  };
+
+  const handleGoogleOtpChange = (value: string) => {
+    setGoogleError(null);
+    updatePendingGoogleVerification({
+      otpCode: value.replace(/\D/g, "").slice(0, 6),
+    });
+  };
+
+  const handleRequestGoogleOtp = async () => {
+    if (!pendingGoogleVerification) {
+      return;
+    }
+
+    setGoogleError(null);
+    setGoogleInfoMessage(null);
+    setIsRequestingGoogleOtp(true);
+
+    try {
+      const normalizedPhone = validateGooglePhoneNumber();
+      const otpResult = await requestTenantRegistrationOtp(normalizedPhone);
+
+      updatePendingGoogleVerification({
+        phoneNumber: otpResult.phoneNumber,
+        otpCode: "",
+        otpRequested: true,
+        debugCode: otpResult.debugCode ?? null,
+      });
+      setGoogleInfoMessage("Kode OTP telah dikirim ke WhatsApp Anda.");
+    } catch (error) {
+      setGoogleError(
+        error instanceof Error
+          ? error.message
+          : getGoogleErrorMessage(error)
+      );
+    } finally {
+      setIsRequestingGoogleOtp(false);
+    }
+  };
+
+  const handleResendGoogleOtp = async () => {
+    if (!pendingGoogleVerification?.otpRequested) {
+      return;
+    }
+
+    setGoogleError(null);
+    setGoogleInfoMessage(null);
+    setIsResendingGoogleOtp(true);
+
+    try {
+      const otpResult = await resendTenantRegistrationOtp(
+        pendingGoogleVerification.phoneNumber
+      );
+
+      updatePendingGoogleVerification({
+        phoneNumber: otpResult.phoneNumber,
+        debugCode: otpResult.debugCode ?? null,
+        otpCode: "",
+      });
+      setGoogleInfoMessage("Kode OTP baru telah dikirim.");
+    } catch (error) {
+      setGoogleError(getGoogleErrorMessage(error));
+    } finally {
+      setIsResendingGoogleOtp(false);
+    }
+  };
+
+  const handleEditGooglePhoneNumber = () => {
+    setGoogleError(null);
+    setGoogleInfoMessage("Ubah nomor HP lalu kirim OTP lagi.");
+    updatePendingGoogleVerification({
+      otpRequested: false,
+      otpCode: "",
+      debugCode: null,
+    });
+  };
+
+  const handleVerifyGoogleOtp = async () => {
+    if (!pendingGoogleVerification) {
+      return;
+    }
+
+    if (!pendingGoogleVerification.otpRequested) {
+      setGoogleError("Kirim OTP terlebih dahulu.");
+      return;
+    }
+
+    if (pendingGoogleVerification.otpCode.trim().length !== 6) {
+      setGoogleError("Kode OTP harus 6 digit.");
+      return;
+    }
+
+    setGoogleError(null);
+    setGoogleInfoMessage(null);
+    setIsVerifyingGoogleOtp(true);
+
+    try {
+      const verifyResult = await verifyTenantRegistrationOtp({
+        phoneNumber: pendingGoogleVerification.phoneNumber,
+        code: pendingGoogleVerification.otpCode.trim(),
+      });
+
+      const result = await loginWithGoogle({
+        id_token: pendingGoogleVerification.idToken,
+        phone_verification_token: verifyResult.phoneVerificationToken,
+      });
+
+      clearPendingGoogleVerification();
+      completeSession(result);
+    } catch (error) {
+      setGoogleError(getGoogleErrorMessage(error));
+    } finally {
+      setIsVerifyingGoogleOtp(false);
+    }
+  };
 
   useEffect(() => {
     if (!googleClientId) {
@@ -207,19 +443,12 @@ export default function LoginForm() {
         cancel_on_tap_outside: true,
       });
 
-      const buttonWidth = Math.max(
-        220,
-        Math.min(360, (googleButtonRef.current.clientWidth || 360) - 4)
-      );
-
       googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
+        type: "icon",
         theme: "outline",
         size: "large",
-        text: "continue_with",
-        shape: "pill",
-        width: buttonWidth,
+        shape: "circle",
       });
 
       googleInitializedRef.current = true;
@@ -329,37 +558,168 @@ export default function LoginForm() {
         {isSubmitting ? "Memproses..." : "Masuk"}
       </button>
 
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-white px-3 text-xs text-slate-500">atau</span>
-        </div>
-      </div>
+      <div className="space-y-3 pt-1">
+        <p className="text-center text-xs text-slate-500">atau masuk dengan</p>
 
-      {!googleClientId ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-          Login Google belum dikonfigurasi di frontend. Tambahkan
-          `NEXT_PUBLIC_GOOGLE_CLIENT_ID` pada `.env.local`.
-        </p>
-      ) : (
-        <div
-          className={`rounded-xl border border-slate-200 bg-white p-2 ${
-            isGoogleSubmitting ? "pointer-events-none opacity-70" : ""
-          }`}
-        >
+        {googleClientId ? (
           <div
-            ref={googleButtonRef}
-            className="flex min-h-[42px] items-center justify-center"
-          />
-        </div>
-      )}
+            className={`flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4 ${
+              isGoogleSubmitting ? "pointer-events-none opacity-70" : ""
+            }`}
+          >
+            <div
+              ref={googleButtonRef}
+              className="flex min-h-[42px] items-center justify-center"
+            />
+            <p className="text-xs text-slate-500">Google</p>
+          </div>
+        ) : null}
+      </div>
 
       {isGoogleSubmitting && (
         <p className="text-center text-xs text-slate-500">
           Memproses login Google...
         </p>
+      )}
+
+      {pendingGoogleVerification && (
+        <div className="space-y-4 rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
+          <div>
+            <p className="text-sm font-medium text-sky-950">
+              Lengkapi verifikasi nomor HP
+            </p>
+            <p className="mt-1 text-xs text-sky-800">
+              Backend hanya menerima data Google dasar. Masukkan nomor HP untuk
+              OTP WhatsApp, lalu login Google akan diselesaikan ke endpoint
+              backend yang sama.
+            </p>
+            {pendingGoogleVerification.fullName && (
+              <p className="mt-2 text-xs text-sky-700">
+                Nama Google: {pendingGoogleVerification.fullName}
+              </p>
+            )}
+            {pendingGoogleVerification.email && (
+              <p className="mt-1 text-xs text-sky-700">
+                Email Google: {pendingGoogleVerification.email}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Nomor HP</label>
+            <input
+              type="tel"
+              autoComplete="tel"
+              value={pendingGoogleVerification.phoneNumber}
+              onChange={(event) => handleGooglePhoneChange(event.target.value)}
+              disabled={pendingGoogleVerification.otpRequested || isGoogleOtpBusy}
+              placeholder="Contoh: 081234567890"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-100"
+            />
+            <p className="mt-1 text-[11px] text-sky-700">
+              Nomor HP tenant akan diverifikasi dengan OTP WhatsApp.
+            </p>
+          </div>
+
+          {pendingGoogleVerification.otpRequested && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Kode OTP</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={pendingGoogleVerification.otpCode}
+                onChange={(event) => handleGoogleOtpChange(event.target.value)}
+                disabled={isGoogleOtpBusy}
+                placeholder="Contoh: 123456"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-100"
+              />
+              <p className="mt-1 text-[11px] text-sky-700">
+                Masukkan 6 digit OTP yang dikirim ke nomor tersebut.
+              </p>
+            </div>
+          )}
+
+          {pendingGoogleVerification.debugCode && (
+            <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs text-sky-700">
+              Kode OTP (dev): {pendingGoogleVerification.debugCode}
+            </div>
+          )}
+
+          {googleInfoMessage && (
+            <p className="text-center text-sm text-sky-700">
+              {googleInfoMessage}
+            </p>
+          )}
+
+          {!pendingGoogleVerification.otpRequested ? (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleRequestGoogleOtp}
+                disabled={isGoogleOtpBusy}
+                className="w-full rounded-xl bg-sky-600 py-2.5 text-white transition hover:bg-sky-700 disabled:opacity-50"
+              >
+                {isRequestingGoogleOtp ? "Mengirim OTP..." : "Kirim OTP"}
+              </button>
+
+              <div className="flex justify-center text-xs">
+                <button
+                  type="button"
+                  onClick={clearPendingGoogleVerification}
+                  disabled={isGoogleOtpBusy}
+                  className="text-slate-600 transition hover:text-slate-900 disabled:opacity-50"
+                >
+                  Batalkan login Google
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleVerifyGoogleOtp}
+                  disabled={isGoogleOtpBusy}
+                  className="w-full rounded-xl bg-sky-600 py-2.5 text-white transition hover:bg-sky-700 disabled:opacity-50"
+                >
+                  {isVerifyingGoogleOtp
+                    ? "Memverifikasi..."
+                    : "Verifikasi & Masuk"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResendGoogleOtp}
+                  disabled={isGoogleOtpBusy}
+                  className="w-full rounded-xl border border-slate-300 bg-white py-2.5 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {isResendingGoogleOtp ? "Mengirim..." : "Kirim Ulang OTP"}
+                </button>
+              </div>
+
+              <div className="flex justify-center gap-4 text-xs">
+                <button
+                  type="button"
+                  onClick={handleEditGooglePhoneNumber}
+                  disabled={isGoogleOtpBusy}
+                  className="text-slate-600 transition hover:text-slate-900 disabled:opacity-50"
+                >
+                  Ganti nomor HP
+                </button>
+
+                <button
+                  type="button"
+                  onClick={clearPendingGoogleVerification}
+                  disabled={isGoogleOtpBusy}
+                  className="text-slate-600 transition hover:text-slate-900 disabled:opacity-50"
+                >
+                  Batalkan login Google
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {googleError && (

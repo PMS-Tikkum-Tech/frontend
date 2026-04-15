@@ -20,6 +20,7 @@ import {
   getApiErrorMessage,
   getIncompleteTenantProfileFields,
   getTenantProfile,
+  TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE,
   updateTenantProfile,
 } from "@/lib/dashboard/tenant.api";
 import type { BackendUser } from "@/types/auth";
@@ -51,6 +52,7 @@ const toDisplayValue = (value?: string | number | null) => {
 
 const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const TENANT_PROFILE_MANAGED_BY_BACKEND = true;
 
 type ProfileFormState = {
   fullName: string;
@@ -186,6 +188,12 @@ export default function TenantAccountPage() {
   const handleProfilePictureChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+    if (TENANT_PROFILE_MANAGED_BY_BACKEND) {
+      setError(TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE);
+      setSuccessMessage(null);
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -250,6 +258,11 @@ export default function TenantAccountPage() {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+
+    if (TENANT_PROFILE_MANAGED_BY_BACKEND) {
+      setError(TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE);
+      return;
+    }
 
     if (!form.fullName.trim()) {
       setError("Nama lengkap wajib diisi.");
@@ -353,7 +366,13 @@ export default function TenantAccountPage() {
             </p>
 
             <div className="mt-4 space-y-2">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100">
+              <label
+                className={`inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium transition ${
+                  TENANT_PROFILE_MANAGED_BY_BACKEND
+                    ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                    : "cursor-pointer bg-slate-50 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
                 <Upload size={13} className="text-blue-700" />
                 Ganti Foto Profil
                 <input
@@ -362,11 +381,14 @@ export default function TenantAccountPage() {
                   accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                   className="hidden"
                   onChange={handleProfilePictureChange}
+                  disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
                 />
               </label>
 
               <p className="text-xs text-slate-500">
-                Format PNG/JPG/JPEG, maksimal 5 MB.
+                {TENANT_PROFILE_MANAGED_BY_BACKEND
+                  ? "Profil tenant masih mengikuti data backend dan belum bisa diubah mandiri."
+                  : "Format PNG/JPG/JPEG, maksimal 5 MB."}
               </p>
 
               {profilePicture ? (
@@ -411,6 +433,13 @@ export default function TenantAccountPage() {
             </h2>
 
             <form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
+              {TENANT_PROFILE_MANAGED_BY_BACKEND ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  {TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE} Data profil tetap dibaca dari
+                  endpoint backend `GET /api/v1/auth/me`.
+                </div>
+              ) : null}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <InputField
                   label="Nama Lengkap"
@@ -420,6 +449,7 @@ export default function TenantAccountPage() {
                     setForm((prev) => ({ ...prev, fullName: value }))
                   }
                   placeholder="Masukkan nama lengkap"
+                  disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
                 />
                 <InputField
                   label="Email"
@@ -436,6 +466,7 @@ export default function TenantAccountPage() {
                     setForm((prev) => ({ ...prev, phoneNumber: value }))
                   }
                   placeholder="Contoh: 081234567890"
+                  disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
                 />
                 <InputField
                   label="NIK"
@@ -443,6 +474,7 @@ export default function TenantAccountPage() {
                   value={form.nik}
                   onChange={(value) => setForm((prev) => ({ ...prev, nik: value }))}
                   placeholder="16 digit NIK"
+                  disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
                 />
                 <InputField
                   label="Nama Kontak Darurat"
@@ -452,6 +484,7 @@ export default function TenantAccountPage() {
                     setForm((prev) => ({ ...prev, emergencyContactName: value }))
                   }
                   placeholder="Nama keluarga terdekat"
+                  disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
                 />
                 <InputField
                   label="No. Kontak Darurat"
@@ -461,6 +494,7 @@ export default function TenantAccountPage() {
                     setForm((prev) => ({ ...prev, emergencyContactNumber: value }))
                   }
                   placeholder="Nomor yang bisa dihubungi"
+                  disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
                 />
               </div>
 
@@ -472,6 +506,7 @@ export default function TenantAccountPage() {
                   setForm((prev) => ({ ...prev, relationship: value }))
                 }
                 placeholder="Contoh: Orang Tua, Kakak, Wali"
+                disabled={TENANT_PROFILE_MANAGED_BY_BACKEND}
               />
 
               {error ? (
@@ -489,11 +524,15 @@ export default function TenantAccountPage() {
               <div className="flex justify-end pt-1">
                 <button
                   type="submit"
-                  disabled={isSaving}
+                  disabled={isSaving || TENANT_PROFILE_MANAGED_BY_BACKEND}
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Save size={14} />
-                  {isSaving ? "Menyimpan..." : "Simpan Profil"}
+                  {TENANT_PROFILE_MANAGED_BY_BACKEND
+                    ? "Menunggu Dukungan Backend"
+                    : isSaving
+                      ? "Menyimpan..."
+                      : "Simpan Profil"}
                 </button>
               </div>
             </form>
@@ -530,6 +569,7 @@ function InputField({
   placeholder,
   icon,
   readOnly = false,
+  disabled = false,
   onChange,
 }: {
   label: string;
@@ -537,8 +577,11 @@ function InputField({
   placeholder: string;
   icon: ReactNode;
   readOnly?: boolean;
+  disabled?: boolean;
   onChange?: (value: string) => void;
 }) {
+  const isLocked = readOnly || disabled;
+
   return (
     <label className="block space-y-1.5">
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
@@ -549,10 +592,11 @@ function InputField({
         type="text"
         value={value}
         readOnly={readOnly}
+        disabled={disabled}
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         className={`h-11 w-full rounded-xl border px-3 text-sm outline-none transition ${
-          readOnly
+          isLocked
             ? "cursor-not-allowed bg-slate-50 text-slate-500"
             : "bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
         }`}

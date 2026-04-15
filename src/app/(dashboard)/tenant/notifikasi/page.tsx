@@ -12,6 +12,7 @@ import {
 import {
   getApiErrorMessage,
   getTenantNotifications,
+  isTenantNotificationsUnavailableMessage,
   type TenantCommunication,
 } from "@/lib/dashboard/tenant.api";
 import {
@@ -63,6 +64,7 @@ export default function NotifikasiPage() {
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export default function NotifikasiPage() {
     const load = async () => {
       setIsLoading(true);
       setError(null);
+      setNotificationNotice(null);
 
       try {
         const response = await getTenantNotifications({ page: 1, per_page: 50 });
@@ -79,6 +82,7 @@ export default function NotifikasiPage() {
         }
 
         setItems(response.data);
+        setNotificationNotice(response.message || null);
         const latestTimestamp = getLatestTenantNotificationTimestamp(response.data);
         markTenantNotificationsAsSeen(latestTimestamp || Date.now());
       } catch (loadError) {
@@ -131,6 +135,10 @@ export default function NotifikasiPage() {
 
     return sortedItems.filter((item) => item.status === filter);
   }, [filter, sortedItems]);
+
+  const showBackendNotice =
+    isTenantNotificationsUnavailableMessage(notificationNotice) &&
+    visibleItems.length === 0;
 
   return (
     <div className="space-y-8">
@@ -200,10 +208,14 @@ export default function NotifikasiPage() {
       ) : visibleItems.length === 0 ? (
         <div className="rounded-2xl border bg-white p-10 text-center">
           <h2 className="text-xl font-semibold text-green-600">
-            Belum Ada Notifikasi
+            {showBackendNotice
+              ? "Inbox tenant belum tersedia"
+              : "Belum Ada Notifikasi"}
           </h2>
           <p className="mx-auto mt-2 max-w-md text-slate-600">
-            Semua pengumuman penting dari admin akan muncul di halaman ini.
+            {showBackendNotice
+              ? "Backend yang digunakan saat ini belum membuka endpoint notifikasi khusus tenant."
+              : "Semua pengumuman penting dari admin akan muncul di halaman ini."}
           </p>
         </div>
       ) : (

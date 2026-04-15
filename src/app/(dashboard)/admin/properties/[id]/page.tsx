@@ -666,6 +666,20 @@ export default function DetailPropertiPage() {
             />
           </section>
 
+          {propertyDetail.stats.total_units === 0 ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Properti ini belum tampil di tenant karena belum memiliki unit.
+              Tambahkan minimal satu unit dengan status <span className="font-semibold">kosong</span>
+              {" "}agar properti masuk ke katalog tenant.
+            </div>
+          ) : propertyDetail.stats.vacant_units === 0 ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Properti ini belum tampil di tenant karena semua unit sedang
+              terisi atau perawatan. Ubah minimal satu unit ke status
+              <span className="font-semibold"> kosong</span> agar tampil di katalog tenant.
+            </div>
+          ) : null}
+
           <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
             <div className="space-y-5 xl:col-span-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

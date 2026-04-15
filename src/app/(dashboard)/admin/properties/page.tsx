@@ -203,6 +203,13 @@ export default function AdminPropertiesPage() {
         />
       </div>
 
+      <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+        Properti yang baru dibuat belum otomatis tampil di tenant. Katalog tenant
+        mengambil data dari unit yang tersedia, jadi setiap properti harus punya
+        minimal satu unit dengan status <span className="font-semibold">kosong</span>
+        {" "}agar muncul di sisi tenant.
+      </div>
+
       <PropertyFilters
         search={search}
         setSearch={setSearch}

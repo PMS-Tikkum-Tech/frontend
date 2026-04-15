@@ -1,4 +1,3 @@
-import axios from "axios";
 import axiosInstance from "./axios";
 import type {
   ApiResponse,
@@ -15,7 +14,6 @@ type LoginRequest = {
 
 type GoogleLoginRequest = {
   id_token: string;
-  google_access_token?: string;
   phone_verification_token?: string;
 };
 
@@ -46,6 +44,9 @@ type ChangePasswordRequest = {
   new_password: string;
   new_password_confirmation: string;
 };
+
+export const CHANGE_PASSWORD_UNAVAILABLE_MESSAGE =
+  "Fitur ubah kata sandi tenant belum tersedia pada backend terbaru.";
 
 type AuthResult = {
   user: SessionUser;
@@ -191,23 +192,6 @@ export const logoutUser = async (): Promise<void> => {
 export const changePassword = async (
   payload: ChangePasswordRequest
 ): Promise<string> => {
-  try {
-    const res = await axiosInstance.patch<ApiResponse<never>>(
-      "/api/v1/auth/password",
-      payload
-    );
-
-    return res.data.message;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status;
-      if (status === 403 || status === 404 || status === 405) {
-        throw new Error(
-          "Fitur ubah kata sandi tenant belum tersedia pada backend terbaru."
-        );
-      }
-    }
-
-    throw error;
-  }
+  void payload;
+  throw new Error(CHANGE_PASSWORD_UNAVAILABLE_MESSAGE);
 };

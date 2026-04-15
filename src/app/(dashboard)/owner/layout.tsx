@@ -15,10 +15,14 @@ import {
 import RoleGuard from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
-import { updateSelfProfilePicture } from "@/lib/profile.api";
+import {
+  SELF_PROFILE_PICTURE_UNAVAILABLE_MESSAGE,
+  updateSelfProfilePicture,
+} from "@/lib/profile.api";
 
 const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const OWNER_AVATAR_MANAGED_BY_BACKEND = true;
 
 export default function OwnerDashboardLayout({
   children,
@@ -226,22 +230,36 @@ export default function OwnerDashboardLayout({
                 </Link>
 
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg"
-                    onChange={(event) => {
-                      void handleAvatarFileChange(event);
-                    }}
-                    className="hidden"
-                  />
+                  {!OWNER_AVATAR_MANAGED_BY_BACKEND ? (
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      onChange={(event) => {
+                        void handleAvatarFileChange(event);
+                      }}
+                      className="hidden"
+                    />
+                  ) : null}
 
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (OWNER_AVATAR_MANAGED_BY_BACKEND) {
+                        setAvatarNotice(null);
+                        setAvatarError(SELF_PROFILE_PICTURE_UNAVAILABLE_MESSAGE);
+                        return;
+                      }
+
+                      fileInputRef.current?.click();
+                    }}
                     disabled={isUploadingAvatar}
                     className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-slate-200 disabled:cursor-not-allowed disabled:opacity-70"
-                    title="Klik untuk ubah foto profil"
+                    title={
+                      OWNER_AVATAR_MANAGED_BY_BACKEND
+                        ? "Foto profil owner mengikuti konfigurasi backend"
+                        : "Klik untuk ubah foto profil"
+                    }
                   >
                     {avatarUrl ? (
                       <img
@@ -262,6 +280,11 @@ export default function OwnerDashboardLayout({
                       {user?.name || "Owner"}
                     </p>
                     <p className="text-xs text-slate-500">Pemilik Properti</p>
+                    {OWNER_AVATAR_MANAGED_BY_BACKEND ? (
+                      <p className="text-[11px] text-slate-500">
+                        Foto profil owner belum dapat diubah mandiri dari backend saat ini.
+                      </p>
+                    ) : null}
                     {avatarNotice ? (
                       <p className="text-[11px] text-emerald-600">{avatarNotice}</p>
                     ) : null}

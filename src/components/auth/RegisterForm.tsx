@@ -8,29 +8,12 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { requestTenantRegistrationOtp } from "@/lib/auth";
+import { normalizePhoneNumber } from "@/lib/phone";
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export const PENDING_TENANT_REGISTRATION_STORAGE_KEY =
   "kyra.pending.tenant.registration";
-
-const normalizePhoneNumber = (value: string) => {
-  const compact = value.replace(/\s+/g, "").replace(/-/g, "");
-
-  if (compact.startsWith("+")) {
-    return compact;
-  }
-
-  if (compact.startsWith("62")) {
-    return `+${compact}`;
-  }
-
-  if (compact.startsWith("0")) {
-    return `+62${compact.slice(1)}`;
-  }
-
-  return `+62${compact}`;
-};
 
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {

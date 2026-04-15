@@ -110,9 +110,9 @@ const PARTNERSHIP_FOOTER_COLUMNS = [
 export default function KerjasamaPage() {
   return (
     <div className="overflow-hidden bg-slate-50 text-slate-900">
-      <section className="relative bg-gradient-to-br from-[#0B3D91] via-[#154DA5] to-[#2A6CCF] text-white">
+      <section className="relative bg-gradient-to-br from-[#0F7A2A] via-[#188D3B] to-[#2FA24D] text-white">
         <div className="pointer-events-none absolute -top-20 -left-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute right-0 bottom-0 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute right-0 bottom-0 h-72 w-72 rounded-full bg-green-300/20 blur-3xl" />
 
         <div className="absolute inset-0 opacity-10">
           <Image
@@ -142,7 +142,7 @@ export default function KerjasamaPage() {
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
                 href="/auth?next=%2Fkerjasama"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#0B3D91] shadow-lg shadow-black/20 transition hover:bg-slate-100"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#188D3B] shadow-lg shadow-black/20 transition hover:bg-slate-100"
               >
                 Ajukan Kerja Sama
                 <ArrowRight size={15} />
@@ -170,7 +170,7 @@ export default function KerjasamaPage() {
                 fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B3D91]/75 via-[#0B3D91]/25 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0F7A2A]/75 via-[#0F7A2A]/25 to-transparent" />
               <div className="absolute right-4 bottom-4 left-4 z-20 rounded-2xl border border-white/30 bg-white/10 p-4 backdrop-blur-sm">
                 <p className="text-sm font-semibold">
                   Dashboard Operasional dan Finansial
@@ -198,7 +198,7 @@ export default function KerjasamaPage() {
       <section className="mx-auto max-w-7xl px-6 pt-8">
         <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-[#0B3D91]/10 px-3 py-1 text-xs font-semibold text-[#0B3D91]">
+            <p className="inline-flex items-center gap-2 rounded-full bg-[#188D3B]/10 px-3 py-1 text-xs font-semibold text-[#188D3B]">
               <CalendarCheck2 size={14} />
               30 Hari Pertama Kemitraan
             </p>
@@ -234,7 +234,7 @@ export default function KerjasamaPage() {
       <section className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-9 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
               Nilai Kemitraan
             </p>
             <h2 className="mt-2 text-2xl font-bold md:text-3xl">
@@ -271,7 +271,7 @@ export default function KerjasamaPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-9 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
                 Cakupan Layanan
               </p>
               <h2 className="mt-2 text-2xl font-bold md:text-3xl">
@@ -301,7 +301,7 @@ export default function KerjasamaPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-9 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
                 Alur Kerja
               </p>
               <h2 className="mt-2 text-2xl font-bold md:text-3xl">
@@ -341,7 +341,7 @@ export default function KerjasamaPage() {
 
       <section className="mx-auto grid max-w-7xl items-start gap-6 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
             Dampak Kemitraan
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -390,7 +390,7 @@ export default function KerjasamaPage() {
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
             Pertanyaan Umum
           </p>
           <h3 className="mt-2 text-2xl font-bold">FAQ Kemitraan</h3>
@@ -415,7 +415,7 @@ export default function KerjasamaPage() {
       <section className="mx-auto max-w-7xl px-6 pb-16">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
               Fleksibilitas Kemitraan
             </p>
             <h2 className="mt-2 text-2xl font-bold md:text-3xl">
@@ -444,7 +444,7 @@ export default function KerjasamaPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#188D3B]">
                 Mitra Kami
               </p>
               <h2 className="mt-2 text-2xl font-bold md:text-3xl">
@@ -470,7 +470,7 @@ export default function KerjasamaPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-16">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0B3D91] to-[#2A6CCF] px-6 py-10 text-white md:px-10">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0F7A2A] to-[#188D3B] px-6 py-10 text-white md:px-10">
           <div className="pointer-events-none absolute -top-10 right-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
           <h2 className="max-w-2xl text-2xl font-bold md:text-3xl">
             Siap Mengembangkan Properti Anda dengan Model Kemitraan yang Lebih
@@ -483,7 +483,7 @@ export default function KerjasamaPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/auth?next=%2Fkerjasama"
-              className="inline-flex h-11 items-center rounded-xl bg-white px-5 text-sm font-semibold text-[#0B3D91] transition hover:bg-slate-100"
+              className="inline-flex h-11 items-center rounded-xl bg-white px-5 text-sm font-semibold text-[#188D3B] transition hover:bg-slate-100"
             >
               Mulai Konsultasi
             </Link>
@@ -497,7 +497,7 @@ export default function KerjasamaPage() {
         </div>
       </section>
 
-      <footer className="bg-gradient-to-r from-[#0B3D91] to-[#0E7490] text-white">
+      <footer className="bg-gradient-to-r from-[#0F7A2A] to-[#188D3B] text-white">
         <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <div>
@@ -509,7 +509,7 @@ export default function KerjasamaPage() {
                   height={34}
                   className="h-8 w-auto rounded object-contain"
                 />
-                <span className="text-sm text-blue-100">dikelola oleh</span>
+                <span className="text-sm text-green-100">dikelola oleh</span>
                 <Image
                   src="/logo-white.png"
                   alt="Kyra Stay"
@@ -518,11 +518,11 @@ export default function KerjasamaPage() {
                   className="h-7 w-auto object-contain"
                 />
               </div>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-50/95">
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-green-50/95">
                 Program kemitraan properti dengan proses onboarding terstruktur
                 dan pendampingan operasional dari tim Kyra Stay.
               </p>
-              <p className="mt-4 text-sm text-blue-100">
+              <p className="mt-4 text-sm text-green-100">
                 Bogor, Jawa Barat • support@kyrastay.id
               </p>
             </div>
@@ -536,7 +536,7 @@ export default function KerjasamaPage() {
             ))}
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs text-blue-100">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs text-green-100">
             <p>© 2026 KiKost by Kyra Stay.</p>
             <div className="flex items-center gap-4">
               <Link href="/tentang" className="transition hover:text-white">
@@ -559,7 +559,7 @@ export default function KerjasamaPage() {
 function Stat({ number, label }: { number: string; label: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center">
-      <p className="text-2xl font-bold text-[#0B3D91] md:text-3xl">{number}</p>
+      <p className="text-2xl font-bold text-[#188D3B] md:text-3xl">{number}</p>
       <p className="mt-1 text-xs text-slate-600 md:text-sm">{label}</p>
     </div>
   );
@@ -585,7 +585,7 @@ function BenefitCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B3D91]/10 text-[#0B3D91]">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#188D3B]/10 text-[#188D3B]">
         {icon}
       </div>
       <h3 className="mt-4 text-lg font-semibold">{title}</h3>
@@ -605,7 +605,7 @@ function ServiceCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-      <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#0B3D91]/10 text-[#0B3D91]">
+      <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#188D3B]/10 text-[#188D3B]">
         {icon}
       </div>
       <h3 className="mt-3 text-base font-semibold text-slate-900">{title}</h3>
@@ -625,7 +625,7 @@ function StepCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-      <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#0B3D91] text-sm font-bold text-white">
+      <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#188D3B] text-sm font-bold text-white">
         {number}
       </div>
       <p className="mt-3 font-semibold text-slate-900">{title}</p>
@@ -647,7 +647,7 @@ function PartnershipModelCard({
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-base font-semibold text-slate-900">{title}</p>
       <p className="mt-2 text-sm text-slate-600">{desc}</p>
-      <p className="mt-4 rounded-xl bg-[#0B3D91]/8 px-3 py-2 text-xs font-medium text-[#0B3D91]">
+      <p className="mt-4 rounded-xl bg-[#188D3B]/8 px-3 py-2 text-xs font-medium text-[#188D3B]">
         {fit}
       </p>
     </div>
@@ -671,7 +671,7 @@ function PartnerLogoCard({
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B3D91]/10 text-xs font-bold tracking-wide text-[#0B3D91]">
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#188D3B]/10 text-xs font-bold tracking-wide text-[#188D3B]">
           {logoText}
         </div>
         <div>
@@ -698,7 +698,7 @@ function CompareRow({
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="grid md:grid-cols-[220px_1fr_1fr]">
         <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 md:border-r md:border-b-0">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B3D91]/10 text-[#0B3D91]">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#188D3B]/10 text-[#188D3B]">
             {icon}
           </span>
           {title}
@@ -724,7 +724,7 @@ function CompareRow({
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   return (
-    <details className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition open:border-[#0B3D91]/35 open:bg-[#0B3D91]/[0.03]">
+    <details className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition open:border-[#188D3B]/35 open:bg-[#188D3B]/[0.03]">
       <summary className="list-none cursor-pointer text-sm font-semibold text-slate-800 [&::-webkit-details-marker]:hidden">
         {q}
       </summary>
@@ -743,7 +743,7 @@ function PartnershipFooterCol({
   return (
     <div>
       <p className="text-sm font-semibold tracking-wide text-white">{title}</p>
-      <div className="mt-3 space-y-2 text-sm text-blue-100">
+      <div className="mt-3 space-y-2 text-sm text-green-100">
         {items.map((item) => (
           <p key={item} className="transition hover:text-white">
             {item}

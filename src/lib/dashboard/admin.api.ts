@@ -1310,14 +1310,76 @@ export const getAdminLogActivities = (params?: QueryParams) =>
 export const getAdminLogActivity = (id: number | string) =>
   getItem<AdminLogActivity>(`/api/v1/log_activities/${id}`);
 
-export const exportAdminLogActivities = async (params?: QueryParams) => {
-  const response = await axiosInstance.get<Blob>("/api/v1/log_activities/export", {
-    params: sanitizeParams(params),
-    responseType: "blob",
+const escapeCsvValue = (value: unknown) => {
+  const stringValue = value == null ? "" : String(value);
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n")
+  ) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
+};
+
+const buildAdminLogActivitiesCsv = (rows: AdminLogActivity[]) => {
+  const header = [
+    "ID",
+    "Waktu",
+    "Admin",
+    "Aksi",
+    "Label Aksi",
+    "Modul",
+    "Halaman Modul",
+    "Deskripsi",
+    "Detail",
+  ];
+
+  const lines = rows.map((item) => {
+    return [
+      item.id,
+      item.timestamp || item.created_at || "",
+      item.admin_name || item.admin?.full_name || "",
+      item.action || "",
+      item.action_label || "",
+      item.module_name || "",
+      item.module_page || "",
+      item.description || "",
+      item.description_detail || item.description_raw || "",
+    ]
+      .map(escapeCsvValue)
+      .join(",");
   });
 
+  return `\uFEFF${[header.join(","), ...lines].join("\n")}`;
+};
+
+const exportAdminLogActivitiesFromList = async (params?: QueryParams) => {
+  const rows: AdminLogActivity[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const response = await getAdminLogActivities({
+      ...params,
+      page,
+      per_page: 100,
+    });
+
+    rows.push(...response.data);
+    totalPages = Math.max(1, Number(response.meta?.total_pages || 1));
+    page += 1;
+  }
+
   return {
-    blob: response.data,
-    contentDisposition: response.headers["content-disposition"] || "",
+    blob: new Blob([buildAdminLogActivitiesCsv(rows)], {
+      type: "text/csv;charset=utf-8;",
+    }),
+    contentDisposition: 'attachment; filename="log-activities.csv"',
   };
+};
+
+export const exportAdminLogActivities = async (params?: QueryParams) => {
+  return exportAdminLogActivitiesFromList(params);
 };

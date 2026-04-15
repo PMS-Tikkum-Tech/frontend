@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend PMS
 
-## Getting Started
+Frontend ini sudah disiapkan untuk terhubung ke backend repo:
 
-First, run the development server:
+`git@github.com:PMS-Tikkum-Tech/backend.git`
+
+## Setup lokal
+
+1. Install dependency frontend:
+
+```bash
+npm ci
+```
+
+2. Buat `.env.local` dari `.env.example`:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Isi env berikut:
+
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=YOUR_GOOGLE_WEB_CLIENT_ID
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_BROWSER_KEY
+```
+
+4. Jalankan frontend:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Frontend default berjalan di `http://127.0.0.1:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Kontrak backend untuk login Google
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Endpoint: `POST /api/v1/auth/google`
+- Payload utama yang dipakai frontend:
+  - `id_token`
+  - `phone_verification_token` saat backend meminta verifikasi nomor HP
+- Frontend tidak meminta scope tambahan Google selain identitas dasar. Flow yang dipakai hanya mengandalkan `id_token` dari Google Identity Services.
 
-## Learn More
+## Backend yang perlu aktif
 
-To learn more about Next.js, take a look at the following resources:
+Backend lokal harus hidup di `http://127.0.0.1:3001` dan dikonfigurasi dengan Google OAuth client ID yang sama:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- frontend: `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+- backend: `GOOGLE_OAUTH_CLIENT_IDS`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Jika `GOOGLE_OAUTH_CLIENT_IDS` belum diisi di backend, endpoint `/api/v1/auth/google` akan menolak login Google.
 
-## Deploy on Vercel
+## Geocoding alamat properti admin
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Form tambah/edit properti admin akan mencoba mengubah alamat menjadi latitude dan longitude otomatis memakai Google Maps Geocoding API dari browser.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Yang perlu disiapkan:
+
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+- Aktifkan Geocoding API pada project Google Cloud yang sama
+- Batasi API key dengan HTTP referrer untuk domain frontend yang digunakan

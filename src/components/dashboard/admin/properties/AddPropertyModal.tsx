@@ -7,6 +7,10 @@ import {
   type AdminPropertyUpsertPayload,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import {
+  geocodePropertyAddressWithGoogle,
+  geocodePropertyAddress,
+} from "@/lib/maps/property-coordinate";
 
 interface AddPropertyModalProps {
   open: boolean;
@@ -130,6 +134,15 @@ const parseOptionalCoordinate = (
   return { value: numeric, error: null as string | null };
 };
 
+const normalizeAddressSyncKey = (value: string) =>
+  value.trim().toLowerCase().replace(/\s+/g, " ");
+
+const formatCoordinateInputValue = (value: number) =>
+  value
+    .toFixed(7)
+    .replace(/0+$/, "")
+    .replace(/\.$/, "");
+
 export default function AddPropertyModal({
   open,
   owners,
@@ -174,6 +187,49 @@ export default function AddPropertyModal({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const syncCoordinatesFromGoogle = async (
+    addressInput: string
+  ) => {
+    const addressKey = normalizeAddressSyncKey(addressInput);
+    if (!addressKey) {
+      return null;
+    }
+
+    try {
+      const googleGeocoded = await geocodePropertyAddressWithGoogle(
+        addressInput,
+        form.name
+      );
+      const resolvedCoordinate =
+        googleGeocoded?.coordinate ??
+        (await geocodePropertyAddress(addressInput, form.name));
+
+      if (!resolvedCoordinate) {
+        return null;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        latitude: formatCoordinateInputValue(resolvedCoordinate.lat),
+        longitude: formatCoordinateInputValue(resolvedCoordinate.lng),
+      }));
+
+      if (googleGeocoded) {
+        return googleGeocoded;
+      }
+
+      return {
+        coordinate: resolvedCoordinate,
+        formattedAddress: addressInput,
+        placeId: null,
+        locationType: null,
+        partialMatch: false,
+      };
+    } catch {
+      return null;
+    }
+  };
+
   const toggleFacility = (value: string) => {
     setSelectedFacilities((prev) =>
       prev.includes(value)
@@ -193,24 +249,30 @@ export default function AddPropertyModal({
       return;
     }
 
-    const latitudeParsed = parseOptionalCoordinate(
-      form.latitude,
-      { min: -90, max: 90 },
-      "Latitude"
-    );
-    if (latitudeParsed.error) {
-      setErrorMessage(latitudeParsed.error);
-      return;
-    }
+    let resolvedLatitudeValue: number | undefined;
+    let resolvedLongitudeValue: number | undefined;
 
-    const longitudeParsed = parseOptionalCoordinate(
-      form.longitude,
-      { min: -180, max: 180 },
-      "Longitude"
-    );
-    if (longitudeParsed.error) {
-      setErrorMessage(longitudeParsed.error);
-      return;
+    const geocoded = await syncCoordinatesFromGoogle(form.address);
+
+    if (geocoded) {
+      resolvedLatitudeValue = geocoded.coordinate.lat;
+      resolvedLongitudeValue = geocoded.coordinate.lng;
+    } else {
+      const latitudeParsed = parseOptionalCoordinate(
+        form.latitude,
+        { min: -90, max: 90 },
+        "Latitude"
+      );
+      const longitudeParsed = parseOptionalCoordinate(
+        form.longitude,
+        { min: -180, max: 180 },
+        "Longitude"
+      );
+
+      if (latitudeParsed.value !== undefined && longitudeParsed.value !== undefined) {
+        resolvedLatitudeValue = latitudeParsed.value;
+        resolvedLongitudeValue = longitudeParsed.value;
+      }
     }
 
     setIsSaving(true);
@@ -221,8 +283,8 @@ export default function AddPropertyModal({
         owner_id: Number(form.ownerId),
         name: form.name,
         address: form.address,
-        latitude: latitudeParsed.value,
-        longitude: longitudeParsed.value,
+        latitude: resolvedLatitudeValue,
+        longitude: resolvedLongitudeValue,
         property_type: form.propertyType,
         condition: form.condition,
         description: form.description,
@@ -289,29 +351,8 @@ export default function AddPropertyModal({
             label="Alamat"
             value={form.address}
             onChange={(value) => updateFormField("address", value)}
+            placeholder="Masukkan alamat lengkap properti"
           />
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <FormInput
-              label="Latitude (Opsional)"
-              value={form.latitude}
-              onChange={(value) => updateFormField("latitude", value)}
-              type="number"
-              step="any"
-              placeholder="Contoh: -6.5665"
-            />
-            <FormInput
-              label="Longitude (Opsional)"
-              value={form.longitude}
-              onChange={(value) => updateFormField("longitude", value)}
-              type="number"
-              step="any"
-              placeholder="Contoh: 106.7259"
-            />
-          </div>
-          <p className="-mt-2 text-xs text-slate-500">
-            Isi koordinat agar titik peta properti tampil presisi.
-          </p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>

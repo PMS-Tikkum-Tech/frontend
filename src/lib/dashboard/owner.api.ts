@@ -61,22 +61,6 @@ export interface OwnerCashflowEntry {
   updated_at?: string | null;
 }
 
-export interface OwnerManagedProperty {
-  id: number;
-  name: string;
-}
-
-interface OwnerCatalogUnit {
-  id: number;
-  property?: {
-    id?: number | null;
-    name?: string | null;
-  } | null;
-  owner?: {
-    id?: number | null;
-  } | null;
-}
-
 const sanitizeParams = (params?: QueryParams) => {
   if (!params) {
     return undefined;
@@ -119,55 +103,4 @@ export const getOwnerCashflowEntries = async (
     meta: response.data.meta,
     message: response.data.message,
   };
-};
-
-export const getOwnerManagedProperties = async (
-  ownerId: number
-): Promise<OwnerManagedProperty[]> => {
-  if (!Number.isFinite(ownerId) || ownerId <= 0) {
-    return [];
-  }
-
-  const normalizedOwnerId = Math.trunc(ownerId);
-  const perPage = 100;
-  const propertyMap = new Map<number, OwnerManagedProperty>();
-  let page = 1;
-  let totalPages = 1;
-
-  while (page <= totalPages) {
-    const response = await axiosInstance.get<
-      ApiResponse<OwnerCatalogUnit[], ApiPaginationMeta>
-    >("/api/v1/manual_rentals/catalog", {
-      params: sanitizeParams({
-        page,
-        per_page: perPage,
-      }),
-    });
-
-    response.data.data.forEach((item) => {
-      const ownerItemId = Number(item.owner?.id || 0);
-      if (ownerItemId !== normalizedOwnerId) {
-        return;
-      }
-
-      const propertyId = Number(item.property?.id || 0);
-      if (!Number.isFinite(propertyId) || propertyId <= 0) {
-        return;
-      }
-
-      if (propertyMap.has(propertyId)) {
-        return;
-      }
-
-      propertyMap.set(propertyId, {
-        id: propertyId,
-        name: item.property?.name || `Properti #${propertyId}`,
-      });
-    });
-
-    totalPages = Math.max(1, Number(response.data.meta?.total_pages || 1));
-    page += 1;
-  }
-
-  return Array.from(propertyMap.values());
 };

@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Building2,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -25,19 +24,15 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
-  createTenantVisitRequest,
-  getIncompleteTenantProfileFields,
   getApiErrorMessage,
   getPublicProperties,
   getPublicPropertyUnits,
-  getTenantProfile,
+  isPublicPropertyLoginRequiredMessage,
   type PublicPropertyUnitSummary,
   type PublicPropertySummary,
 } from "@/lib/dashboard/tenant.api";
 import { getAdminPropertyDetail } from "@/lib/dashboard/admin.api";
 import type { SewaMapLocation } from "@/components/maps/SewaLocationsMap";
-import VisitRequestModal from "@/components/sewa/VisitRequestModal";
-import { useTransientToast } from "@/hooks/useTransientToast";
 import {
   geocodePropertyAddress,
   resolveBackendCoordinate,
@@ -300,6 +295,24 @@ const toUnitStatusLabel = (status?: string | null) => {
   return formatLabel(status);
 };
 
+const getUnitStatusBadgeClass = (status: string) => {
+  const normalized = status.toLowerCase();
+
+  if (normalized === "tersedia") {
+    return "border-blue-100 bg-blue-50 text-blue-700";
+  }
+
+  if (normalized === "terisi") {
+    return "border-sky-100 bg-sky-50 text-sky-700";
+  }
+
+  if (normalized === "perawatan") {
+    return "border-indigo-100 bg-indigo-50 text-indigo-700";
+  }
+
+  return "border-slate-200 bg-slate-100 text-slate-600";
+};
+
 const mapPublicUnitToCard = (
   unit: PublicPropertyUnitSummary,
   property: PublicPropertySummary
@@ -329,16 +342,12 @@ export default function SewaPropertyDetailPage() {
   const { user } = useAuth();
   const isTenant = user?.role === "tenant";
   const isAdmin = user?.role === "admin";
-  const { showErrorToast, showSuccessToast } = useTransientToast();
 
   const [property, setProperty] = useState<PublicPropertySummary | null>(null);
   const [related, setRelated] = useState<PublicPropertySummary[]>([]);
   const [availableUnits, setAvailableUnits] = useState<AvailableUnitCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmittingVisit, setIsSubmittingVisit] = useState(false);
-  const [isCheckingVisitProfile, setIsCheckingVisitProfile] = useState(false);
-  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
   const [heroMediaItems, setHeroMediaItems] = useState<PropertyMedia[]>([
     { type: "image", src: "/bg.jpg" },
   ]);
@@ -403,7 +412,11 @@ export default function SewaPropertyDetailPage() {
           setProperty(null);
           setRelated([]);
           setAvailableUnits([]);
-          setError("Properti tidak ditemukan.");
+          setError(
+            isPublicPropertyLoginRequiredMessage(firstPage.message)
+              ? firstPage.message
+              : "Properti tidak ditemukan."
+          );
           return;
         }
 
@@ -573,82 +586,6 @@ export default function SewaPropertyDetailPage() {
     ];
   }, [geocodedCoordinate, property]);
 
-  const visitHref = "/auth?next=%2Ftenant%2Fjadwal-visit";
-
-  const handleOpenVisitModal = async () => {
-    if (!isTenant || isSubmittingVisit || isCheckingVisitProfile) {
-      return;
-    }
-
-    setIsCheckingVisitProfile(true);
-    try {
-      const profileResponse = await getTenantProfile();
-      const missingFields = getIncompleteTenantProfileFields(profileResponse.data);
-
-      if (missingFields.length > 0) {
-        showErrorToast(
-          `Lengkapi profil terlebih dahulu di menu Ubah Profil: ${missingFields.join(
-            ", "
-          )}.`,
-          {
-            action: {
-              label: "Lengkapi di Ubah Profil",
-              href: "/tenant/akun",
-            },
-          }
-        );
-        return;
-      }
-
-      setIsVisitModalOpen(true);
-    } catch (profileError) {
-      showErrorToast(
-        getApiErrorMessage(
-          profileError,
-          "Gagal memverifikasi profil. Silakan coba lagi."
-        )
-      );
-    } finally {
-      setIsCheckingVisitProfile(false);
-    }
-  };
-
-  const handleSubmitVisitRequest = async (payload: {
-    preferredDate: string;
-    preferredTime: string;
-    note: string;
-  }) => {
-    if (!isTenant || !property || isSubmittingVisit) {
-      return;
-    }
-
-    setIsSubmittingVisit(true);
-    try {
-      await createTenantVisitRequest({
-        property_id: property.id,
-        preferred_date: payload.preferredDate,
-        preferred_time: payload.preferredTime,
-        note:
-          payload.note ||
-          `Pengajuan dibuat dari halaman detail properti ${property.name}.`,
-      });
-
-      showSuccessToast(
-        `Permintaan jadwal visit untuk ${property.name} sudah dikirim ke admin.`
-      );
-      setIsVisitModalOpen(false);
-    } catch (submitError) {
-      showErrorToast(
-        getApiErrorMessage(
-          submitError,
-          "Gagal mengajukan jadwal visit. Silakan coba lagi."
-        )
-      );
-    } finally {
-      setIsSubmittingVisit(false);
-    }
-  };
-
   useEffect(() => {
     if (!isMediaViewerOpen) {
       return;
@@ -677,22 +614,37 @@ export default function SewaPropertyDetailPage() {
   }
 
   if (!property) {
+    const showCatalogLoginNotice = isPublicPropertyLoginRequiredMessage(error);
+
     return (
       <section className="mx-auto max-w-3xl px-6 py-14">
         <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-semibold text-slate-900">
-            Detail Properti Tidak Tersedia
+            {showCatalogLoginNotice
+              ? "Masuk untuk melihat detail properti"
+              : "Detail Properti Tidak Tersedia"}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {error || "Properti yang kamu cari tidak ditemukan."}
           </p>
-          <Link
-            href="/sewa"
-            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
-          >
-            <ArrowLeft size={14} />
-            Kembali ke Halaman Sewa
-          </Link>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            {showCatalogLoginNotice ? (
+              <Link
+                href={`/auth?next=${encodeURIComponent(`/sewa/${propertyId}`)}`}
+                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+              >
+                Masuk untuk lihat detail
+                <ArrowRight size={14} />
+              </Link>
+            ) : null}
+            <Link
+              href="/sewa"
+              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+            >
+              <ArrowLeft size={14} />
+              Kembali ke Halaman Sewa
+            </Link>
+          </div>
         </div>
       </section>
     );
@@ -777,20 +729,6 @@ export default function SewaPropertyDetailPage() {
           </div>
         </div>
       )}
-
-      <VisitRequestModal
-        isOpen={isVisitModalOpen}
-        propertyName={property.name}
-        isSubmitting={isSubmittingVisit}
-        onClose={() => {
-          if (isSubmittingVisit) {
-            return;
-          }
-
-          setIsVisitModalOpen(false);
-        }}
-        onSubmit={handleSubmitVisitRequest}
-      />
 
       <section className="relative overflow-hidden border-b border-slate-200 bg-white">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 pb-8 pt-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
@@ -943,27 +881,6 @@ export default function SewaPropertyDetailPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {isTenant ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleOpenVisitModal();
-                  }}
-                  disabled={isSubmittingVisit || isCheckingVisitProfile}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <CalendarDays size={14} />
-                  {isCheckingVisitProfile ? "Memeriksa Profil..." : "Ajukan Jadwal Visit"}
-                </button>
-              ) : (
-                <Link
-                  href={visitHref}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-slate-100"
-                >
-                  <CalendarDays size={14} />
-                  Ajukan Jadwal Visit
-                </Link>
-              )}
               <Link
                 href="#unit-tersedia"
                 className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
@@ -1025,96 +942,120 @@ export default function SewaPropertyDetailPage() {
 
           <article
             id="unit-tersedia"
-            className="rounded-2xl border bg-white p-5 shadow-sm scroll-mt-28"
+            className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/70 via-white to-sky-50/60 p-5 shadow-sm scroll-mt-28"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Unit Tersedia
-              </h2>
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                {availableUnits.length} unit siap disewa
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  <Sparkles size={13} />
+                  Unit Tersedia
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900">
+                  Pilihan unit yang siap disewa
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Lihat unit yang masih kosong beserta kapasitas dan harganya.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
+                <Home size={13} />
+                {availableUnits.length} unit
               </span>
             </div>
 
-            {availableUnits.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-600">
-                Saat ini belum ada unit kosong pada properti ini. Kamu bisa
-                ajukan visit untuk masuk daftar prioritas saat unit tersedia.
-              </p>
-            ) : (
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {availableUnits.map((unit) => (
-                  <article
-                    key={unit.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {unit.name}
+            <div className="mt-5">
+              {availableUnits.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-blue-100 bg-white px-4 py-5 text-sm text-slate-600">
+                  <p className="font-medium text-slate-800">
+                    Saat ini belum ada unit kosong pada properti ini.
+                  </p>
+                  <p className="mt-1">
+                    Kamu tetap bisa ajukan visit untuk masuk daftar prioritas saat
+                    unit tersedia.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {availableUnits.map((unit) => (
+                    <article
+                      key={unit.id}
+                      className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:border-blue-200"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {unit.name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {unit.unitType} • {unit.floorInfo}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${getUnitStatusBadgeClass(
+                            unit.status
+                          )}`}
+                        >
+                          {unit.status}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                        <p className="inline-flex items-center gap-1.5">
+                          <Users size={13} className="text-blue-700" />
+                          Kapasitas {unit.capacity}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {unit.unitType} • {unit.floorInfo}
+                        <p className="inline-flex items-center gap-1.5">
+                          <Tag size={13} className="text-blue-700" />
+                          {unit.priceLabel}/bulan
                         </p>
                       </div>
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                        {unit.status}
-                      </span>
-                    </div>
 
-                    <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                      <p className="inline-flex items-center gap-1.5">
-                        <Users size={13} className="text-blue-700" />
-                        Kapasitas {unit.capacity}
-                      </p>
-                      <p className="inline-flex items-center gap-1.5">
-                        <Tag size={13} className="text-blue-700" />
-                        {unit.priceLabel}/bulan
-                      </p>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {unit.facilities.length > 0 ? (
-                        unit.facilities.map((facility) => (
-                          <span
-                            key={`${unit.id}-${facility}`}
-                            className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600"
-                          >
-                            {formatLabel(facility)}
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {unit.facilities.length > 0 ? (
+                          unit.facilities.map((facility) => (
+                            <span
+                              key={`${unit.id}-${facility}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700"
+                            >
+                              {formatLabel(facility)}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-500">
+                            Fasilitas unit menyesuaikan properti
                           </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-500">
-                          Fasilitas unit menyesuaikan properti
-                        </span>
-                      )}
-                    </div>
+                        )}
+                      </div>
 
-                    <div className="mt-4 flex justify-end">
-                      <Link
-                        href={
-                          isTenant
-                            ? `/tenant/pembayaran/buat?property_id=${property.id}&unit_id=${unit.id}`
-                            : `/auth?next=${encodeURIComponent(
-                                `/tenant/pembayaran/buat?property_id=${property.id}&unit_id=${unit.id}`
-                              )}`
-                        }
-                        className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-700 px-3.5 text-xs font-semibold text-white transition hover:bg-blue-800"
-                      >
-                        Pilih
-                        <ArrowRight size={13} />
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <p className="text-[11px] text-slate-500">
+                          Unit ini dapat dipilih langsung untuk booking.
+                        </p>
+                        <Link
+                          href={
+                            isTenant
+                              ? `/tenant/pembayaran/buat?property_id=${property.id}&unit_id=${unit.id}`
+                              : `/auth?next=${encodeURIComponent(
+                                  `/tenant/pembayaran/buat?property_id=${property.id}&unit_id=${unit.id}`
+                                )}`
+                          }
+                          className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-700 px-3.5 text-xs font-semibold text-white transition hover:bg-blue-800"
+                        >
+                          Pilih Unit
+                          <ArrowRight size={13} />
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
 
-            <p className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              <NotebookPen size={13} className="text-blue-700" />
-              Detail ketersediaan unit disinkronkan dari data properti yang
-              diinput admin.
-            </p>
+              <p className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <NotebookPen size={13} className="text-blue-700" />
+                Detail ketersediaan unit disinkronkan dari data properti yang
+                diinput admin.
+              </p>
+            </div>
           </article>
         </div>
 

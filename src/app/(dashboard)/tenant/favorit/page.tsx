@@ -122,7 +122,7 @@ export default function FavoritPage() {
 
     const load = async () => {
       const cachedItems = getTenantFavoritesCache();
-      if (cachedItems && reloadKey === 0) {
+      if (cachedItems && cachedItems.length > 0 && reloadKey === 0) {
         setItems(cachedItems);
         setIsLoading(false);
         return;
@@ -142,6 +142,7 @@ export default function FavoritPage() {
           return;
         }
 
+        setItems(response.data);
         setTenantFavoritesCache(response.data);
       } catch (loadError) {
         if (!active) {
@@ -319,15 +320,6 @@ export default function FavoritPage() {
 
             {favoriteItems.length === 0 ? (
               <div className="rounded-2xl border bg-white p-8 text-center">
-                <div className="mx-auto w-full max-w-md">
-                  <Image
-                    src="/empty-favorite.png"
-                    alt="Belum ada favorit"
-                    width={600}
-                    height={400}
-                    className="rounded-2xl opacity-90"
-                  />
-                </div>
                 <p className="mt-4 text-sm text-slate-600">
                   Kamu belum menyimpan kost favorit.
                 </p>

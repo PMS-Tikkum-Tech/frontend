@@ -16,6 +16,7 @@ import {
   getTenantMaintenanceRequests,
   getTenantNotifications,
   getTenantPayments,
+  isTenantNotificationsUnavailableMessage,
   type TenantCommunication,
   type TenantMaintenanceRequest,
   type TenantPayment,
@@ -118,6 +119,7 @@ export default function TenantHomePage() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -126,6 +128,7 @@ export default function TenantHomePage() {
     const loadHomeData = async () => {
       setIsLoading(true);
       setError(null);
+      setNotificationNotice(null);
 
       try {
         const [paymentsResponse, maintenanceResponse, notificationsResponse] =
@@ -152,6 +155,7 @@ export default function TenantHomePage() {
         setPayments(paymentsResponse.data);
         setMaintenance(maintenanceResponse.data);
         setNotifications(notificationsResponse.data);
+        setNotificationNotice(notificationsResponse.message || null);
         setHasLoadedOnce(true);
         setLastUpdatedAt(new Date().toISOString());
       } catch (loadError) {
@@ -303,6 +307,10 @@ export default function TenantHomePage() {
       .slice(0, 6);
   }, [activeBills, latestMaintenance, latestNotifications]);
 
+  const showNotificationBackendNotice =
+    isTenantNotificationsUnavailableMessage(notificationNotice) &&
+    latestNotifications.length === 0;
+
   const refreshData = () => {
     if (isLoading) {
       return;
@@ -435,7 +443,11 @@ export default function TenantHomePage() {
             <SummaryCard
               title="Notifikasi Baru"
               value={`${latestNotifications.length} Notifikasi`}
-              helper="Periksa info terbaru dari admin"
+              helper={
+                showNotificationBackendNotice
+                  ? "Backend tenant inbox belum tersedia"
+                  : "Periksa info terbaru dari admin"
+              }
               icon={<Bell size={18} />}
             />
           </div>
@@ -555,7 +567,9 @@ export default function TenantHomePage() {
               {latestNotifications.length === 0 ? (
                 <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm text-slate-500">
-                    Belum ada notifikasi terbaru.
+                    {showNotificationBackendNotice
+                      ? "Backend belum membuka notifikasi khusus tenant."
+                      : "Belum ada notifikasi terbaru."}
                   </p>
                   <Link
                     href="/tenant/bantuan"

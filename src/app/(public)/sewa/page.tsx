@@ -24,8 +24,12 @@ import { useAuth } from "@/context/AuthContext";
 import {
   addTenantFavorite,
   getApiErrorMessage,
+  getPublicPropertyAvailabilityLabel,
+  getPublicPropertyAvailabilityStatus,
   getPublicProperties,
   getTenantFavoriteProperties,
+  isPublicPropertyLoginRequiredMessage,
+  type PublicPropertyAvailabilityStatus,
   type PublicPropertySummary,
   removeTenantFavoriteByProperty,
   type TenantFavoriteProperty,
@@ -273,22 +277,16 @@ const formatDistanceLabel = (distanceKm: number, placeName: string) => {
   return `${distanceKm.toFixed(1).replace(".", ",")} km ke ${placeName}`;
 };
 
-const getAvailabilityLabel = (item: TenantFavoriteProperty) => {
-  const vacantUnits = Math.max(0, item.property.vacant_units || 0);
-  const totalUnits = Math.max(
-    item.property.total_units || 0,
-    (item.property.vacant_units || 0) + (item.property.occupied_units || 0)
-  );
-
-  if (vacantUnits > 0) {
-    return `${vacantUnits} unit tersedia`;
+const getAvailabilityBadgeClass = (status: PublicPropertyAvailabilityStatus) => {
+  if (status === "available") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
 
-  if (totalUnits > 0) {
-    return "Unit penuh";
+  if (status === "maintenance_only") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
   }
 
-  return "Unit belum diupdate";
+  return "border-rose-200 bg-rose-50 text-rose-700";
 };
 
 const resolveCoordinate = (
@@ -363,6 +361,7 @@ export default function SewaPage() {
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [geocodedCoordinates, setGeocodedCoordinates] = useState<
     Record<number, PropertyCoordinate>
@@ -388,6 +387,7 @@ export default function SewaPage() {
 
     const load = async () => {
       setError(null);
+      setCatalogNotice(null);
       setIsLoading(true);
 
       if (!isTenant) {
@@ -412,6 +412,7 @@ export default function SewaPage() {
             return;
           }
 
+          setCatalogNotice(response.message || null);
           const adminMediaLookup = new Map<
             number,
             {
@@ -458,6 +459,7 @@ export default function SewaPage() {
               "Gagal memuat daftar properti. Silakan coba lagi."
             )
           );
+          setCatalogNotice(null);
         } finally {
           if (active) {
             setIsLoading(false);
@@ -468,7 +470,7 @@ export default function SewaPage() {
       }
 
       const cachedItems = getTenantFavoritesCache();
-      if (cachedItems && reloadKey === 0) {
+      if (cachedItems && cachedItems.length > 0 && reloadKey === 0) {
         setItems(cachedItems);
         setIsLoading(false);
         return;
@@ -485,18 +487,21 @@ export default function SewaPage() {
           return;
         }
 
+        setCatalogNotice(null);
+        setItems(response.data);
         setTenantFavoritesCache(response.data);
       } catch (loadError) {
         if (!active) {
           return;
         }
 
-        setError(
-          getApiErrorMessage(
-            loadError,
-            "Gagal memuat daftar kost. Silakan coba lagi."
-          )
-        );
+          setError(
+            getApiErrorMessage(
+              loadError,
+              "Gagal memuat daftar kost. Silakan coba lagi."
+            )
+          );
+          setCatalogNotice(null);
       } finally {
         if (active) {
           setIsLoading(false);
@@ -714,6 +719,11 @@ export default function SewaPage() {
     items.map((item) => extractDistrict(item.property.address))
   ).size;
   const helpHref = isTenant ? "/tenant/bantuan" : "/auth?next=%2Ftenant%2Fbantuan";
+  const showCatalogLoginNotice =
+    !isTenant &&
+    !isAdmin &&
+    isPublicPropertyLoginRequiredMessage(catalogNotice) &&
+    filteredItems.length === 0;
 
   const handleToggleFavorite = async (item: TenantFavoriteProperty) => {
     if (!isTenant) {
@@ -1054,24 +1064,36 @@ export default function SewaPage() {
         ) : filteredItems.length === 0 ? (
           <div className="rounded-2xl border bg-white p-8 text-center">
             <h3 className="text-lg font-semibold text-slate-800">
-              Belum ada properti yang sesuai
+              {showCatalogLoginNotice
+                ? "Masuk untuk membuka katalog sewa"
+                : "Belum ada properti yang sesuai"}
             </h3>
             <p className="mt-1 text-sm text-slate-600">
-              Ubah kata kunci pencarian atau tipe hunian untuk hasil yang lebih
-              luas.
+              {showCatalogLoginNotice
+                ? "Backend yang digunakan saat ini hanya menampilkan katalog properti setelah pengguna masuk."
+                : "Ubah kata kunci pencarian atau tipe hunian untuk hasil yang lebih luas."}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setPropertyType("all");
-                setSortBy("newest");
-                setFavoriteOnly(false);
-              }}
-              className="mt-4 inline-flex h-10 items-center rounded-xl bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700"
-            >
-              Reset Filter
-            </button>
+            {showCatalogLoginNotice ? (
+              <Link
+                href="/auth?next=%2Fsewa"
+                className="mt-4 inline-flex h-10 items-center rounded-xl bg-sky-600 px-4 text-sm font-medium text-white transition hover:bg-sky-700"
+              >
+                Masuk untuk lihat katalog
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setPropertyType("all");
+                  setSortBy("newest");
+                  setFavoriteOnly(false);
+                }}
+                className="mt-4 inline-flex h-10 items-center rounded-xl bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700"
+              >
+                Reset Filter
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -1326,7 +1348,8 @@ function PropertyCard({
   const district = extractDistrict(item.property.address);
   const coordinate = resolveCoordinate(item, resolvedCoordinate);
   const nearestPopularPlace = getNearestPopularPlace(coordinate.lat, coordinate.lng);
-  const availabilityLabel = getAvailabilityLabel(item);
+  const availabilityStatus = getPublicPropertyAvailabilityStatus(item.property);
+  const availabilityLabel = getPublicPropertyAvailabilityLabel(item.property);
   const [mediaItems, setMediaItems] = useState<PropertyMedia[]>(
     buildPropertyMedias(item.property)
   );
@@ -1527,13 +1550,7 @@ function PropertyCard({
             {item.property.name}
           </h3>
           <span
-            className={`inline-flex flex-shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${
-              availabilityLabel.includes("tersedia")
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : availabilityLabel.includes("penuh")
-                  ? "border-rose-200 bg-rose-50 text-rose-700"
-                  : "border-slate-200 bg-slate-50 text-slate-600"
-            }`}
+            className={`inline-flex flex-shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${getAvailabilityBadgeClass(availabilityStatus)}`}
           >
             {availabilityLabel}
           </span>

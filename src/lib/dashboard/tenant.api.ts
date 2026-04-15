@@ -131,6 +131,11 @@ export interface TenantPropertySummary {
   total_units?: number;
   occupied_units?: number;
   vacant_units?: number;
+  available_units?: number;
+  maintenance_units?: number;
+  blocked_units?: number;
+  total_tenants?: number;
+  availability_status?: PublicPropertyAvailabilityStatus | string | null;
   price_min?: number;
   price_max?: number;
   photo_url?: string | null;
@@ -154,16 +159,50 @@ export interface TenantFavoriteItem {
   property: TenantPropertySummary;
 }
 
-type TenantFavoriteApiItem = {
-  id: number;
-  property_id?: number | null;
-  favorited_at?: string | null;
-  created_at?: string | null;
-  property?: {
-    id?: number | null;
+export interface TenantCurrentStay {
+  booking_id: number | null;
+  booking_code?: string | null;
+  status?: string | null;
+  status_label?: string | null;
+  occupancy_status?: string | null;
+  duration_status?: string | null;
+  is_currently_renting: boolean;
+  days_remaining?: number | null;
+  expired_days?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  duration_months?: number | null;
+  monthly_rent_amount?: number | null;
+  total_amount?: number | null;
+  transfer_proof_url?: string | null;
+  property: {
+    id: number;
     name?: string | null;
+    address?: string | null;
+    property_type?: string | null;
+    condition?: string | null;
   } | null;
-};
+  unit: {
+    id: number;
+    name?: string | null;
+    unit_type?: string | null;
+    status?: string | null;
+    people_allowed?: number | null;
+    monthly_rent_amount?: number | null;
+    roomphoto_urls?: string[];
+  } | null;
+  lease?: {
+    id?: number | null;
+    lease_status?: string | null;
+    payment_status?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  } | null;
+  settlement?: unknown;
+  reviewed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
 
 export type TenantVisitRequestPayload = {
   property_id: number;
@@ -171,6 +210,12 @@ export type TenantVisitRequestPayload = {
   preferred_time?: string;
   note?: string;
 };
+
+export type PublicPropertyAvailabilityStatus =
+  | "available"
+  | "maintenance_only"
+  | "fully_occupied"
+  | "unavailable";
 
 export interface PublicPropertySummary extends TenantPropertySummary {
   created_at?: string | null;
@@ -255,11 +300,32 @@ type PublicPropertyApiItem = {
   property_type?: string | null;
   condition?: string | null;
   facilities?: string[];
+  rules?: string | null;
+  description?: string | null;
   total_units?: number | null;
   occupied_units?: number | null;
   vacant_units?: number | null;
+  maintenance_units?: number | null;
+  blocked_units?: number | null;
+  available_units?: number | null;
+  total_tenants?: number | null;
   price_min?: number | string | null;
   price_max?: number | string | null;
+  stats?: {
+    total_units?: number | string | null;
+    occupied_units?: number | string | null;
+    vacant_units?: number | string | null;
+    maintenance_units?: number | string | null;
+    blocked_units?: number | string | null;
+    available_units?: number | string | null;
+    total_tenants?: number | string | null;
+    price_range?: {
+      min?: number | string | null;
+      max?: number | string | null;
+    } | null;
+    availability_status?: string | null;
+  } | null;
+  availability_status?: string | null;
   photo_url?: string | null;
   photo_urls?: string[];
   roomphoto_urls?: string[];
@@ -276,33 +342,15 @@ type PublicPropertyApiItem = {
     id?: number | null;
     full_name?: string | null;
   } | null;
+  available_units_preview?: Array<{
+    id: number;
+    name?: string | null;
+    unit_type?: string | null;
+    monthly_rent_amount?: number | string | null;
+    roomphoto_urls?: string[];
+  }>;
   created_at?: string | null;
   updated_at?: string | null;
-};
-
-type PublicPropertyUnitApiItem = {
-  id: number;
-  name?: string | null;
-  unit_type?: string | null;
-  status?: "vacant" | "occupied" | "maintenance" | string;
-  people_allowed?: number | string | null;
-  price?: number | string | null;
-  monthly_rent_amount?: number | string | null;
-  photo_url?: string | null;
-  photo_urls?: string[];
-  roomphoto_urls?: string[];
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
-type TenantVisitRequestApiPayload = {
-  id?: number | null;
-  property_id?: number | null;
-  preferred_date?: string | null;
-  preferred_time?: string | null;
-  note?: string | null;
-  status?: string | null;
-  created_at?: string | null;
 };
 
 type ManualRentalBooking = {
@@ -457,6 +505,67 @@ const getNumberValue = (value: unknown) => {
   return null;
 };
 
+const normalizeAvailabilityStatus = (
+  value?: string | null,
+  fallback?: {
+    availableUnits?: number | null;
+    vacantUnits?: number | null;
+    maintenanceUnits?: number | null;
+    occupiedUnits?: number | null;
+    totalUnits?: number | null;
+  }
+): PublicPropertyAvailabilityStatus => {
+  const normalized = value?.trim().toLowerCase().replace(/-/g, "_");
+  if (
+    normalized === "available" ||
+    normalized === "maintenance_only" ||
+    normalized === "fully_occupied" ||
+    normalized === "unavailable"
+  ) {
+    return normalized;
+  }
+
+  if (normalized === "vacant") {
+    return "available";
+  }
+
+  if (normalized === "maintenance") {
+    return "maintenance_only";
+  }
+
+  if (normalized === "occupied") {
+    return "fully_occupied";
+  }
+
+  const availableUnits = fallback?.availableUnits ?? null;
+  const vacantUnits = fallback?.vacantUnits ?? null;
+  const maintenanceUnits = fallback?.maintenanceUnits ?? null;
+  const occupiedUnits = fallback?.occupiedUnits ?? null;
+  const totalUnits = fallback?.totalUnits ?? null;
+
+  if (
+    (availableUnits != null && availableUnits > 0) ||
+    (vacantUnits != null && vacantUnits > 0)
+  ) {
+    return "available";
+  }
+
+  if (
+    maintenanceUnits != null &&
+    maintenanceUnits > 0 &&
+    (occupiedUnits == null || occupiedUnits <= 0) &&
+    (vacantUnits == null || vacantUnits <= 0)
+  ) {
+    return "maintenance_only";
+  }
+
+  if (totalUnits != null && totalUnits > 0) {
+    return "fully_occupied";
+  }
+
+  return "unavailable";
+};
+
 const toStringArray = (value: unknown) => {
   if (Array.isArray(value)) {
     return value
@@ -505,10 +614,6 @@ const getClientAccessToken = () => {
   } catch {
     return null;
   }
-};
-
-const hasClientAccessToken = () => {
-  return Boolean(getClientAccessToken());
 };
 
 const getClientRoleFromAccessToken = () => {
@@ -603,22 +708,6 @@ const buildCatalogQuery = (params?: QueryParams, page = 1, perPage = 100) => {
   });
 };
 
-const buildPublicPropertyQuery = (params?: QueryParams) => {
-  const sort = normalizeSortToCatalog(params?.sort?.toString());
-
-  return sanitizeParams({
-    page: params?.page,
-    per_page: params?.per_page,
-    search: params?.search,
-    location: params?.location,
-    property_type: params?.property_type,
-    unit_type: params?.unit_type,
-    min_price: params?.min_price,
-    max_price: params?.max_price,
-    sort,
-  });
-};
-
 const buildAdminPropertyQuery = (params?: QueryParams) => {
   const sort = params?.sort?.toString() === "oldest" ? "oldest" : "newest";
 
@@ -631,35 +720,43 @@ const buildAdminPropertyQuery = (params?: QueryParams) => {
   });
 };
 
-const buildPublicUnitsQuery = (params?: QueryParams) => {
-  const sort = normalizeSortToCatalog(params?.sort?.toString());
-
-  return sanitizeParams({
-    page: params?.page,
-    per_page: params?.per_page,
-    status: params?.status,
-    search: params?.search,
-    unit_type: params?.unit_type,
-    min_price: params?.min_price,
-    max_price: params?.max_price,
-    sort,
-  });
-};
-
 const normalizePublicProperty = (
   property: PublicPropertyApiItem
 ): PublicPropertySummary => {
+  const stats = property.stats || {};
+  const priceRange = stats.price_range || null;
   const photoUrls = dedupeMediaPaths(
     property.photo_urls,
     property.roomphoto_urls,
-    property.photo_url
+    property.photo_url,
+    property.available_units_preview?.flatMap((unit) => unit.roomphoto_urls || [])
   );
   const videoUrls = dedupeMediaPaths(property.video_urls, property.video_url);
-  const priceMin = getNumberValue(property.price_min);
-  const priceMax = getNumberValue(property.price_max);
-  const totalUnits = getNumberValue(property.total_units);
-  const occupiedUnits = getNumberValue(property.occupied_units);
-  const vacantUnits = getNumberValue(property.vacant_units);
+  const priceMin = getNumberValue(priceRange?.min ?? property.price_min);
+  const priceMax = getNumberValue(priceRange?.max ?? property.price_max);
+  const totalUnits = getNumberValue(stats.total_units ?? property.total_units);
+  const occupiedUnits = getNumberValue(
+    stats.occupied_units ?? property.occupied_units
+  );
+  const vacantUnits = getNumberValue(stats.vacant_units ?? property.vacant_units);
+  const maintenanceUnits = getNumberValue(
+    stats.maintenance_units ?? property.maintenance_units
+  );
+  const blockedUnits = getNumberValue(stats.blocked_units ?? property.blocked_units);
+  const availableUnits = getNumberValue(
+    stats.available_units ?? property.available_units
+  );
+  const totalTenants = getNumberValue(stats.total_tenants ?? property.total_tenants);
+  const availabilityStatus = normalizeAvailabilityStatus(
+    stats.availability_status ?? property.availability_status,
+    {
+      availableUnits,
+      vacantUnits,
+      maintenanceUnits,
+      occupiedUnits,
+      totalUnits,
+    }
+  );
 
   return {
     id: property.id,
@@ -679,6 +776,13 @@ const normalizePublicProperty = (
     occupied_units:
       occupiedUnits == null ? undefined : Math.max(0, occupiedUnits),
     vacant_units: vacantUnits == null ? undefined : Math.max(0, vacantUnits),
+    maintenance_units:
+      maintenanceUnits == null ? undefined : Math.max(0, maintenanceUnits),
+    blocked_units: blockedUnits == null ? undefined : Math.max(0, blockedUnits),
+    available_units:
+      availableUnits == null ? undefined : Math.max(0, availableUnits),
+    total_tenants: totalTenants == null ? undefined : Math.max(0, totalTenants),
+    availability_status: availabilityStatus,
     price_min: priceMin == null ? undefined : Math.max(0, priceMin),
     price_max: priceMax == null ? undefined : Math.max(0, priceMax),
     photo_url: photoUrls[0] || null,
@@ -689,34 +793,6 @@ const normalizePublicProperty = (
     photo_360_url: property.photo_360_url || null,
     created_at: property.created_at || null,
     updated_at: property.updated_at || null,
-  };
-};
-
-const normalizePublicUnit = (
-  unit: PublicPropertyUnitApiItem
-): PublicPropertyUnitSummary => {
-  const photoUrls = dedupeMediaPaths(
-    unit.photo_urls,
-    unit.roomphoto_urls,
-    unit.photo_url
-  );
-  const explicitPrice = getNumberValue(unit.price);
-  const monthlyPrice = getNumberValue(unit.monthly_rent_amount);
-  const price = explicitPrice == null ? monthlyPrice : explicitPrice;
-  const peopleAllowed = getNumberValue(unit.people_allowed);
-
-  return {
-    id: unit.id,
-    name: unit.name || `Unit ${unit.id}`,
-    unit_type: unit.unit_type || null,
-    status: unit.status || "vacant",
-    people_allowed:
-      peopleAllowed == null ? null : Math.max(1, Math.round(peopleAllowed)),
-    price: price == null ? null : Math.max(0, price),
-    photo_url: photoUrls[0] || null,
-    photo_urls: photoUrls,
-    created_at: unit.created_at || null,
-    updated_at: unit.updated_at || null,
   };
 };
 
@@ -746,21 +822,54 @@ const fetchAllCatalogUnits = async (params?: QueryParams) => {
   };
 };
 
-const aggregatePropertiesFromCatalogUnits = (units: ManualRentalCatalogUnit[]) => {
+const fetchAllCatalogProperties = async (params?: QueryParams) => {
+  const perPage = 100;
+  const firstResponse = await axiosInstance.get<
+    ApiResponse<PublicPropertyApiItem[], ApiPaginationMeta>
+  >("/api/v1/manual_rentals/catalog/properties", {
+    params: buildCatalogQuery(params, 1, perPage),
+  });
+
+  const properties: PublicPropertyApiItem[] = [...firstResponse.data.data];
+  const totalPages = firstResponse.data.meta?.total_pages || 0;
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const nextResponse = await axiosInstance.get<
+      ApiResponse<PublicPropertyApiItem[], ApiPaginationMeta>
+    >("/api/v1/manual_rentals/catalog/properties", {
+      params: buildCatalogQuery(params, page, perPage),
+    });
+    properties.push(...nextResponse.data.data);
+  }
+
+  return {
+    data: properties.map(normalizePublicProperty),
+    message: firstResponse.data.message,
+  };
+};
+
+const aggregatePublicPropertiesFromCatalogUnits = async (
+  params?: QueryParams
+): Promise<ListResult<PublicPropertySummary>> => {
+  const catalogResponse = await fetchAllCatalogUnits(params);
   const propertyMap = new Map<number, PublicPropertySummary>();
 
-  units.forEach((unit) => {
+  catalogResponse.data.forEach((unit) => {
     const property = unit.property;
     if (!property?.id) {
       return;
     }
 
     const existing = propertyMap.get(property.id);
-    const price = unit.monthly_rent_amount || 0;
-    const unitPhotos = unit.roomphoto_urls || [];
-    const propertyPhotos = property.photo_urls || property.roomphoto_urls || [];
-    const mergedPhotos = Array.from(
-      new Set([...(existing?.photo_urls || []), ...propertyPhotos, ...unitPhotos])
+    const unitPrice = getNumberValue(unit.monthly_rent_amount);
+    const propertyPhotoUrls = dedupeMediaPaths(
+      property.photo_urls,
+      property.roomphoto_urls,
+      unit.roomphoto_urls
+    );
+    const propertyVideoUrls = dedupeMediaPaths(
+      property.video_urls,
+      property.video_url
     );
 
     if (!existing) {
@@ -768,21 +877,30 @@ const aggregatePropertiesFromCatalogUnits = (units: ManualRentalCatalogUnit[]) =
         id: property.id,
         name: property.name || `Properti #${property.id}`,
         address: property.address || null,
-        latitude: property.latitude ?? null,
-        longitude: property.longitude ?? null,
+        latitude: getNumberValue(property.latitude),
+        longitude: getNumberValue(property.longitude),
         property_type: property.property_type || null,
         condition: property.condition || null,
         facilities: property.facilities || [],
-        owner_name: unit.owner?.full_name || null,
+        owner_name:
+          unit.owner?.full_name ||
+          unit.owner?.email ||
+          unit.owner?.phone_number ||
+          null,
         total_units: 1,
         occupied_units: 0,
         vacant_units: 1,
-        price_min: price > 0 ? price : undefined,
-        price_max: price > 0 ? price : undefined,
-        photo_url: mergedPhotos[0] || null,
-        photo_urls: mergedPhotos,
-        video_urls: property.video_urls || [],
-        video_url: property.video_url || null,
+        maintenance_units: 0,
+        blocked_units: 0,
+        available_units: 1,
+        total_tenants: 0,
+        availability_status: "available",
+        price_min: unitPrice == null ? undefined : Math.max(0, unitPrice),
+        price_max: unitPrice == null ? undefined : Math.max(0, unitPrice),
+        photo_url: propertyPhotoUrls[0] || null,
+        photo_urls: propertyPhotoUrls,
+        video_urls: propertyVideoUrls,
+        video_url: property.video_url || propertyVideoUrls[0] || null,
         video_360_url: property.video_360_url || null,
         photo_360_url: property.photo_360_url || null,
         created_at: unit.created_at || null,
@@ -793,123 +911,27 @@ const aggregatePropertiesFromCatalogUnits = (units: ManualRentalCatalogUnit[]) =
 
     existing.total_units = (existing.total_units || 0) + 1;
     existing.vacant_units = (existing.vacant_units || 0) + 1;
-    existing.photo_urls = mergedPhotos;
+    existing.available_units = (existing.available_units || 0) + 1;
+    if (existing.price_min == null || (unitPrice != null && unitPrice < existing.price_min)) {
+      existing.price_min = unitPrice == null ? existing.price_min : Math.max(0, unitPrice);
+    }
+    if (existing.price_max == null || (unitPrice != null && unitPrice > existing.price_max)) {
+      existing.price_max = unitPrice == null ? existing.price_max : Math.max(0, unitPrice);
+    }
+    existing.photo_urls = dedupeMediaPaths(
+      existing.photo_urls,
+      propertyPhotoUrls,
+      unit.roomphoto_urls
+    );
     existing.photo_url = existing.photo_urls[0] || null;
-    existing.video_urls = property.video_urls || existing.video_urls || [];
-    existing.video_url = property.video_url || existing.video_url || null;
-    existing.video_360_url =
-      property.video_360_url || existing.video_360_url || null;
-    existing.photo_360_url =
-      property.photo_360_url || existing.photo_360_url || null;
-
-    if (price > 0) {
-      existing.price_min =
-        existing.price_min == null ? price : Math.min(existing.price_min, price);
-      existing.price_max =
-        existing.price_max == null ? price : Math.max(existing.price_max, price);
-    }
-
-    if (
-      unit.updated_at &&
-      (!existing.updated_at ||
-        new Date(unit.updated_at).getTime() > new Date(existing.updated_at).getTime())
-    ) {
-      existing.updated_at = unit.updated_at;
-    }
+    existing.video_urls = dedupeMediaPaths(existing.video_urls, propertyVideoUrls);
+    existing.video_url = existing.video_url || property.video_url || existing.video_urls[0] || null;
+    existing.video_360_url = existing.video_360_url || property.video_360_url || null;
+    existing.photo_360_url = existing.photo_360_url || property.photo_360_url || null;
+    existing.updated_at = unit.updated_at || existing.updated_at || null;
   });
 
-  return Array.from(propertyMap.values());
-};
-
-const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitSummary => {
-  const photoUrls = Array.from(
-    new Set([...(unit.roomphoto_urls || []), ...(unit.property?.roomphoto_urls || [])])
-  );
-
-  return {
-    id: unit.id,
-    name: unit.name || `Unit ${unit.id}`,
-    unit_type: unit.unit_type || null,
-    status: "vacant",
-    people_allowed: null,
-    price: unit.monthly_rent_amount || null,
-    photo_url: photoUrls[0] || null,
-    photo_urls: photoUrls,
-    created_at: unit.created_at || null,
-    updated_at: unit.updated_at || null,
-  };
-};
-
-const fetchPublicPropertiesFromApi = async (
-  params?: QueryParams
-): Promise<ListResult<PublicPropertySummary>> => {
-  const response = await getPublicApi<PublicPropertyApiItem[]>(
-    "/api/v1/properties/public",
-    buildPublicPropertyQuery(params)
-  );
-
-  return {
-    data: response.data.data.map(normalizePublicProperty),
-    meta: response.data.meta,
-    message: response.data.message,
-  };
-};
-
-const fetchAdminPropertiesForPublic = async (
-  params?: QueryParams
-): Promise<ListResult<PublicPropertySummary>> => {
-  const response = await getPublicApi<PublicPropertyApiItem[]>(
-    "/api/v1/properties",
-    buildAdminPropertyQuery(params)
-  );
-
-  return {
-    data: response.data.data.map(normalizePublicProperty),
-    meta: response.data.meta,
-    message: response.data.message,
-  };
-};
-
-const mergePublicProperties = (
-  source: PublicPropertySummary[],
-  fallback: PublicPropertySummary[]
-) => {
-  const fallbackMap = new Map<number, PublicPropertySummary>();
-  fallback.forEach((item) => {
-    fallbackMap.set(item.id, item);
-  });
-
-  return source.map((item) => {
-    const fallbackItem = fallbackMap.get(item.id);
-    if (!fallbackItem) {
-      return item;
-    }
-
-    return {
-      ...item,
-      price_min: item.price_min ?? fallbackItem.price_min,
-      price_max: item.price_max ?? fallbackItem.price_max,
-      photo_url: item.photo_url || fallbackItem.photo_url || null,
-      photo_urls:
-        item.photo_urls && item.photo_urls.length > 0
-          ? item.photo_urls
-          : fallbackItem.photo_urls || [],
-      video_urls:
-        item.video_urls && item.video_urls.length > 0
-          ? item.video_urls
-          : fallbackItem.video_urls || [],
-      video_url: item.video_url || fallbackItem.video_url || null,
-      video_360_url: item.video_360_url || fallbackItem.video_360_url || null,
-      photo_360_url: item.photo_360_url || fallbackItem.photo_360_url || null,
-    };
-  });
-};
-
-const getPublicPropertiesFromCatalog = async (
-  params?: QueryParams
-): Promise<ListResult<PublicPropertySummary>> => {
-  const catalogResponse = await fetchAllCatalogUnits(params);
-  let properties = aggregatePropertiesFromCatalogUnits(catalogResponse.data);
+  let properties = Array.from(propertyMap.values());
   const sort = params?.sort?.toString();
 
   if (sort === "price_asc" || sort === "price_low") {
@@ -947,20 +969,102 @@ const getPublicPropertiesFromCatalog = async (
   };
 };
 
-const fetchPublicPropertyUnitsFromApi = async (
-  propertyId: number,
-  params?: QueryParams
-): Promise<ListResult<PublicPropertyUnitSummary>> => {
-  const response = await getPublicApi<PublicPropertyUnitApiItem[]>(
-    `/api/v1/properties/${propertyId}/public_units`,
-    buildPublicUnitsQuery(params)
+const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitSummary => {
+  const photoUrls = Array.from(
+    new Set([...(unit.roomphoto_urls || []), ...(unit.property?.roomphoto_urls || [])])
   );
 
   return {
-    data: response.data.data.map(normalizePublicUnit),
+    id: unit.id,
+    name: unit.name || `Unit ${unit.id}`,
+    unit_type: unit.unit_type || null,
+    status: "vacant",
+    people_allowed: null,
+    price: unit.monthly_rent_amount || null,
+    photo_url: photoUrls[0] || null,
+    photo_urls: photoUrls,
+    created_at: unit.created_at || null,
+    updated_at: unit.updated_at || null,
+  };
+};
+
+const fetchAdminPropertiesForPublic = async (
+  params?: QueryParams
+): Promise<ListResult<PublicPropertySummary>> => {
+  const response = await getPublicApi<PublicPropertyApiItem[]>(
+    "/api/v1/properties",
+    buildAdminPropertyQuery(params)
+  );
+
+  return {
+    data: response.data.data.map(normalizePublicProperty),
     meta: response.data.meta,
     message: response.data.message,
   };
+};
+
+const mergePublicProperties = (
+  source: PublicPropertySummary[],
+  fallback: PublicPropertySummary[]
+) => {
+  const fallbackMap = new Map<number, PublicPropertySummary>();
+  fallback.forEach((item) => {
+    fallbackMap.set(item.id, item);
+  });
+
+  return source.map((item) => {
+    const fallbackItem = fallbackMap.get(item.id);
+    if (!fallbackItem) {
+      return item;
+    }
+
+    return {
+      ...item,
+      total_units: item.total_units ?? fallbackItem.total_units,
+      occupied_units: item.occupied_units ?? fallbackItem.occupied_units,
+      vacant_units: item.vacant_units ?? fallbackItem.vacant_units,
+      maintenance_units:
+        item.maintenance_units ?? fallbackItem.maintenance_units,
+      blocked_units: item.blocked_units ?? fallbackItem.blocked_units,
+      available_units: item.available_units ?? fallbackItem.available_units,
+      total_tenants: item.total_tenants ?? fallbackItem.total_tenants,
+      availability_status:
+        item.availability_status ?? fallbackItem.availability_status ?? null,
+      price_min: item.price_min ?? fallbackItem.price_min,
+      price_max: item.price_max ?? fallbackItem.price_max,
+      photo_url: item.photo_url || fallbackItem.photo_url || null,
+      photo_urls:
+        item.photo_urls && item.photo_urls.length > 0
+          ? item.photo_urls
+          : fallbackItem.photo_urls || [],
+      video_urls:
+        item.video_urls && item.video_urls.length > 0
+          ? item.video_urls
+          : fallbackItem.video_urls || [],
+      video_url: item.video_url || fallbackItem.video_url || null,
+      video_360_url: item.video_360_url || fallbackItem.video_360_url || null,
+      photo_360_url: item.photo_360_url || fallbackItem.photo_360_url || null,
+    };
+  });
+};
+
+const getPublicPropertiesFromCatalog = async (
+  params?: QueryParams
+): Promise<ListResult<PublicPropertySummary>> => {
+  try {
+    const catalogResponse = await fetchAllCatalogProperties(params);
+    if (catalogResponse.data.length > 0) {
+      return catalogResponse;
+    }
+
+    return await aggregatePublicPropertiesFromCatalogUnits(params);
+  } catch (error) {
+    if (!isStatusError(error, [401, 403, 404, 405])) {
+      throw error;
+    }
+
+    return await aggregatePublicPropertiesFromCatalogUnits(params);
+  }
 };
 
 const getPublicPropertyUnitsFromCatalog = async (
@@ -988,6 +1092,50 @@ const getPublicPropertyUnitsFromCatalog = async (
     meta: paginated.meta,
     message: catalogResponse.message,
   };
+};
+
+export const getPublicPropertyAvailabilityStatus = (
+  property: Pick<
+    PublicPropertySummary,
+    | "availability_status"
+    | "available_units"
+    | "vacant_units"
+    | "maintenance_units"
+    | "occupied_units"
+    | "total_units"
+  >
+) => {
+  return normalizeAvailabilityStatus(property.availability_status, {
+    availableUnits: property.available_units,
+    vacantUnits: property.vacant_units,
+    maintenanceUnits: property.maintenance_units,
+    occupiedUnits: property.occupied_units,
+    totalUnits: property.total_units,
+  });
+};
+
+export const getPublicPropertyAvailabilityLabel = (
+  property: Pick<
+    PublicPropertySummary,
+    | "availability_status"
+    | "available_units"
+    | "vacant_units"
+    | "maintenance_units"
+    | "occupied_units"
+    | "total_units"
+  >
+) => {
+  const status = getPublicPropertyAvailabilityStatus(property);
+
+  if (status === "available") {
+    return "Tersedia";
+  }
+
+  if (status === "maintenance_only") {
+    return "Maintenance";
+  }
+
+  return "Penuh";
 };
 
 const mapManualBookingStatusToTenantPayment = (
@@ -1041,6 +1189,16 @@ const mapManualBookingToTenantPayment = (
 };
 
 const TENANT_FAVORITES_STORAGE_KEY = "kyra.tenant.favorite.property.ids";
+export const PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE =
+  "Katalog properti tersedia setelah login.";
+export const PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE =
+  "Unit properti tersedia setelah login.";
+export const TENANT_VISIT_REQUEST_UNAVAILABLE_MESSAGE =
+  "Endpoint pengajuan jadwal visit belum tersedia pada backend.";
+export const TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE =
+  "Perubahan profil tenant mandiri belum tersedia pada backend terbaru.";
+export const TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE =
+  "Notifikasi tenant belum tersedia pada backend terbaru.";
 
 const getFavoritePropertyIds = () => {
   if (typeof window === "undefined") {
@@ -1077,40 +1235,6 @@ const saveFavoritePropertyIds = (ids: Set<number>) => {
   } catch {
     // ignore storage errors
   }
-};
-
-const getTenantFavoriteItemsFromApi = async (
-  params?: QueryParams
-): Promise<ListResult<TenantFavoriteApiItem>> => {
-  const response = await axiosInstance.get<
-    ApiResponse<TenantFavoriteApiItem[], ApiPaginationMeta>
-  >("/api/v1/favorites", {
-    params: sanitizeParams({
-      page: params?.page || 1,
-      per_page: params?.per_page || 200,
-    }),
-  });
-
-  return {
-    data: response.data.data,
-    meta: response.data.meta,
-    message: response.data.message,
-  };
-};
-
-const mapTenantFavoriteApiItem = (
-  item: TenantFavoriteApiItem,
-  propertyId: number
-): TenantFavoriteItem => {
-  return {
-    id: Number(item.id || propertyId),
-    property_id: propertyId,
-    favorited_at: item.favorited_at || item.created_at || new Date().toISOString(),
-    property: {
-      id: propertyId,
-      name: item.property?.name || "",
-    },
-  };
 };
 
 export const getApiErrorMessage = (
@@ -1167,6 +1291,17 @@ export const getApiErrorMessage = (
   return fallback;
 };
 
+export const isPublicPropertyLoginRequiredMessage = (message?: string | null) =>
+  (message || "").trim() === PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE;
+
+export const isPublicPropertyUnitsLoginRequiredMessage = (
+  message?: string | null
+) => (message || "").trim() === PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE;
+
+export const isTenantNotificationsUnavailableMessage = (
+  message?: string | null
+) => (message || "").trim() === TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE;
+
 export const getTenantProfile = () =>
   getItem<BackendUser>("/api/v1/auth/me");
 
@@ -1178,64 +1313,9 @@ export const updateTenantProfile = async (payload: {
   relationship?: string;
   nik?: string;
   profile_picture?: File | null;
-}) => {
-  const formData = new FormData();
-
-  if (payload.full_name !== undefined) {
-    formData.append("full_name", payload.full_name);
-  }
-
-  if (payload.phone_number !== undefined) {
-    formData.append("phone_number", payload.phone_number);
-  }
-
-  if (payload.emergency_contact_name !== undefined) {
-    formData.append("emergency_contact_name", payload.emergency_contact_name);
-  }
-
-  if (payload.emergency_contact_number !== undefined) {
-    formData.append(
-      "emergency_contact_number",
-      payload.emergency_contact_number
-    );
-  }
-
-  if (payload.relationship !== undefined) {
-    formData.append("relationship", payload.relationship);
-  }
-
-  if (payload.nik !== undefined) {
-    formData.append("nik", payload.nik);
-  }
-
-  if (payload.profile_picture) {
-    formData.append("profile_picture", payload.profile_picture);
-  }
-
-  try {
-    const response = await axiosInstance.patch<ApiResponse<BackendUser>>(
-      "/api/v1/auth/profile",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    return {
-      data: response.data.data,
-      message: response.data.message,
-    };
-  } catch (error) {
-    if (isStatusError(error, [403, 404, 405])) {
-      throw new Error(
-        "Perubahan profil tenant belum tersedia pada backend terbaru."
-      );
-    }
-
-    throw error;
-  }
+}): Promise<ItemResult<BackendUser>> => {
+  void payload;
+  throw new Error(TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE);
 };
 
 export const getIncompleteTenantProfileFields = (profile: BackendUser) => {
@@ -1304,6 +1384,9 @@ export const getTenantPayments = async (
   };
 };
 
+export const getTenantCurrentStay = () =>
+  getItem<TenantCurrentStay>("/api/v1/manual_rentals/stays/current");
+
 export const getTenantMaintenanceRequests = async (
   params?: QueryParams
 ): Promise<ListResult<TenantMaintenanceRequest>> => {
@@ -1357,7 +1440,7 @@ export const getTenantNotifications = async (
       return {
         data: paginated.data,
         meta: paginated.meta,
-        message: "Notifikasi tenant belum tersedia pada backend terbaru.",
+        message: TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE,
       };
     }
 
@@ -1369,51 +1452,13 @@ export const getTenantFavoriteProperties = async (
   params?: QueryParams
 ): Promise<ListResult<TenantFavoriteProperty>> => {
   const propertiesResponse = await getPublicProperties(params);
-  let favoriteIds = getFavoritePropertyIds();
-  let favoriteItems: TenantFavoriteItem[] = [];
-
-  if (hasClientAccessToken()) {
-    try {
-      const favoriteResponse = await getTenantFavoriteItemsFromApi({
-        page: 1,
-        per_page: 500,
-      });
-
-      favoriteItems = favoriteResponse.data
-        .map((item) => {
-          const resolvedPropertyId = Number(
-            item.property_id || item.property?.id || 0
-          );
-          if (!Number.isFinite(resolvedPropertyId) || resolvedPropertyId <= 0) {
-            return null;
-          }
-
-          return mapTenantFavoriteApiItem(item, resolvedPropertyId);
-        })
-        .filter((item): item is TenantFavoriteItem => item !== null);
-
-      favoriteIds = new Set(favoriteItems.map((item) => item.property_id));
-      saveFavoritePropertyIds(favoriteIds);
-    } catch (error) {
-      if (!isStatusError(error, [401, 403, 404, 405])) {
-        throw error;
-      }
-    }
-  }
-
-  const favoriteByPropertyId = new Map<number, TenantFavoriteItem>();
-  favoriteItems.forEach((item) => {
-    favoriteByPropertyId.set(item.property_id, item);
-  });
+  const favoriteIds = getFavoritePropertyIds();
 
   const data = propertiesResponse.data.map((property) => {
-    const backendFavorite = favoriteByPropertyId.get(property.id);
-    const isFavorite = Boolean(backendFavorite) || favoriteIds.has(property.id);
+    const isFavorite = favoriteIds.has(property.id);
 
     return {
-      favorite_id: isFavorite
-        ? Number(backendFavorite?.id || property.id)
-        : null,
+      favorite_id: isFavorite ? property.id : null,
       is_favorite: isFavorite,
       property,
     };
@@ -1465,25 +1510,10 @@ export const getPublicProperties = async (
   }
 
   try {
-    return await fetchPublicPropertiesFromApi(params);
+    return await getPublicPropertiesFromCatalog(params);
   } catch (error) {
-    const canFallbackToCatalog =
-      hasClientAccessToken() && isStatusError(error, [401, 403, 404, 405]);
-
-    if (canFallbackToCatalog) {
-      try {
-        return await getPublicPropertiesFromCatalog(params);
-      } catch (catalogError) {
-        if (isStatusError(catalogError, [401, 403])) {
-          return emptyResult("Katalog properti tersedia setelah login.");
-        }
-
-        throw catalogError;
-      }
-    }
-
     if (isStatusError(error, [401, 403, 404, 405])) {
-      return emptyResult("Katalog properti tersedia setelah login.");
+      return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
     }
 
     throw error;
@@ -1507,38 +1537,14 @@ export const getPublicPropertyUnits = (
     });
   }
 
-  return fetchPublicPropertyUnitsFromApi(propertyNumericId, params).catch(
-    async (error: unknown) => {
-      const canFallbackToCatalog =
-        hasClientAccessToken() && isStatusError(error, [401, 403, 404, 405]);
-
-      if (canFallbackToCatalog) {
-        try {
-          return await getPublicPropertyUnitsFromCatalog(propertyNumericId, params);
-        } catch (catalogError) {
-          if (isStatusError(catalogError, [401, 403])) {
-            const paginated = paginateArray<PublicPropertyUnitSummary>(
-              [],
-              page,
-              perPage
-            );
-            return {
-              data: paginated.data,
-              meta: paginated.meta,
-              message: "Unit properti tersedia setelah login.",
-            };
-          }
-
-          throw catalogError;
-        }
-      }
-
+  return getPublicPropertyUnitsFromCatalog(propertyNumericId, params).catch(
+    (error: unknown) => {
       if (isStatusError(error, [401, 403, 404, 405])) {
         const paginated = paginateArray<PublicPropertyUnitSummary>([], page, perPage);
         return {
           data: paginated.data,
           meta: paginated.meta,
-          message: "Unit properti tersedia setelah login.",
+          message: PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE,
         };
       }
 
@@ -1548,41 +1554,6 @@ export const getPublicPropertyUnits = (
 };
 
 export const addTenantFavorite = async (propertyId: number) => {
-  if (hasClientAccessToken()) {
-    try {
-      const response = await axiosInstance.post<ApiResponse<TenantFavoriteApiItem>>(
-        "/api/v1/favorites",
-        {
-          property_id: propertyId,
-        }
-      );
-
-      const apiItem = response.data.data;
-      const resolvedPropertyId = Number(
-        apiItem.property_id || apiItem.property?.id || propertyId
-      );
-      const favoriteItem = mapTenantFavoriteApiItem(
-        apiItem,
-        Number.isFinite(resolvedPropertyId) && resolvedPropertyId > 0
-          ? resolvedPropertyId
-          : propertyId
-      );
-
-      const ids = getFavoritePropertyIds();
-      ids.add(favoriteItem.property_id);
-      saveFavoritePropertyIds(ids);
-
-      return {
-        data: favoriteItem,
-        message: response.data.message,
-      };
-    } catch (error) {
-      if (!isStatusError(error, [403, 404, 405])) {
-        throw error;
-      }
-    }
-  }
-
   const ids = getFavoritePropertyIds();
   ids.add(propertyId);
   saveFavoritePropertyIds(ids);
@@ -1602,26 +1573,6 @@ export const addTenantFavorite = async (propertyId: number) => {
 };
 
 export const removeTenantFavoriteByProperty = async (propertyId: number) => {
-  if (hasClientAccessToken()) {
-    try {
-      const response = await axiosInstance.delete<ApiResponse<null>>(
-        `/api/v1/favorites/property/${propertyId}`
-      );
-
-      const ids = getFavoritePropertyIds();
-      ids.delete(propertyId);
-      saveFavoritePropertyIds(ids);
-
-      return {
-        message: response.data.message,
-      };
-    } catch (error) {
-      if (!isStatusError(error, [403, 404, 405])) {
-        throw error;
-      }
-    }
-  }
-
   const ids = getFavoritePropertyIds();
   ids.delete(propertyId);
   saveFavoritePropertyIds(ids);
@@ -1634,48 +1585,8 @@ export const removeTenantFavoriteByProperty = async (propertyId: number) => {
 export const createTenantVisitRequest = async (
   payload: TenantVisitRequestPayload
 ) => {
-  const visitRequestPayload = {
-    visit_request: {
-      property_id: payload.property_id,
-      preferred_date: payload.preferred_date,
-      preferred_time: payload.preferred_time,
-      note: payload.note,
-    },
-  };
-
-  try {
-    const response = await axiosInstance.post<
-      ApiResponse<TenantVisitRequestApiPayload>
-    >("/api/v1/communications/visit_request", visitRequestPayload);
-
-    return {
-      data: response.data.data,
-      message: response.data.message,
-    };
-  } catch (error) {
-    if (!isStatusError(error, [404, 405])) {
-      throw error;
-    }
-  }
-
-  try {
-    const response = await axiosInstance.post<
-      ApiResponse<TenantVisitRequestApiPayload>
-    >("/api/v1/visit_requests", visitRequestPayload);
-
-    return {
-      data: response.data.data,
-      message: response.data.message,
-    };
-  } catch (error) {
-    if (isStatusError(error, [404, 405])) {
-      throw new Error(
-        "Endpoint pengajuan jadwal visit belum tersedia pada backend."
-      );
-    }
-
-    throw error;
-  }
+  void payload;
+  throw new Error(TENANT_VISIT_REQUEST_UNAVAILABLE_MESSAGE);
 };
 
 export const createTenantBookingPayment = async (

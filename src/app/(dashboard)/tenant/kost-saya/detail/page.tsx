@@ -16,12 +16,12 @@ import {
 } from "lucide-react";
 import {
   getApiErrorMessage,
-  getPublicProperties,
-  getPublicPropertyUnits,
+  getTenantCurrentStay,
   getTenantMaintenanceRequests,
   getTenantPayments,
   type PublicPropertySummary,
   type PublicPropertyUnitSummary,
+  type TenantCurrentStay,
   type TenantPayment,
 } from "@/lib/dashboard/tenant.api";
 
@@ -107,56 +107,53 @@ const resolveAssetUrl = (value?: string | null) => {
   return `${baseUrl}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
 };
 
-const findPropertyById = async (propertyId: number) => {
-  const perPage = 100;
-  const firstPage = await getPublicProperties({
-    page: 1,
-    per_page: perPage,
-    sort: "newest",
-  });
-
-  let found = firstPage.data.find((item) => item.id === propertyId) || null;
-  const totalPages = firstPage.meta?.total_pages || 1;
-
-  for (let page = 2; !found && page <= totalPages; page += 1) {
-    const nextPage = await getPublicProperties({
-      page,
-      per_page: perPage,
-      sort: "newest",
-    });
-
-    found = nextPage.data.find((item) => item.id === propertyId) || null;
+const mapCurrentStayProperty = (
+  property: TenantCurrentStay["property"]
+): PublicPropertySummary | null => {
+  if (!property?.id) {
+    return null;
   }
 
-  return found;
+  return {
+    id: property.id,
+    name: property.name || `Properti #${property.id}`,
+    address: property.address || null,
+    property_type: property.property_type || null,
+    condition: property.condition || null,
+    facilities: [],
+    photo_url: null,
+    photo_urls: [],
+    video_urls: [],
+    video_url: null,
+    video_360_url: null,
+    photo_360_url: null,
+  };
 };
 
-const findUnitById = async (propertyId: number, unitId: number) => {
-  const perPage = 100;
-  const firstPage = await getPublicPropertyUnits(propertyId, {
-    page: 1,
-    per_page: perPage,
-    sort: "price_asc",
-  });
-
-  let found = firstPage.data.find((item) => item.id === unitId) || null;
-  const totalPages = firstPage.meta?.total_pages || 1;
-
-  for (let page = 2; !found && page <= totalPages; page += 1) {
-    const nextPage = await getPublicPropertyUnits(propertyId, {
-      page,
-      per_page: perPage,
-      sort: "price_asc",
-    });
-
-    found = nextPage.data.find((item) => item.id === unitId) || null;
+const mapCurrentStayUnit = (
+  unit: TenantCurrentStay["unit"]
+): PublicPropertyUnitSummary | null => {
+  if (!unit?.id) {
+    return null;
   }
 
-  return found;
+  const photoUrls = Array.from(new Set(unit.roomphoto_urls || []));
+
+  return {
+    id: unit.id,
+    name: unit.name || `Unit ${unit.id}`,
+    unit_type: unit.unit_type || null,
+    status: unit.status || null,
+    people_allowed: unit.people_allowed ?? null,
+    price: unit.monthly_rent_amount ?? null,
+    photo_url: photoUrls[0] || null,
+    photo_urls: photoUrls,
+  };
 };
 
 export default function TenantKostDetailPage() {
   const [payments, setPayments] = useState<TenantPayment[]>([]);
+  const [currentStay, setCurrentStay] = useState<TenantCurrentStay | null>(null);
   const [property, setProperty] = useState<PublicPropertySummary | null>(null);
   const [unit, setUnit] = useState<PublicPropertyUnitSummary | null>(null);
   const [activeMaintenanceCount, setActiveMaintenanceCount] = useState(0);
@@ -172,7 +169,8 @@ export default function TenantKostDetailPage() {
       setError(null);
 
       try {
-        const [paymentsResponse, maintenanceResponse] = await Promise.all([
+        const [currentStayResponse, paymentsResponse, maintenanceResponse] = await Promise.all([
+          getTenantCurrentStay(),
           getTenantPayments({ page: 1, per_page: 100, sort: "due_date" }),
           getTenantMaintenanceRequests({ page: 1, per_page: 100 }),
         ]);
@@ -186,7 +184,14 @@ export default function TenantKostDetailPage() {
           const bDate = getTimestamp(b.due_date || b.created_at);
           return bDate - aDate;
         });
+        const resolvedCurrentStay = currentStayResponse.data?.booking_id
+          ? currentStayResponse.data
+          : null;
+
         setPayments(sortedPayments);
+        setCurrentStay(resolvedCurrentStay);
+        setProperty(mapCurrentStayProperty(resolvedCurrentStay?.property || null));
+        setUnit(mapCurrentStayUnit(resolvedCurrentStay?.unit || null));
 
         const maintenanceActive = maintenanceResponse.data.filter((item) => {
           return item.status !== "completed" && item.status !== "cancelled";
@@ -194,38 +199,8 @@ export default function TenantKostDetailPage() {
         setActiveMaintenanceCount(maintenanceActive);
 
         const latestPayment = sortedPayments[0];
-        if (!latestPayment) {
-          setProperty(null);
-          setUnit(null);
+        if (!resolvedCurrentStay && !latestPayment) {
           return;
-        }
-
-        try {
-          const propertyDetail =
-            latestPayment.property.id > 0
-              ? await findPropertyById(latestPayment.property.id)
-              : null;
-          if (!active) {
-            return;
-          }
-          setProperty(propertyDetail);
-
-          if (propertyDetail && latestPayment.unit.id > 0) {
-            const unitDetail = await findUnitById(propertyDetail.id, latestPayment.unit.id);
-            if (!active) {
-              return;
-            }
-            setUnit(unitDetail);
-          } else {
-            setUnit(null);
-          }
-        } catch {
-          if (!active) {
-            return;
-          }
-
-          setProperty(null);
-          setUnit(null);
         }
       } catch (loadError) {
         if (!active) {
@@ -253,6 +228,21 @@ export default function TenantKostDetailPage() {
   }, [refreshKey]);
 
   const latestPayment = payments[0] || null;
+  const displayedPropertyName =
+    property?.name || currentStay?.property?.name || latestPayment?.property.name || "-";
+  const displayedUnitName =
+    unit?.name || currentStay?.unit?.name || latestPayment?.unit.name || "-";
+  const statusBadge = latestPayment
+    ? paymentStatusMap[latestPayment.status]
+    : currentStay?.status_label
+      ? {
+          label: currentStay.status_label,
+          className: "border-sky-200 bg-sky-50 text-sky-700",
+        }
+      : {
+          label: "Status Hunian",
+          className: "border-slate-200 bg-slate-100 text-slate-700",
+        };
 
   const galleryImages = useMemo(() => {
     const candidates = [
@@ -302,7 +292,7 @@ export default function TenantKostDetailPage() {
             Coba Lagi
           </button>
         </div>
-      ) : !latestPayment ? (
+      ) : !currentStay?.booking_id && !latestPayment ? (
         <div className="rounded-2xl border bg-white p-10 text-center">
           <h2 className="text-xl font-semibold text-green-600">
             Belum Ada Data Hunian
@@ -323,7 +313,7 @@ export default function TenantKostDetailPage() {
           <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-900 p-6 text-white shadow-sm">
             <Image
               src={heroImage}
-              alt={latestPayment.property.name || "Detail kost"}
+              alt={displayedPropertyName || "Detail kost"}
               fill
               className="object-cover opacity-35"
               sizes="100vw"
@@ -333,14 +323,14 @@ export default function TenantKostDetailPage() {
 
             <div className="relative z-10 space-y-3">
               <span
-                className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${paymentStatusMap[latestPayment.status].className}`}
+                className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${statusBadge.className}`}
               >
-                {paymentStatusMap[latestPayment.status].label}
+                {statusBadge.label}
               </span>
               <h2 className="text-2xl font-semibold">
-                {latestPayment.property.name || "-"}
+                {displayedPropertyName}
               </h2>
-              <p className="text-sm text-slate-200">{latestPayment.unit.name || "-"}</p>
+              <p className="text-sm text-slate-200">{displayedUnitName}</p>
             </div>
           </section>
 
@@ -348,14 +338,28 @@ export default function TenantKostDetailPage() {
             <SummaryCard
               icon={<ReceiptText size={16} />}
               label="Tagihan Terakhir"
-              value={formatCurrency(latestPayment.amount)}
-              helper={`Invoice #${latestPayment.invoice_id}`}
+              value={formatCurrency(latestPayment?.amount ?? currentStay?.monthly_rent_amount)}
+              helper={
+                latestPayment?.invoice_id
+                  ? `Invoice #${latestPayment.invoice_id}`
+                  : currentStay?.booking_code
+                    ? `Booking #${currentStay.booking_code}`
+                    : "Belum ada invoice"
+              }
             />
             <SummaryCard
               icon={<CalendarClock size={16} />}
               label="Jatuh Tempo"
-              value={formatDate(latestPayment.due_date)}
-              helper={latestPayment.status === "paid" ? "Sudah dibayar" : "Perhatikan tanggal bayar"}
+              value={formatDate(latestPayment?.due_date || currentStay?.end_date)}
+              helper={
+                latestPayment
+                  ? latestPayment.status === "paid"
+                    ? "Sudah dibayar"
+                    : "Perhatikan tanggal bayar"
+                  : currentStay?.end_date
+                    ? "Akhir periode hunian saat ini"
+                    : "Tanggal belum tersedia"
+              }
             />
             <SummaryCard
               icon={<Wrench size={16} />}
@@ -366,8 +370,8 @@ export default function TenantKostDetailPage() {
             <SummaryCard
               icon={<CheckCircle2 size={16} />}
               label="Status"
-              value={paymentStatusMap[latestPayment.status].label}
-              helper={`Diperbarui ${formatDate(latestPayment.updated_at)}`}
+              value={latestPayment ? paymentStatusMap[latestPayment.status].label : currentStay?.status_label || "-"}
+              helper={`Diperbarui ${formatDate(currentStay?.updated_at || latestPayment?.updated_at)}`}
             />
           </section>
 
@@ -378,22 +382,22 @@ export default function TenantKostDetailPage() {
                 <DetailRow
                   icon={<Building2 size={14} />}
                   label="Nama Properti"
-                  value={property?.name || latestPayment.property.name || "-"}
+                  value={displayedPropertyName}
                 />
                 <DetailRow
                   icon={<MapPin size={14} />}
                   label="Alamat"
-                  value={property?.address || "-"}
+                  value={property?.address || currentStay?.property?.address || "-"}
                 />
                 <DetailRow
                   icon={<Home size={14} />}
                   label="Tipe Properti"
-                  value={property?.property_type || "-"}
+                  value={property?.property_type || currentStay?.property?.property_type || "-"}
                 />
                 <DetailRow
                   icon={<CheckCircle2 size={14} />}
                   label="Kondisi"
-                  value={property?.condition || "-"}
+                  value={property?.condition || currentStay?.property?.condition || "-"}
                 />
               </div>
             </div>
@@ -404,26 +408,31 @@ export default function TenantKostDetailPage() {
                 <DetailRow
                   icon={<Home size={14} />}
                   label="Nama Unit"
-                  value={unit?.name || latestPayment.unit.name || "-"}
+                  value={displayedUnitName}
                 />
                 <DetailRow
                   icon={<Building2 size={14} />}
                   label="Tipe Unit"
-                  value={unit?.unit_type || "-"}
+                  value={unit?.unit_type || currentStay?.unit?.unit_type || "-"}
                 />
                 <DetailRow
                   icon={<Users size={14} />}
                   label="Kapasitas"
                   value={
-                    unit?.people_allowed && unit.people_allowed > 0
-                      ? `${unit.people_allowed} orang`
+                    (unit?.people_allowed || currentStay?.unit?.people_allowed || 0) > 0
+                      ? `${unit?.people_allowed || currentStay?.unit?.people_allowed} orang`
                       : "-"
                   }
                 />
                 <DetailRow
                   icon={<ReceiptText size={14} />}
                   label="Harga per Bulan"
-                  value={formatCurrency(unit?.price || latestPayment.amount)}
+                  value={formatCurrency(
+                    unit?.price ||
+                      currentStay?.unit?.monthly_rent_amount ||
+                      latestPayment?.amount ||
+                      currentStay?.monthly_rent_amount
+                  )}
                 />
               </div>
             </div>

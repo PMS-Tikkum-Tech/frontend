@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMe } from "@/lib/auth";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import {
   getOwnerCashflowEntries,
-  getOwnerManagedProperties,
   getOwnerManualRentalBookings,
   type OwnerCashflowEntry,
-  type OwnerManagedProperty,
   type OwnerManualRentalBooking,
 } from "@/lib/dashboard/owner.api";
 import type { OccupancyData, RevenueData } from "@/types/dashboard";
@@ -209,19 +206,6 @@ const loadAllOwnerCashflows = async (dateFrom: string, dateTo: string) => {
   };
 };
 
-const loadOwnerManagedProperties = async () => {
-  try {
-    const profile = await getMe();
-    if (profile.role !== "owner") {
-      return [] as OwnerManagedProperty[];
-    }
-
-    return await getOwnerManagedProperties(profile.id);
-  } catch {
-    return [] as OwnerManagedProperty[];
-  }
-};
-
 export const useOwnerDashboard = (period: string) => {
   const [data, setData] = useState<OwnerDashboardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,14 +221,12 @@ export const useOwnerDashboard = (period: string) => {
 
       try {
         const periodRange = toPeriodRange(period);
-        const [allBookings, cashflowPayload, ownerManagedProperties] =
-          await Promise.all([
+        const [allBookings, cashflowPayload] = await Promise.all([
           loadAllOwnerBookings(),
           loadAllOwnerCashflows(
             toDateParam(periodRange.from),
             toDateParam(periodRange.to)
           ),
-          loadOwnerManagedProperties(),
         ]);
 
         if (!active) {
@@ -277,16 +259,6 @@ export const useOwnerDashboard = (period: string) => {
           }
 
           propertyNameById.set(propertyId, item.property?.name || `Properti #${propertyId}`);
-        });
-        ownerManagedProperties.forEach((property) => {
-          if (!property.id) {
-            return;
-          }
-
-          propertyNameById.set(
-            property.id,
-            property.name || `Properti #${property.id}`
-          );
         });
 
         const totalBookings = bookings.length;
@@ -420,7 +392,6 @@ export const useOwnerDashboard = (period: string) => {
         });
 
         const propertyIds = new Set<number>([
-          ...ownerManagedProperties.map((property) => property.id),
           ...Array.from(bookingSummaryByProperty.keys()),
           ...Array.from(cashflowSummaryByProperty.keys()),
         ]);

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CalendarClock,
@@ -368,16 +367,6 @@ export default function JadwalVisitPage() {
       ) : visibleRequests.length === 0 ? (
         <div className="rounded-2xl border bg-white p-8">
           <div className="flex flex-col items-center text-center">
-            <div className="w-full max-w-xl">
-              <Image
-                src="/empty-visit.png"
-                alt="Belum ada jadwal"
-                width={600}
-                height={400}
-                className="rounded-2xl opacity-90"
-              />
-            </div>
-
             <h2 className="mt-6 text-xl font-semibold text-green-600">
               Belum Ada Jadwal Kunjungan
             </h2>
