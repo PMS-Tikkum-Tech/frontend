@@ -87,6 +87,31 @@ type PendingGoogleVerification = {
 
 const PHONE_INPUT_PATTERN = /^[0-9+\-\s]+$/;
 
+const GoogleLogo = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    className="h-5 w-5"
+  >
+    <path
+      fill="#4285F4"
+      d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.53 5.53 0 0 1-2.4 3.63v2.96h3.88c2.27-2.09 3.54-5.17 3.54-8.83Z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-2.96c-1.08.72-2.45 1.14-4.07 1.14-3.13 0-5.78-2.11-6.73-4.95H1.26v3.05A12 12 0 0 0 12 24Z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.27 14.33A7.2 7.2 0 0 1 4.89 12c0-.81.14-1.6.38-2.33V6.62H1.26A12 12 0 0 0 0 12c0 1.93.46 3.76 1.26 5.38l4.01-3.05Z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 4.72c1.76 0 3.35.61 4.59 1.8l3.44-3.44A11.56 11.56 0 0 0 12 0 12 12 0 0 0 1.26 6.62l4.01 3.05C6.22 6.83 8.87 4.72 12 4.72Z"
+    />
+  </svg>
+);
+
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
@@ -586,13 +611,16 @@ export default function LoginForm() {
 
         {googleClientId ? (
           <div
-            className={`flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4 ${
+            className={`relative flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4 ${
               isGoogleSubmitting ? "pointer-events-none opacity-70" : ""
             }`}
           >
+            <div className="pointer-events-none absolute left-1/2 top-4 z-10 flex h-[42px] w-[42px] -translate-x-1/2 items-center justify-center rounded-full bg-white">
+              <GoogleLogo />
+            </div>
             <div
               ref={googleButtonRef}
-              className="flex min-h-[42px] items-center justify-center"
+              className="relative z-20 flex min-h-[42px] items-center justify-center opacity-[0.02]"
             />
             <p className="text-xs text-slate-500">Google</p>
           </div>

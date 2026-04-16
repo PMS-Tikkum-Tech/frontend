@@ -1195,8 +1195,6 @@ export const PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE =
   "Unit properti tersedia setelah login.";
 export const TENANT_VISIT_REQUEST_UNAVAILABLE_MESSAGE =
   "Endpoint pengajuan jadwal visit belum tersedia pada backend.";
-export const TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE =
-  "Perubahan profil tenant mandiri belum tersedia pada backend terbaru.";
 export const TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE =
   "Notifikasi tenant belum tersedia pada backend terbaru.";
 

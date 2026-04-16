@@ -1,0 +1,15 @@
+node_modules
+.next
+.next-dev
+.git
+.env.local
+.env
+*.md
+README*
+eslint.config.mjs
+tsconfig.json
+tailwind.config.js
+postcss.config.js
+postcss.config.mjs
+next.config.mjs
+next-env.d.ts
