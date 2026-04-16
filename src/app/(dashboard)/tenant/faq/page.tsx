@@ -83,9 +83,8 @@ export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [search, setSearch] = useState("");
 
-  const currentFaq = faqs[activeCategory] || [];
-
   const visibleFaq = useMemo(() => {
+    const currentFaq = faqs[activeCategory] || [];
     const keyword = search.trim().toLowerCase();
     if (!keyword) {
       return currentFaq;
@@ -97,7 +96,7 @@ export default function FAQPage() {
         item.a.toLowerCase().includes(keyword)
       );
     });
-  }, [currentFaq, search]);
+  }, [activeCategory, search]);
 
   return (
     <div className="space-y-8">

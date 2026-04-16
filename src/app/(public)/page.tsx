@@ -44,9 +44,21 @@ import {
 import { useTransientToast } from "@/hooks/useTransientToast";
 
 const heroSlides = [
-  "/Project/Kinara Signature Kost/3D Bangunan/COZ-4-edit.jpg",
-  "/Project/Kinara Signature Kost/3D Bangunan/COZ-5-edit.jpg",
-  "/Project/Kinara Signature Kost/3D Bangunan/COZ-8-edit.jpg",
+  {
+    src: "/bg.jpg",
+    alt: "Visual hunian Kyra Stay - tampak depan properti",
+    objectPosition: "center 58%",
+  },
+  {
+    src: "/bg.jpg",
+    alt: "Visual hunian Kyra Stay - area bangunan modern",
+    objectPosition: "center 42%",
+  },
+  {
+    src: "/bg.jpg",
+    alt: "Visual hunian Kyra Stay - fasad properti",
+    objectPosition: "center 72%",
+  },
 ];
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
@@ -774,13 +786,14 @@ export default function PublicHomePage() {
               <div className="relative h-[430px] overflow-hidden rounded-3xl border border-white/30 shadow-2xl">
                 {heroSlides.map((image, idx) => (
                   <Image
-                    key={image}
-                    src={image}
-                    alt="Preview hunian"
+                    key={`${image.src}-${idx}`}
+                    src={image.src}
+                    alt={image.alt}
                     fill
                     className={`object-cover transition-opacity duration-1000 ${
                       idx === slideIndex ? "opacity-100" : "opacity-0"
                     }`}
+                    style={{ objectPosition: image.objectPosition }}
                   />
                 ))}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />

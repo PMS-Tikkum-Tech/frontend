@@ -616,7 +616,9 @@ function TestimonialCard({
       <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B3D91]/10 text-[#0B3D91]">
         <Users size={16} />
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-slate-600">"{quote}"</p>
+      <p className="mt-3 text-sm leading-relaxed text-slate-600">
+        &ldquo;{quote}&rdquo;
+      </p>
       <p className="mt-4 font-semibold text-slate-900">{name}</p>
       <p className="text-xs text-slate-500">{role}</p>
     </div>

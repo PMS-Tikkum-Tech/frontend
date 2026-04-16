@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-plus-jakarta:
+    "Plus Jakarta Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-manrope:
+    "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-playfair: "Playfair Display", Georgia, "Times New Roman", serif;
+}
+
+.font-plus-jakarta {
+  font-family: var(--font-plus-jakarta);
+}
+
+.font-manrope {
+  font-family: var(--font-manrope);
+}
+
+.font-playfair {
+  font-family: var(--font-playfair);
+}
+
 @keyframes companyFloat {
   0%,
   100% {

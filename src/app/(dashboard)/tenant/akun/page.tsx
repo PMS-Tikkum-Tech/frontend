@@ -269,9 +269,16 @@ export default function TenantAccountPage() {
       return;
     }
 
+    const userId = profile?.id ?? user?.id;
+    if (!userId) {
+      setError("ID pengguna tidak ditemukan. Silakan muat ulang halaman ini.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const response = await updateTenantProfile({
+        user_id: userId,
         full_name: form.fullName.trim(),
         phone_number: form.phoneNumber.trim(),
         nik: form.nik.trim(),

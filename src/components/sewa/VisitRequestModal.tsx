@@ -47,25 +47,41 @@ export default function VisitRequestModal({
   const [preferredTime, setPreferredTime] = useState("10:00");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const todayDate = useMemo(getTodayDateInput, []);
+  const todayDate = useMemo(() => getTodayDateInput(), []);
 
   useEffect(() => {
+    let frameId: number | null = null;
+
     if (isOpen) {
-      setIsRendered(true);
-      const frameId = window.requestAnimationFrame(() => setIsVisible(true));
-      setPreferredDate(getTomorrowDateInput());
-      setPreferredTime("10:00");
-      setNote("");
-      setError(null);
-      return () => window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        setIsRendered(true);
+        setIsVisible(true);
+        setPreferredDate(getTomorrowDateInput());
+        setPreferredTime("10:00");
+        setNote("");
+        setError(null);
+      });
+
+      return () => {
+        if (frameId !== null) {
+          window.cancelAnimationFrame(frameId);
+        }
+      };
     }
 
-    setIsVisible(false);
+    frameId = window.requestAnimationFrame(() => {
+      setIsVisible(false);
+    });
     const timeoutId = window.setTimeout(() => {
       setIsRendered(false);
     }, MODAL_TRANSITION_MS);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.clearTimeout(timeoutId);
+    };
   }, [isOpen, propertyName]);
 
   if (!isRendered) {

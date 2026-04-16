@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Manrope, Playfair_Display } from "next/font/google";
 import {
   ArrowRight,
   Building2,
@@ -10,21 +9,9 @@ import {
   Compass,
   Handshake,
   Layers3,
-  ShieldCheck,
   Sparkles,
-  Users,
 } from "lucide-react";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
-
-const headingFont = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
-
-const bodyFont = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 const COMPANY_HIGHLIGHTS = [
   { label: "Perusahaan", value: "Kinara Land" },
@@ -67,19 +54,19 @@ const PORTFOLIO_ITEMS = [
   {
     name: "Kinara Signature Kost",
     location: "Dramaga, Bogor",
-    image: "/Project/Kinara Signature Kost/3D Bangunan/COZ-4-edit.jpg",
+    image: "/bg.jpg",
     desc: "Hunian mahasiswa dengan pendekatan layanan premium dan akses kampus cepat.",
   },
   {
     name: "Kinara Manunggal",
     location: "Bogor Barat",
-    image: "/Project/Kinara Signature Kost/3D Bangunan/COZ-8-edit.jpg",
+    image: "/bg.jpg",
     desc: "Aset hunian produktif dengan demand stabil sepanjang kalender akademik.",
   },
   {
     name: "Kinara Kost Cifor",
     location: "Cifor, Bogor",
-    image: "/Project/Kinara Signature Kost/3D Bangunan/COZ-5-edit.jpg",
+    image: "/bg.jpg",
     desc: "Menjaga keseimbangan kenyamanan penghuni dan efisiensi operasional properti.",
   },
 ];
@@ -93,10 +80,10 @@ const GOVERNANCE_FLOW = [
 
 export default function CompanyProfilePage() {
   return (
-    <div className={`${bodyFont.className} min-h-screen bg-[#F5F2EC] text-slate-900`}>
+    <div className="font-manrope min-h-screen bg-[#F5F2EC] text-slate-900">
       <section className="relative overflow-hidden bg-[#1E293B] text-white">
         <Image
-          src="/Project/Kinara Signature Kost/3D Bangunan/COZ-8-edit.jpg"
+          src="/bg.jpg"
           alt="Company Profile Kinara Land"
           fill
           priority
@@ -112,9 +99,7 @@ export default function CompanyProfilePage() {
               <Sparkles size={14} />
               COMPANY PROFILE
             </p>
-            <h1
-              className={`${headingFont.className} mt-4 max-w-3xl text-4xl leading-tight md:text-5xl`}
-            >
+            <h1 className="font-playfair mt-4 max-w-3xl text-4xl leading-tight md:text-5xl">
               Kinara Land
               <span className="block text-amber-300">
                 Induk Usaha dari Ekosistem Kyra Stay
@@ -183,7 +168,7 @@ export default function CompanyProfilePage() {
           {PERFORMANCE_METRICS.map((item, index) => (
             <RevealOnScroll key={item.label} delayMs={index * 80}>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center">
-                <p className={`${headingFont.className} text-2xl text-[#1f2937] md:text-3xl`}>
+                <p className="font-playfair text-2xl text-[#1f2937] md:text-3xl">
                   {item.value}
                 </p>
                 <p className="mt-1 text-xs text-slate-600 md:text-sm">{item.label}</p>
@@ -198,7 +183,7 @@ export default function CompanyProfilePage() {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             Pilar Bisnis Kinara Land
           </p>
-          <h2 className={`${headingFont.className} mt-2 text-3xl text-slate-900 md:text-4xl`}>
+          <h2 className="font-playfair mt-2 text-3xl text-slate-900 md:text-4xl">
             Dari Pengembangan Aset Hingga Operasional Penghuni
           </h2>
         </RevealOnScroll>
@@ -225,7 +210,7 @@ export default function CompanyProfilePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-300">
                 Tata Kelola
               </p>
-              <h3 className={`${headingFont.className} mt-2 text-3xl`}>Alur Kerja Strategis</h3>
+              <h3 className="font-playfair mt-2 text-3xl">Alur Kerja Strategis</h3>
               <div className="mt-4 space-y-2.5">
                 {GOVERNANCE_FLOW.map((item, index) => (
                   <div
@@ -246,7 +231,7 @@ export default function CompanyProfilePage() {
           <RevealOnScroll delayMs={120}>
             <div className="relative h-full min-h-[360px] overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
               <Image
-                src="/Project/Kinara Signature Kost/3D Bangunan/COZ-5-edit.jpg"
+                src="/bg.jpg"
                 alt="Operasional properti Kinara Land"
                 fill
                 className="object-cover"
@@ -272,7 +257,7 @@ export default function CompanyProfilePage() {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             Portofolio Properti
           </p>
-          <h2 className={`${headingFont.className} mt-2 text-3xl text-slate-900 md:text-4xl`}>
+          <h2 className="font-playfair mt-2 text-3xl text-slate-900 md:text-4xl">
             Aset yang Dikelola Dalam Ekosistem Kinara Land
           </h2>
         </RevealOnScroll>
@@ -307,7 +292,7 @@ export default function CompanyProfilePage() {
         <RevealOnScroll>
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#111827] via-[#1f2937] to-[#334155] px-6 py-10 text-white md:px-10">
             <div className="pointer-events-none absolute -top-10 right-0 h-44 w-44 rounded-full bg-amber-300/20 blur-2xl" />
-            <h2 className={`${headingFont.className} max-w-2xl text-3xl md:text-4xl`}>
+            <h2 className="font-playfair max-w-2xl text-3xl md:text-4xl">
               Kenali Strategi Properti Kinara Land Lebih Dalam
             </h2>
             <p className="mt-3 max-w-2xl text-sm text-white/85">

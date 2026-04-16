@@ -18,19 +18,33 @@ export default function ToastMessage({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    let frameId: number | null = null;
+    let timeoutId: number | null = null;
+
     if (toast) {
-      setRenderedToast(toast);
-      const frameId = window.requestAnimationFrame(() => setIsVisible(true));
-      return () => window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        setRenderedToast(toast);
+        setIsVisible(true);
+      });
+    } else {
+      frameId = window.requestAnimationFrame(() => {
+        setIsVisible(false);
+      });
+      timeoutId = window.setTimeout(
+        () => setRenderedToast(null),
+        TOAST_TRANSITION_MS
+      );
     }
 
-    setIsVisible(false);
-    const timeoutId = window.setTimeout(
-      () => setRenderedToast(null),
-      TOAST_TRANSITION_MS
-    );
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
 
-    return () => window.clearTimeout(timeoutId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [toast]);
 
   if (!renderedToast) {

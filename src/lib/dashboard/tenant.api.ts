@@ -1306,6 +1306,7 @@ export const getTenantProfile = () =>
   getItem<BackendUser>("/api/v1/auth/me");
 
 export const updateTenantProfile = async (payload: {
+  user_id: number;
   full_name?: string;
   phone_number?: string;
   emergency_contact_name?: string;
@@ -1313,9 +1314,57 @@ export const updateTenantProfile = async (payload: {
   relationship?: string;
   nik?: string;
   profile_picture?: File | null;
-}): Promise<ItemResult<BackendUser>> => {
-  void payload;
-  throw new Error(TENANT_PROFILE_UPDATE_UNAVAILABLE_MESSAGE);
+}) => {
+  const formData = new FormData();
+
+  if (payload.full_name !== undefined) {
+    formData.append("user[full_name]", payload.full_name);
+  }
+
+  if (payload.phone_number !== undefined) {
+    formData.append("user[phone_number]", payload.phone_number);
+  }
+
+  if (payload.emergency_contact_name !== undefined) {
+    formData.append(
+      "user[emergency_contact_name]",
+      payload.emergency_contact_name
+    );
+  }
+
+  if (payload.emergency_contact_number !== undefined) {
+    formData.append(
+      "user[emergency_contact_number]",
+      payload.emergency_contact_number
+    );
+  }
+
+  if (payload.relationship !== undefined) {
+    formData.append("user[relationship]", payload.relationship);
+  }
+
+  if (payload.nik !== undefined) {
+    formData.append("user[nik]", payload.nik);
+  }
+
+  if (payload.profile_picture) {
+    formData.append("user[profile_picture]", payload.profile_picture);
+  }
+
+  const response = await axiosInstance.patch<ApiResponse<BackendUser>>(
+    `/api/v1/users/${payload.user_id}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
 };
 
 export const getIncompleteTenantProfileFields = (profile: BackendUser) => {

@@ -98,7 +98,6 @@ export function useTransientToast(durationMs = 3000) {
 
   useEffect(() => {
     listeners.add(setToast);
-    setToast(globalToastState);
 
     return () => {
       listeners.delete(setToast);

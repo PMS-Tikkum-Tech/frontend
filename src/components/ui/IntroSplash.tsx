@@ -30,8 +30,11 @@ export default function IntroSplash() {
 
     const hasSeenIntro = window.sessionStorage.getItem(INTRO_STORAGE_KEY) === "1";
     if (hasSeenIntro) {
-      setIsVisible(false);
-      return;
+      const frameId = window.requestAnimationFrame(() => {
+        setIsVisible(false);
+      });
+
+      return () => window.cancelAnimationFrame(frameId);
     }
 
     let index = 0;

@@ -90,7 +90,7 @@ const PHONE_INPUT_PATTERN = /^[0-9+\-\s]+$/;
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return "Tidak bisa terhubung ke server. Pastikan backend aktif di port 3001.";
+      return "Tidak bisa terhubung ke API Kyra Stay. Pastikan backend aktif dan NEXT_PUBLIC_API_URL sudah benar.";
     }
 
     if (error.response?.status === 404) {
@@ -134,12 +134,27 @@ const getGooglePhoneVerificationData = (error: unknown) => {
 const getGoogleErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return "Tidak bisa terhubung ke server. Pastikan backend aktif di port 3001.";
+      return "Tidak bisa terhubung ke API Kyra Stay. Pastikan backend aktif dan NEXT_PUBLIC_API_URL sudah benar.";
     }
 
-    const payload = getGooglePayload(error);
+    const payload = error.response?.data as
+      | {
+          message?: string;
+          errors?: string[];
+          data?: { requires_phone_verification?: boolean };
+        }
+      | undefined;
 
-    if (payload?.errors?.some((item) => item.includes("GOOGLE_OAUTH_CLIENT_IDS"))) {
+    if (
+      payload?.message === "Phone verification required" ||
+      payload?.data?.requires_phone_verification
+    ) {
+      return "Akun Google ini membutuhkan verifikasi nomor HP. Silakan daftar manual dulu (OTP WhatsApp), lalu login kembali.";
+    }
+
+    if (
+      payload?.errors?.some((item) => item.includes("GOOGLE_OAUTH_CLIENT_IDS"))
+    ) {
       return "Login Google belum aktif di server. Hubungi admin sistem.";
     }
 
@@ -423,12 +438,17 @@ export default function LoginForm() {
   };
 
   useEffect(() => {
+    googleInitializedRef.current = false;
+
     if (!googleClientId) {
       return;
     }
 
+    let active = true;
+
     const renderGoogleButton = () => {
       if (
+        !active ||
         !window.google?.accounts?.id ||
         !googleButtonRef.current ||
         googleInitializedRef.current
@@ -456,7 +476,9 @@ export default function LoginForm() {
 
     if (window.google?.accounts?.id) {
       renderGoogleButton();
-      return;
+      return () => {
+        active = false;
+      };
     }
 
     const existingScript = document.querySelector(
@@ -466,6 +488,7 @@ export default function LoginForm() {
     if (existingScript) {
       existingScript.addEventListener("load", renderGoogleButton, { once: true });
       return () => {
+        active = false;
         existingScript.removeEventListener("load", renderGoogleButton);
       };
     }
@@ -476,11 +499,14 @@ export default function LoginForm() {
     script.defer = true;
     script.onload = renderGoogleButton;
     script.onerror = () => {
-      setGoogleError("Gagal memuat komponen Google Sign-In.");
+      if (active) {
+        setGoogleError("Gagal memuat komponen Google Sign-In.");
+      }
     };
     document.head.appendChild(script);
 
     return () => {
+      active = false;
       script.onload = null;
       script.onerror = null;
     };
@@ -488,7 +514,6 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* EMAIL */}
       <div>
         <label className="block text-sm font-medium mb-1">Alamat Email</label>
 
@@ -511,7 +536,6 @@ export default function LoginForm() {
         )}
       </div>
 
-      {/* PASSWORD */}
       <div>
         <label className="block text-sm font-medium mb-1">Kata Sandi</label>
 
@@ -528,6 +552,7 @@ export default function LoginForm() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-2.5 text-gray-500"
+            aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -544,12 +569,10 @@ export default function LoginForm() {
         )}
       </div>
 
-      {/* ERROR */}
       {serverError && (
         <p className="text-sm text-red-600 text-center">{serverError}</p>
       )}
 
-      {/* BUTTON */}
       <button
         type="submit"
         disabled={isSubmitting}

@@ -32,14 +32,16 @@ export default function PublicHeader() {
   ];
 
   useEffect(() => {
+    if (!mobileMenuOpen) {
+      return;
+    }
+
     const frameId = window.requestAnimationFrame(() => {
       setMobileMenuOpen(false);
     });
 
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [pathname]);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [mobileMenuOpen, pathname]);
 
   useEffect(() => {
     if (user?.role !== "tenant") {

@@ -1,13 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
+
+type AddPropertyFormValues = {
+  nama: string;
+  alamat: string;
+  deskripsi: string;
+  totalUnit: string;
+  status: string;
+  fasilitas: string;
+  catatan: string;
+  foto: File[];
+};
+
+type AddPropertySubmitPayload = Omit<AddPropertyFormValues, "fasilitas"> & {
+  fasilitas: string[];
+};
+
+type AddPropertyFormProps = {
+  onSubmit?: (data: AddPropertySubmitPayload) => void;
+};
 
 export default function AddPropertyForm({
   onSubmit,
-}: {
-  onSubmit?: (data: any) => void;
-}) {
-  const [form, setForm] = useState({
+}: AddPropertyFormProps) {
+  const [form, setForm] = useState<AddPropertyFormValues>({
     nama: "",
     alamat: "",
     deskripsi: "",
@@ -15,23 +40,21 @@ export default function AddPropertyForm({
     status: "Aktif",
     fasilitas: "",
     catatan: "",
-    foto: [] as File[],
+    foto: [],
   });
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     setForm({ ...form, foto: Array.from(e.target.files) });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     if (!form.nama || !form.alamat || !form.totalUnit) {
@@ -152,7 +175,13 @@ export default function AddPropertyForm({
    KOMPONEN INPUT GENERIK
 ====================================================== */
 
-function Input({ label, ...props }: any) {
+type BaseFieldProps = {
+  label: string;
+};
+
+type InputProps = BaseFieldProps & InputHTMLAttributes<HTMLInputElement>;
+
+function Input({ label, ...props }: InputProps) {
   return (
     <div>
       <label className="text-sm font-medium text-slate-700">{label}</label>
@@ -165,7 +194,10 @@ function Input({ label, ...props }: any) {
   );
 }
 
-function Textarea({ label, ...props }: any) {
+type TextareaProps = BaseFieldProps &
+  TextareaHTMLAttributes<HTMLTextAreaElement>;
+
+function Textarea({ label, ...props }: TextareaProps) {
   return (
     <div>
       <label className="text-sm font-medium text-slate-700">{label}</label>
@@ -179,7 +211,12 @@ function Textarea({ label, ...props }: any) {
   );
 }
 
-function Select({ label, children, ...props }: any) {
+type SelectProps = BaseFieldProps &
+  SelectHTMLAttributes<HTMLSelectElement> & {
+    children: ReactNode;
+  };
+
+function Select({ label, children, ...props }: SelectProps) {
   return (
     <div>
       <label className="text-sm font-medium text-slate-700">{label}</label>

@@ -1,4 +1,5 @@
 export async function fetchDashboardData(filter: string) {
+  void filter;
   await new Promise((res) => setTimeout(res, 1000)); // simulate loading
 
   return {

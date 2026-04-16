@@ -14,8 +14,6 @@ interface Props {
   data: OccupancyData[];
 }
 
-const COLORS = ["#1E2746", "#94A3B8"];
-
 export default function OccupancyChart({ data }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 relative">
@@ -35,7 +33,6 @@ export default function OccupancyChart({ data }: Props) {
             <Cell fill="#1E2746" />
             <Cell fill="#94A3B8" />
           </Pie>
-          <Tooltip />{" "}
           <Tooltip
             contentStyle={{
               borderRadius: "12px",
