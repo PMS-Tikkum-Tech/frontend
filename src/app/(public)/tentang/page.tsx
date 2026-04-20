@@ -246,14 +246,6 @@ export default function TentangPage() {
               <li>Pelaporan performa properti untuk pemilik secara berkala.</li>
               <li>Pengembangan layanan berkelanjutan berbasis feedback penghuni.</li>
             </ul>
-
-            <Link
-              href="/company-profile"
-              className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-[#0B3D91] px-4 text-sm font-semibold text-white transition hover:bg-[#0A337A]"
-            >
-              Lihat Company Profile Kinara Land
-              <ArrowRight size={14} />
-            </Link>
           </div>
         </div>
       </section>

@@ -62,6 +62,15 @@ const heroSlides = [
 ];
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
+const rawWhatsappNumber =
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "08123456789";
+const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
+const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
+  ? `62${normalizedWhatsappDigits.slice(1)}`
+  : normalizedWhatsappDigits;
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+  "Halo admin Kyra Stay, saya ingin tanya soal hunian yang tersedia."
+)}`;
 
 type PropertyItem = {
   id: number;
@@ -801,7 +810,7 @@ export default function PublicHomePage() {
 
               <div className="absolute -right-3 top-4 rounded-xl border border-white/40 bg-white/90 px-4 py-3 text-slate-800 shadow-lg">
                 <p className="text-xs text-slate-500">Lokasi Populer</p>
-                <p className="text-sm font-semibold">Dramaga, Cihideung</p>
+                <p className="text-sm font-semibold">Dramaga</p>
               </div>
             </div>
           </div>
@@ -889,14 +898,16 @@ export default function PublicHomePage() {
                 <p>• Bantuan jadwal visit dan proses booking</p>
               </div>
 
-              <Link
-                href="/tenant/bantuan"
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
               >
                 <MessageCircle size={15} />
                 Hubungi Admin
                 <ArrowRight size={14} />
-              </Link>
+              </a>
             </div>
           </div>
         </section>

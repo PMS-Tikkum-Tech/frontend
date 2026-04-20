@@ -106,6 +106,15 @@ const PARTNERSHIP_FOOTER_COLUMNS = [
     items: ["WhatsApp Admin", "support@kyrastay.id", "Bogor, Jawa Barat"],
   },
 ];
+const rawWhatsappNumber =
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "08123456789";
+const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
+const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
+  ? `62${normalizedWhatsappDigits.slice(1)}`
+  : normalizedWhatsappDigits;
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+  "Halo admin Kyra Stay, saya ingin konsultasi soal kerja sama properti."
+)}`;
 
 export default function KerjasamaPage() {
   return (
@@ -481,12 +490,14 @@ export default function KerjasamaPage() {
             menyusun rencana pengelolaan yang tepat.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/auth?next=%2Fkerjasama"
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
               className="inline-flex h-11 items-center rounded-xl bg-white px-5 text-sm font-semibold text-[#188D3B] transition hover:bg-slate-100"
             >
               Mulai Konsultasi
-            </Link>
+            </a>
             <a
               href="mailto:support@kyrastay.id"
               className="inline-flex h-11 items-center rounded-xl border border-white/45 px-5 text-sm font-semibold text-white transition hover:bg-white/10"

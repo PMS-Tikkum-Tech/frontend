@@ -12,9 +12,12 @@ import {
 } from "lucide-react";
 
 const rawWhatsappNumber =
-  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "6281234567890";
-const normalizedWhatsapp = rawWhatsappNumber.replace(/[^\d]/g, "");
-const whatsappUrl = `https://wa.me/${normalizedWhatsapp}?text=${encodeURIComponent(
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "08123456789";
+const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
+const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
+  ? `62${normalizedWhatsappDigits.slice(1)}`
+  : normalizedWhatsappDigits;
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
   "Halo admin Kyra Stay, saya butuh bantuan terkait akun/penyewaan saya."
 )}`;
 
