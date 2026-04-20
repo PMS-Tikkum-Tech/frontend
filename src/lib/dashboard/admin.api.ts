@@ -425,6 +425,13 @@ export interface AdminManualRentalBooking {
   updated_at?: string | null;
 }
 
+export interface AdminManualRentalBookingApprovePayload {
+  commission_type: "percentage" | "nominal";
+  commission_percentage?: number;
+  commission_nominal?: number;
+  notes?: string;
+}
+
 export interface AdminPaymentCreatePayload {
   property_id: number;
   unit_id: number;
@@ -1319,6 +1326,23 @@ export const getAdminManualRentalBookings = async (params?: QueryParams) => {
     data: response.data.map(mapAdminManualRentalBookingToPayment),
     meta: response.meta,
     message: response.message,
+  };
+};
+
+export const approveAdminManualRentalBooking = async (
+  id: number | string,
+  payload: AdminManualRentalBookingApprovePayload
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminManualRentalBooking>>(
+    `/api/v1/manual_rentals/admin/bookings/${id}/approve`,
+    {
+      settlement: payload,
+    }
+  );
+
+  return {
+    data: mapAdminManualRentalBookingToPayment(response.data.data),
+    message: response.data.message,
   };
 };
 

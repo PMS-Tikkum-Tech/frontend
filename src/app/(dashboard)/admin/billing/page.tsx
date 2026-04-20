@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  approveAdminManualRentalBooking,
   createAdminPayment,
   deleteAdminPayment,
   getAdminManualRentalBookings,
@@ -413,6 +414,19 @@ export default function AdminBillingPage() {
     void loadUnitsByProperty(String(payment.property.id || ""));
   };
 
+  const handleEditPayment = (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      setNotice({
+        variant: "error",
+        message:
+          "Booking pembayaran tenant manual belum punya endpoint edit dari modul tagihan biasa.",
+      });
+      return;
+    }
+
+    openEditModal(payment);
+  };
+
   const closeFormModal = () => {
     if (isSubmitting) {
       return;
@@ -563,11 +577,44 @@ export default function AdminBillingPage() {
 
   const handleApprovePayment = async (payment: AdminPayment) => {
     if (isManualBookingRecord(payment)) {
-      setNotice({
-        variant: "error",
-        message:
-          "Booking manual tenant perlu direview melalui alur persetujuan booking, bukan ACC tagihan biasa.",
-      });
+      if (payment.booking_status !== "pending_review") {
+        setNotice({
+          variant: "error",
+          message:
+            payment.booking_status === "awaiting_payment"
+              ? "Booking ini belum submit bukti transfer, jadi belum bisa di-ACC."
+              : "Booking tenant ini belum berada pada status review admin.",
+        });
+        return;
+      }
+
+      setIsApprovingId(payment.id);
+      setNotice(null);
+
+      try {
+        await approveAdminManualRentalBooking(payment.id, {
+          commission_type: "percentage",
+          commission_percentage: 0,
+          notes: "Approved from admin billing",
+        });
+
+        setNotice({
+          variant: "success",
+          message: `Pembayaran booking #${payment.invoice_id} berhasil di-ACC.`,
+        });
+        setRefreshKey((previous) => previous + 1);
+      } catch (approveError) {
+        setNotice({
+          variant: "error",
+          message: getApiErrorMessage(
+            approveError,
+            "Gagal melakukan ACC pembayaran booking."
+          ),
+        });
+      } finally {
+        setIsApprovingId(null);
+      }
+
       return;
     }
 
@@ -592,7 +639,8 @@ export default function AdminBillingPage() {
     } catch (approveError) {
       setNotice({
         variant: "error",
-        message: getApiErrorMessage(approveError, "Gagal melakukan ACC pembayaran."),
+        message:
+          getApiErrorMessage(approveError, "Gagal melakukan ACC pembayaran."),
       });
     } finally {
       setIsApprovingId(null);
@@ -864,14 +912,9 @@ export default function AdminBillingPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openEditModal(payment)}
-                          disabled={isManualBookingRecord(payment)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          title={
-                            isManualBookingRecord(payment)
-                              ? "Booking manual tenant tidak diedit dari tabel ini"
-                              : "Edit tagihan"
-                          }
+                          onClick={() => handleEditPayment(payment)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                          title="Edit tagihan"
                         >
                           <Pencil size={16} />
                         </button>
@@ -880,13 +923,9 @@ export default function AdminBillingPage() {
                           onClick={() => {
                             void handleDeletePayment(payment);
                           }}
-                          disabled={isManualBookingRecord(payment) || isDeletingId === payment.id}
+                          disabled={isDeletingId === payment.id}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title={
-                            isManualBookingRecord(payment)
-                              ? "Booking manual tenant tidak dihapus dari tabel ini"
-                              : "Hapus tagihan"
-                          }
+                          title="Hapus tagihan"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -896,15 +935,12 @@ export default function AdminBillingPage() {
                             void handleApprovePayment(payment);
                           }}
                           disabled={
-                            isManualBookingRecord(payment) ||
                             payment.status === "paid" ||
                             isApprovingId === payment.id
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
-                            isManualBookingRecord(payment)
-                              ? "Booking manual tenant memakai alur review terpisah"
-                              : payment.status === "paid"
+                            payment.status === "paid"
                               ? "Pembayaran sudah lunas"
                               : "ACC pembayaran"
                           }
@@ -917,15 +953,12 @@ export default function AdminBillingPage() {
                             void handlePushInvoice(payment);
                           }}
                           disabled={
-                            isManualBookingRecord(payment) ||
                             isPushingId === payment.id ||
                             Boolean(payment.xendit_invoice_id)
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
-                            isManualBookingRecord(payment)
-                              ? "Booking manual tenant tidak dikirim ke Xendit"
-                              : payment.xendit_invoice_id
+                            payment.xendit_invoice_id
                               ? "Invoice sudah dikirim ke Xendit"
                               : "Kirim invoice ke Xendit"
                           }
