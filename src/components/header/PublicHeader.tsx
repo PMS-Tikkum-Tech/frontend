@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getTenantNotifications } from "@/lib/dashboard/tenant.api";
 import { hasUnreadTenantNotifications } from "@/lib/dashboard/tenant-notification-state";
@@ -17,6 +17,7 @@ export default function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [failedAvatarKey, setFailedAvatarKey] = useState<string | null>(null);
+  const previousPathnameRef = useRef(pathname);
   const dashboardHref =
     user?.role === "admin"
       ? "/admin"
@@ -32,16 +33,17 @@ export default function PublicHeader() {
   ];
 
   useEffect(() => {
-    if (!mobileMenuOpen) {
+    if (previousPathnameRef.current === pathname) {
       return;
     }
 
+    previousPathnameRef.current = pathname;
     const frameId = window.requestAnimationFrame(() => {
       setMobileMenuOpen(false);
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [mobileMenuOpen, pathname]);
+  }, [pathname]);
 
   useEffect(() => {
     if (user?.role !== "tenant") {
@@ -192,6 +194,8 @@ export default function PublicHeader() {
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-sky-300 hover:text-sky-700 md:hidden"
                 aria-label="Buka menu navigasi"
+                aria-controls="public-mobile-menu"
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
@@ -216,6 +220,8 @@ export default function PublicHeader() {
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-sky-300 hover:text-sky-700 md:hidden"
                 aria-label="Buka menu navigasi"
+                aria-controls="public-mobile-menu"
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
@@ -224,6 +230,7 @@ export default function PublicHeader() {
         </div>
 
         <div
+          id="public-mobile-menu"
           className={`overflow-hidden border-t border-slate-200 bg-white transition-all duration-300 md:hidden ${
             mobileMenuOpen ? "max-h-[480px] opacity-100" : "max-h-0 opacity-0"
           }`}
