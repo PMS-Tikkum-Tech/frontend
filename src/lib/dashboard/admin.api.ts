@@ -378,6 +378,51 @@ export interface AdminPayment {
   reviewed_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  record_type?: "payment" | "manual_booking";
+}
+
+export interface AdminManualRentalBooking {
+  id: number;
+  booking_code?: string | null;
+  status?:
+    | "awaiting_payment"
+    | "pending_review"
+    | "approved"
+    | "denied"
+    | "cancelled"
+    | "expired"
+    | string
+    | null;
+  status_label?: string | null;
+  total_amount?: number | null;
+  monthly_rent_amount?: number | null;
+  expires_at?: string | null;
+  payment_channel?: string | null;
+  transfer_sender_name?: string | null;
+  transfer_bank_name?: string | null;
+  payment_submitted_at?: string | null;
+  transferred_at?: string | null;
+  transfer_proof_url?: string | null;
+  reviewed_at?: string | null;
+  admin_notes?: string | null;
+  denied_reason?: string | null;
+  lease?: {
+    id?: number | null;
+  } | null;
+  property?: {
+    id?: number | null;
+    name?: string | null;
+  } | null;
+  unit?: {
+    id?: number | null;
+    name?: string | null;
+  } | null;
+  tenant?: {
+    id?: number | null;
+    full_name?: string | null;
+  } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface AdminPaymentCreatePayload {
@@ -1197,8 +1242,85 @@ export const getAdminFinancialDashboard = (params?: QueryParams) =>
     params
   );
 
+const mapManualBookingStatusToPaymentStatus = (
+  status?: string | null
+): AdminPayment["status"] => {
+  if (status === "approved") {
+    return "paid";
+  }
+
+  if (status === "cancelled") {
+    return "cancelled";
+  }
+
+  if (status === "denied" || status === "expired") {
+    return "overdue";
+  }
+
+  return "waiting";
+};
+
+export const mapAdminManualRentalBookingToPayment = (
+  booking: AdminManualRentalBooking
+): AdminPayment => {
+  return {
+    id: booking.id,
+    invoice_id: booking.booking_code || `BOOKING-${booking.id}`,
+    xendit_invoice_id: null,
+    property: {
+      id: booking.property?.id || 0,
+      name: booking.property?.name || null,
+    },
+    unit: {
+      id: booking.unit?.id || 0,
+      name: booking.unit?.name || null,
+    },
+    tenant: {
+      id: booking.tenant?.id || 0,
+      full_name: booking.tenant?.full_name || null,
+    },
+    lease_id: booking.lease?.id || null,
+    status: mapManualBookingStatusToPaymentStatus(booking.status),
+    amount: booking.total_amount || booking.monthly_rent_amount || 0,
+    due_date: booking.expires_at || null,
+    paid_at:
+      booking.payment_submitted_at ||
+      booking.transferred_at ||
+      booking.reviewed_at ||
+      null,
+    payment_method: booking.payment_channel || null,
+    description:
+      booking.admin_notes || booking.denied_reason || booking.status_label || null,
+    transfer_proof_url: toAbsoluteAssetUrl(booking.transfer_proof_url) || null,
+    booking_status:
+      (booking.status as AdminPayment["booking_status"] | undefined) || null,
+    booking_status_label: booking.status_label || null,
+    transfer_sender_name: booking.transfer_sender_name || null,
+    transfer_bank_name: booking.transfer_bank_name || null,
+    payment_submitted_at:
+      booking.payment_submitted_at || booking.transferred_at || null,
+    reviewed_at: booking.reviewed_at || null,
+    created_at: booking.created_at || null,
+    updated_at: booking.updated_at || null,
+    record_type: "manual_booking",
+  };
+};
+
 export const getAdminPayments = (params?: QueryParams) =>
   getList<AdminPayment>("/api/v1/payments", params);
+
+export const getAdminManualRentalBookings = async (params?: QueryParams) => {
+  const response = await getList<AdminManualRentalBooking>(
+    "/api/v1/manual_rentals/admin/bookings",
+    params
+  );
+
+  return {
+    data: response.data.map(mapAdminManualRentalBookingToPayment),
+    meta: response.meta,
+    message: response.message,
+  };
+};
 
 export const getAdminPayment = (id: number | string) =>
   getItem<AdminPayment>(`/api/v1/payments/${id}`);

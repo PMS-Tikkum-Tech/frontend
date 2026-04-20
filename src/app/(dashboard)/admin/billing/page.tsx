@@ -18,6 +18,7 @@ import {
 import {
   createAdminPayment,
   deleteAdminPayment,
+  getAdminManualRentalBookings,
   getAdminPayments,
   getAdminProperties,
   getAdminPropertyUnits,
@@ -178,6 +179,12 @@ const normalizeOptional = (value: string) => {
   return trimmed || undefined;
 };
 
+const getPaymentRowKey = (payment: AdminPayment) =>
+  `${payment.record_type || "payment"}:${payment.id}`;
+
+const isManualBookingRecord = (payment: AdminPayment) =>
+  payment.record_type === "manual_booking";
+
 export default function AdminBillingPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -216,9 +223,18 @@ export default function AdminBillingPage() {
       setError(null);
 
       try {
-        const [paymentsResponse, propertiesResponse, tenantsResponse] =
+        const [
+          paymentsResponse,
+          manualBookingsResponse,
+          propertiesResponse,
+          tenantsResponse,
+        ] =
           await Promise.all([
             getAdminPayments({
+              page: 1,
+              per_page: 100,
+            }),
+            getAdminManualRentalBookings({
               page: 1,
               per_page: 100,
             }),
@@ -236,7 +252,13 @@ export default function AdminBillingPage() {
           return;
         }
 
-        setPayments(paymentsResponse.data);
+        setPayments([
+          ...paymentsResponse.data.map((payment) => ({
+            ...payment,
+            record_type: "payment" as const,
+          })),
+          ...manualBookingsResponse.data,
+        ]);
         setProperties(propertiesResponse.data);
         setTenants(tenantsResponse.data);
       } catch (loadError) {
@@ -297,7 +319,9 @@ export default function AdminBillingPage() {
     const filteredItems = payments.filter((payment) => {
       const searchable = `${payment.invoice_id} ${payment.property.name || ""} ${
         payment.unit.name || ""
-      } ${payment.tenant.full_name || ""}`.toLowerCase();
+      } ${payment.tenant.full_name || ""} ${payment.booking_status_label || ""} ${
+        payment.transfer_sender_name || ""
+      } ${payment.transfer_bank_name || ""}`.toLowerCase();
 
       return (
         searchable.includes(search.toLowerCase()) &&
@@ -470,6 +494,15 @@ export default function AdminBillingPage() {
   };
 
   const handleDeletePayment = async (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      setNotice({
+        variant: "error",
+        message:
+          "Booking pembayaran tenant manual tidak bisa dihapus dari tabel tagihan ini.",
+      });
+      return;
+    }
+
     const agreed = window.confirm(
       `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`
     );
@@ -499,6 +532,15 @@ export default function AdminBillingPage() {
   };
 
   const handlePushInvoice = async (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      setNotice({
+        variant: "error",
+        message:
+          "Booking pembayaran tenant manual tidak dikirim ke Xendit dari tabel ini.",
+      });
+      return;
+    }
+
     setIsPushingId(payment.id);
     setNotice(null);
 
@@ -520,6 +562,15 @@ export default function AdminBillingPage() {
   };
 
   const handleApprovePayment = async (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      setNotice({
+        variant: "error",
+        message:
+          "Booking manual tenant perlu direview melalui alur persetujuan booking, bukan ACC tagihan biasa.",
+      });
+      return;
+    }
+
     if (payment.status === "paid") {
       return;
     }
@@ -729,21 +780,29 @@ export default function AdminBillingPage() {
                 </tr>
               ) : (
                 pagedPayments.map((payment) => (
-                  <tr key={payment.id} className="border-t border-slate-100 hover:bg-slate-50">
+                  <tr
+                    key={getPaymentRowKey(payment)}
+                    className="border-t border-slate-100 hover:bg-slate-50"
+                  >
                     <td className="p-4">
                       <p className="font-semibold text-slate-800">#{payment.invoice_id}</p>
                       <p className="text-xs text-slate-500">
                         Dibuat: {formatDate(payment.created_at)}
                       </p>
-                      <p
-                        className={`mt-1 text-xs ${
-                          payment.transfer_proof_url ? "text-emerald-600" : "text-slate-500"
-                        }`}
-                      >
-                        {payment.transfer_proof_url
-                          ? "Bukti transfer tersedia"
-                          : "Bukti transfer belum ada"}
-                      </p>
+                      {payment.transfer_proof_url ? (
+                        <a
+                          href={resolveAssetUrl(payment.transfer_proof_url) || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-flex text-xs font-medium text-emerald-600 underline-offset-2 hover:underline"
+                        >
+                          Lihat bukti transfer
+                        </a>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Bukti transfer belum ada
+                        </p>
+                      )}
                     </td>
 
                     <td className="p-4">
@@ -770,10 +829,19 @@ export default function AdminBillingPage() {
 
                     <td className="p-4">
                       <StatusBadge status={payment.status} />
+                      {payment.booking_status_label ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Booking: {payment.booking_status_label}
+                        </p>
+                      ) : null}
                     </td>
 
                     <td className="p-4">
-                      {payment.xendit_invoice_id ? (
+                      {isManualBookingRecord(payment) ? (
+                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                          Manual
+                        </span>
+                      ) : payment.xendit_invoice_id ? (
                         <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                           Terkirim
                         </span>
@@ -797,8 +865,13 @@ export default function AdminBillingPage() {
                         <button
                           type="button"
                           onClick={() => openEditModal(payment)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Edit tagihan"
+                          disabled={isManualBookingRecord(payment)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          title={
+                            isManualBookingRecord(payment)
+                              ? "Booking manual tenant tidak diedit dari tabel ini"
+                              : "Edit tagihan"
+                          }
                         >
                           <Pencil size={16} />
                         </button>
@@ -807,9 +880,13 @@ export default function AdminBillingPage() {
                           onClick={() => {
                             void handleDeletePayment(payment);
                           }}
-                          disabled={isDeletingId === payment.id}
+                          disabled={isManualBookingRecord(payment) || isDeletingId === payment.id}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Hapus tagihan"
+                          title={
+                            isManualBookingRecord(payment)
+                              ? "Booking manual tenant tidak dihapus dari tabel ini"
+                              : "Hapus tagihan"
+                          }
                         >
                           <Trash2 size={16} />
                         </button>
@@ -819,11 +896,15 @@ export default function AdminBillingPage() {
                             void handleApprovePayment(payment);
                           }}
                           disabled={
-                            payment.status === "paid" || isApprovingId === payment.id
+                            isManualBookingRecord(payment) ||
+                            payment.status === "paid" ||
+                            isApprovingId === payment.id
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
-                            payment.status === "paid"
+                            isManualBookingRecord(payment)
+                              ? "Booking manual tenant memakai alur review terpisah"
+                              : payment.status === "paid"
                               ? "Pembayaran sudah lunas"
                               : "ACC pembayaran"
                           }
@@ -835,10 +916,16 @@ export default function AdminBillingPage() {
                           onClick={() => {
                             void handlePushInvoice(payment);
                           }}
-                          disabled={isPushingId === payment.id || Boolean(payment.xendit_invoice_id)}
+                          disabled={
+                            isManualBookingRecord(payment) ||
+                            isPushingId === payment.id ||
+                            Boolean(payment.xendit_invoice_id)
+                          }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
-                            payment.xendit_invoice_id
+                            isManualBookingRecord(payment)
+                              ? "Booking manual tenant tidak dikirim ke Xendit"
+                              : payment.xendit_invoice_id
                               ? "Invoice sudah dikirim ke Xendit"
                               : "Kirim invoice ke Xendit"
                           }
