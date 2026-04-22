@@ -37,7 +37,7 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   if (!isLoading && (!isAuthenticated || !user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-sm text-slate-600">Mengalihkan ke halaman login...</p>
+        <p className="text-sm text-slate-600">Mengalihkan ke halaman masuk...</p>
       </div>
     );
   }

@@ -128,7 +128,7 @@ export default function ExportButton({
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text("Kyra Stay", marginX + 4, currentY + 7);
+      doc.text("KIKOST", marginX + 4, currentY + 7);
 
       doc.setFontSize(9);
       doc.text(`Periode: ${getPeriodLabel(period)}`, marginX + 4, currentY + 13);
@@ -319,7 +319,7 @@ export default function ExportButton({
     });
     currentY = getLastTableY(doc) + 8;
 
-    drawSectionTitle("Sumber Tenant");
+    drawSectionTitle("Sumber Penyewa");
     autoTable(doc, {
       startY: currentY,
       margin: { left: marginX, right: marginX },
@@ -356,7 +356,7 @@ export default function ExportButton({
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
       doc.text(
-        "Dokumen internal Kyra Stay - Dashboard Admin",
+        "Dokumen internal KIKOST - Dasbor Administrator",
         marginX,
         pageHeight - 9.5
       );
@@ -369,7 +369,7 @@ export default function ExportButton({
     }
 
     const datePart = today.toISOString().slice(0, 10);
-    doc.save(`Laporan-Dashboard-Admin-KyraStay-${datePart}.pdf`);
+    doc.save(`Laporan-Dasbor-Administrator-KIKOST-${datePart}.pdf`);
   };
 
   return (

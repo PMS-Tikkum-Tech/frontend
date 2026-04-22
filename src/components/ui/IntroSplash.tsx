@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const INTRO_STORAGE_KEY = "kikost_intro_seen";
-const INTRO_MESSAGE = "Selamat datang di ujicoba Property Management System KIKOST";
+const INTRO_MESSAGE = "Selamat datang di uji coba Sistem Manajemen Properti KIKOST";
 
 export default function IntroSplash() {
   const [isVisible, setIsVisible] = useState(true);
@@ -75,7 +75,7 @@ export default function IntroSplash() {
     >
       <div className="w-full max-w-3xl rounded-3xl border border-white/35 bg-white/10 px-6 py-10 text-center shadow-2xl backdrop-blur-md md:px-10">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/80">
-          Property Management System
+          Sistem Manajemen Properti
         </p>
         <h1 className="mt-4 text-xl font-semibold leading-snug text-white md:text-4xl">
           {typedText}

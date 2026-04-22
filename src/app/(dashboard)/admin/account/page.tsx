@@ -23,6 +23,7 @@ import {
   updateAdminUser,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const PAGE_SIZE = 10;
 
@@ -44,15 +45,19 @@ const formatDate = (value?: string | null) => {
 };
 
 const roleLabelMap: Record<string, string> = {
-  admin: "Admin",
-  owner: "Owner",
-  tenant: "Tenant",
+  admin: "Administrator",
+  owner: "Pemilik",
+  tenant: "Penyewa",
+  housekeeper: "Petugas Kebersihan",
+  technician: "Teknisi",
 };
 
 const roleStyleMap: Record<string, string> = {
   admin: "bg-emerald-100 text-emerald-700",
   owner: "bg-blue-100 text-blue-700",
   tenant: "bg-amber-100 text-amber-700",
+  housekeeper: "bg-cyan-100 text-cyan-700",
+  technician: "bg-sky-100 text-sky-700",
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -74,11 +79,13 @@ type FormMode = "create" | "edit";
 
 type SortValue = "newest" | "oldest" | "name_asc" | "name_desc";
 
+type UserRole = "admin" | "owner" | "tenant" | "housekeeper" | "technician";
+
 type UserFormState = {
   fullName: string;
   email: string;
   phoneNumber: string;
-  role: "admin" | "owner" | "tenant";
+  role: UserRole;
   accountStatus: "active" | "inactive";
   password: string;
 };
@@ -96,6 +103,14 @@ const normalizeOptional = (value: string) => {
   const trimmed = value.trim();
   return trimmed || undefined;
 };
+
+const isOperationalRole = (role: string) =>
+  role === "housekeeper" || role === "technician";
+
+const getUserEmailDisplay = (user: AdminUser) =>
+  isOperationalRole(user.role)
+    ? "Data petugas - tanpa akses masuk"
+    : user.email || "-";
 
 const getCreatedTime = (user: AdminUser) => {
   const date = new Date(user.created_at || "");
@@ -180,7 +195,7 @@ export default function AdminAccountPage() {
     setEditingUserId(user.id);
     setForm({
       fullName: user.full_name,
-      email: user.email,
+      email: isOperationalRole(user.role) ? "" : user.email,
       phoneNumber: user.phone_number || "",
       role: user.role,
       accountStatus: user.account_status,
@@ -203,18 +218,24 @@ export default function AdminAccountPage() {
     const fullName = form.fullName.trim();
     const email = form.email.trim();
     const password = form.password.trim();
+    const operationalRole = isOperationalRole(form.role);
 
-    if (!fullName || !email) {
+    if (!fullName) {
+      setFormError("Nama wajib diisi.");
+      return;
+    }
+
+    if (!operationalRole && !email) {
       setFormError("Nama dan email wajib diisi.");
       return;
     }
 
-    if (formMode === "create" && password.length < 8) {
+    if (formMode === "create" && !operationalRole && password.length < 8) {
       setFormError("Kata sandi minimal 8 karakter.");
       return;
     }
 
-    if (formMode === "edit" && password && password.length < 8) {
+    if (formMode === "edit" && !operationalRole && password && password.length < 8) {
       setFormError("Kata sandi baru minimal 8 karakter.");
       return;
     }
@@ -227,16 +248,17 @@ export default function AdminAccountPage() {
       if (formMode === "create") {
         await createAdminUser({
           full_name: fullName,
-          email,
-          password,
           phone_number: normalizeOptional(form.phoneNumber),
           role: form.role,
           account_status: form.accountStatus,
+          ...(operationalRole ? {} : { email, password }),
         });
 
         setNotice({
           variant: "success",
-          message: "Akun berhasil ditambahkan.",
+          message: operationalRole
+            ? "Data petugas berhasil ditambahkan."
+            : "Akun berhasil ditambahkan.",
         });
       } else {
         if (!editingUserId) {
@@ -245,16 +267,18 @@ export default function AdminAccountPage() {
 
         await updateAdminUser(editingUserId, {
           full_name: fullName,
-          email,
           phone_number: normalizeOptional(form.phoneNumber),
           role: form.role,
           account_status: form.accountStatus,
-          ...(password ? { password } : {}),
+          ...(operationalRole ? {} : { email }),
+          ...(!operationalRole && password ? { password } : {}),
         });
 
         setNotice({
           variant: "success",
-          message: "Data akun berhasil diperbarui.",
+          message: operationalRole
+            ? "Data petugas berhasil diperbarui."
+            : "Data akun berhasil diperbarui.",
         });
       }
 
@@ -296,10 +320,32 @@ export default function AdminAccountPage() {
     }
   };
 
+  const statusFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        users,
+        (user) => user.account_status,
+        (value) => statusLabelMap[value]
+      ),
+    [users]
+  );
+
+  const roleFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        users,
+        (user) => user.role,
+        (value) => roleLabelMap[value]
+      ),
+    [users]
+  );
+
   const filteredUsers = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     const nextUsers = users.filter((user) => {
-      const searchable = `${user.full_name} ${user.email} ${user.phone_number || ""}`.toLowerCase();
+      const searchable = `${user.full_name} ${user.email} ${
+        roleLabelMap[user.role] || user.role
+      } ${user.phone_number || ""}`.toLowerCase();
       return (
         searchable.includes(keyword) &&
         (status ? user.account_status === status : true) &&
@@ -329,8 +375,13 @@ export default function AdminAccountPage() {
   const summary = useMemo(() => {
     const activeCount = users.filter((user) => user.account_status === "active").length;
     const inactiveCount = users.length - activeCount;
-    const adminOwnerCount = users.filter((user) => user.role !== "tenant").length;
+    const adminOwnerCount = users.filter(
+      (user) => user.role === "admin" || user.role === "owner"
+    ).length;
     const tenantCount = users.filter((user) => user.role === "tenant").length;
+    const operationalCount = users.filter((user) =>
+      isOperationalRole(user.role)
+    ).length;
 
     return {
       total: users.length,
@@ -338,6 +389,7 @@ export default function AdminAccountPage() {
       inactiveCount,
       adminOwnerCount,
       tenantCount,
+      operationalCount,
     };
   }, [users]);
 
@@ -357,6 +409,18 @@ export default function AdminAccountPage() {
   }, [search, status, role, sortBy]);
 
   useEffect(() => {
+    if (!hasFilterOption(statusFilterOptions, status)) {
+      setStatus("");
+    }
+  }, [status, statusFilterOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(roleFilterOptions, role)) {
+      setRole("");
+    }
+  }, [role, roleFilterOptions]);
+
+  useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
@@ -370,6 +434,8 @@ export default function AdminAccountPage() {
     setCurrentPage(1);
   };
 
+  const formIsOperationalRole = isOperationalRole(form.role);
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-5 text-white shadow-sm sm:p-6">
@@ -377,7 +443,7 @@ export default function AdminAccountPage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">Manajemen Akun</h1>
             <p className="text-sm text-blue-100">
-              Kelola akses admin, owner, dan tenant dari satu panel.
+              Kelola akses administrator, pemilik, penyewa, dan data petugas operasional.
             </p>
           </div>
 
@@ -393,7 +459,7 @@ export default function AdminAccountPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
           title="Total Akun"
           value={summary.total}
@@ -406,16 +472,22 @@ export default function AdminAccountPage() {
           tone="success"
         />
         <SummaryCard
-          title="Admin & Owner"
+          title="Administrator & Pemilik"
           value={summary.adminOwnerCount}
           caption="Akun pengelola sistem"
           tone="info"
         />
         <SummaryCard
-          title="Tenant"
+          title="Penyewa"
           value={summary.tenantCount}
           caption="Akun penyewa aktif"
           tone="warning"
+        />
+        <SummaryCard
+          title="Petugas"
+          value={summary.operationalCount}
+          caption="Petugas kebersihan & teknisi"
+          tone="cyan"
         />
       </section>
 
@@ -432,7 +504,7 @@ export default function AdminAccountPage() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
-              placeholder="Cari nama, email, atau nomor telepon"
+              placeholder="Cari nama, email, peran, atau nomor telepon"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
@@ -445,8 +517,11 @@ export default function AdminAccountPage() {
             className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
           >
             <option value="">Semua Status</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            {statusFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -455,9 +530,11 @@ export default function AdminAccountPage() {
             className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
           >
             <option value="">Semua Peran</option>
-            <option value="admin">Admin</option>
-            <option value="owner">Owner</option>
-            <option value="tenant">Tenant</option>
+            {roleFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -476,7 +553,7 @@ export default function AdminAccountPage() {
             onClick={resetFilters}
             className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Reset
+            Atur Ulang
           </button>
 
           <button
@@ -550,7 +627,9 @@ export default function AdminAccountPage() {
                         />
                         <div className="space-y-0.5">
                           <div className="font-medium text-slate-800">{user.full_name}</div>
-                          <div className="text-xs text-slate-500">{user.email}</div>
+                          <div className="text-xs text-slate-500">
+                            {getUserEmailDisplay(user)}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -583,7 +662,7 @@ export default function AdminAccountPage() {
                           type="button"
                           onClick={() => openEditModal(user)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600"
-                          title="Edit akun"
+                          title="Ubah akun"
                         >
                           <Pencil size={17} />
                         </button>
@@ -645,7 +724,7 @@ export default function AdminAccountPage() {
           <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
-                {formMode === "create" ? "Tambah Akun" : "Edit Akun"}
+                {formMode === "create" ? "Tambah Akun" : "Ubah Akun"}
               </h2>
 
               <button
@@ -668,25 +747,6 @@ export default function AdminAccountPage() {
                 placeholder="Masukkan nama pengguna"
               />
 
-              <FormField
-                label="Email"
-                type="email"
-                value={form.email}
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, email: value }))
-                }
-                placeholder="Masukkan email pengguna"
-              />
-
-              <FormField
-                label="Nomor Telepon"
-                value={form.phoneNumber}
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, phoneNumber: value }))
-                }
-                placeholder="Contoh: 081234567890"
-              />
-
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Peran
@@ -696,16 +756,44 @@ export default function AdminAccountPage() {
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      role: event.target.value as "admin" | "owner" | "tenant",
+                      role: event.target.value as UserRole,
                     }))
                   }
                   className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 >
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
-                  <option value="tenant">Tenant</option>
+                  <option value="admin">Administrator</option>
+                  <option value="owner">Pemilik</option>
+                  <option value="tenant">Penyewa</option>
+                  <option value="housekeeper">Petugas Kebersihan</option>
+                  <option value="technician">Teknisi</option>
                 </select>
               </div>
+
+              {formIsOperationalRole ? (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm leading-6 text-cyan-800">
+                  Peran {roleLabelMap[form.role]} dibuat sebagai data petugas untuk
+                  modul operasional, jadi tidak membutuhkan email dan kata sandi.
+                </div>
+              ) : (
+                <FormField
+                  label="Email"
+                  type="email"
+                  value={form.email}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, email: value }))
+                  }
+                  placeholder="Masukkan email pengguna"
+                />
+              )}
+
+              <FormField
+                label="Nomor Telepon"
+                value={form.phoneNumber}
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, phoneNumber: value }))
+                }
+                placeholder="Contoh: 081234567890"
+              />
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -726,23 +814,25 @@ export default function AdminAccountPage() {
                 </select>
               </div>
 
-              <FormField
-                label={
-                  formMode === "create"
-                    ? "Kata Sandi"
-                    : "Kata Sandi Baru (Opsional)"
-                }
-                type="password"
-                value={form.password}
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, password: value }))
-                }
-                placeholder={
-                  formMode === "create"
-                    ? "Minimal 8 karakter"
-                    : "Kosongkan jika tidak diubah"
-                }
-              />
+              {!formIsOperationalRole && (
+                <FormField
+                  label={
+                    formMode === "create"
+                      ? "Kata Sandi"
+                      : "Kata Sandi Baru (Opsional)"
+                  }
+                  type="password"
+                  value={form.password}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, password: value }))
+                  }
+                  placeholder={
+                    formMode === "create"
+                      ? "Minimal 8 karakter"
+                      : "Kosongkan jika tidak diubah"
+                  }
+                />
+              )}
 
               {formError && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -803,12 +893,14 @@ export default function AdminAccountPage() {
                 />
                 <div>
                   <p className="font-semibold text-slate-800">{viewUser.full_name}</p>
-                  <p className="text-xs text-slate-500">{viewUser.email}</p>
+                  <p className="text-xs text-slate-500">
+                    {getUserEmailDisplay(viewUser)}
+                  </p>
                 </div>
               </div>
 
               <DetailRow label="Nama" value={viewUser.full_name} />
-              <DetailRow label="Email" value={viewUser.email} />
+              <DetailRow label="Email" value={getUserEmailDisplay(viewUser)} />
               <DetailRow label="Peran" value={roleLabelMap[viewUser.role] || "-"} />
               <DetailRow label="Telepon" value={viewUser.phone_number || "-"} />
               <DetailRow
@@ -844,7 +936,7 @@ function SummaryCard({
   title: string;
   value: number;
   caption: string;
-  tone?: "default" | "success" | "warning" | "info";
+  tone?: "default" | "success" | "warning" | "info" | "cyan";
 }) {
   const toneClass =
     tone === "success"
@@ -853,6 +945,8 @@ function SummaryCard({
         ? "border-amber-200 bg-amber-50/70"
         : tone === "info"
           ? "border-blue-200 bg-blue-50/70"
+          : tone === "cyan"
+            ? "border-cyan-200 bg-cyan-50/70"
           : "border-slate-200 bg-slate-50/70";
 
   return (
@@ -866,7 +960,7 @@ function SummaryCard({
   );
 }
 
-function RoleBadge({ role }: { role: "admin" | "owner" | "tenant" }) {
+function RoleBadge({ role }: { role: UserRole }) {
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${

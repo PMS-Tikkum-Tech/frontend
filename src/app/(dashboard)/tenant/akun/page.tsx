@@ -305,7 +305,7 @@ export default function TenantAccountPage() {
           <div>
             <h1 className="text-3xl font-semibold">Ubah Profil</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/90">
-              Lengkapi data diri untuk bisa mengajukan jadwal visit properti.
+              Lengkapi data diri untuk bisa mengajukan jadwal kunjungan properti.
             </p>
           </div>
 
@@ -403,7 +403,7 @@ export default function TenantAccountPage() {
               }`}
             >
               {completeness.isComplete ? (
-                <p>Profil sudah lengkap. Kamu bisa ajukan jadwal visit.</p>
+                <p>Profil sudah lengkap. Kamu bisa mengajukan jadwal kunjungan.</p>
               ) : (
                 <p>
                   Profil belum lengkap.
@@ -416,7 +416,7 @@ export default function TenantAccountPage() {
 
           <section className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">
             <h2 className="text-lg font-semibold text-slate-800">
-              Form Data Diri Tenant
+              Formulir Data Diri Penyewa
             </h2>
 
             <form onSubmit={handleSaveProfile} className="mt-4 space-y-4">

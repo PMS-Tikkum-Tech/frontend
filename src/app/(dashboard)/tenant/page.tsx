@@ -166,7 +166,7 @@ export default function TenantHomePage() {
         setError(
           getApiErrorMessage(
             loadError,
-            "Gagal memuat data beranda tenant. Silakan coba lagi."
+            "Gagal memuat data beranda penyewa. Silakan coba lagi."
           )
         );
       } finally {
@@ -330,7 +330,7 @@ export default function TenantHomePage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold text-green-600">Beranda Tenant</h1>
+          <h1 className="text-3xl font-semibold text-green-600">Beranda Penyewa</h1>
           <p className="mt-1 text-slate-600">
             Ringkasan cepat tagihan, perawatan, dan notifikasi terbaru.
           </p>
@@ -354,7 +354,7 @@ export default function TenantHomePage() {
 
       {isInitialLoading ? (
         <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
-          Memuat data beranda tenant...
+          Memuat data beranda penyewa...
         </div>
       ) : !hasLoadedOnce && error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
@@ -445,8 +445,8 @@ export default function TenantHomePage() {
               value={`${latestNotifications.length} Notifikasi`}
               helper={
                 showNotificationBackendNotice
-                  ? "Backend tenant inbox belum tersedia"
-                  : "Periksa info terbaru dari admin"
+                  ? "Kotak masuk penyewa belum tersedia"
+                  : "Periksa info terbaru dari administrator"
               }
               icon={<Bell size={18} />}
             />
@@ -477,7 +477,7 @@ export default function TenantHomePage() {
             <ActionCard
               href="/tenant/jadwal-visit"
               icon={<CalendarCheck size={18} />}
-              title="Jadwal Visit"
+              title="Jadwal Kunjungan"
               description="Kelola jadwal kunjungan yang sudah kamu ajukan."
               actionLabel="Lihat Jadwal"
             />
@@ -568,7 +568,7 @@ export default function TenantHomePage() {
                 <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm text-slate-500">
                     {showNotificationBackendNotice
-                      ? "Backend belum membuka notifikasi khusus tenant."
+                      ? "Sistem belum membuka notifikasi khusus penyewa."
                       : "Belum ada notifikasi terbaru."}
                   </p>
                   <Link
@@ -657,7 +657,7 @@ export default function TenantHomePage() {
 
             <section className="rounded-2xl border bg-white p-5 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-800">
-                Panduan Cepat Tenant
+                Panduan Cepat Penyewa
               </h2>
               <p className="mt-1 text-sm text-slate-600">
                 Langkah singkat agar pengelolaan hunian tetap lancar setiap bulan.
@@ -675,7 +675,7 @@ export default function TenantHomePage() {
                   href="/tenant/perawatan"
                 />
                 <GuideItem
-                  title="Pantau notifikasi dari admin"
+                  title="Pantau notifikasi dari administrator"
                   description="Info penting terkait hunian dan operasional dikirim lewat notifikasi."
                   href="/tenant/notifikasi"
                 />

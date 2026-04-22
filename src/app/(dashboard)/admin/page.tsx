@@ -81,7 +81,7 @@ export default function AdminDashboardPage() {
               Pantau Properti, Perawatan, dan Pembayaran dalam Satu Layar
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
-              Semua metrik utama ditampilkan realtime dari data admin, tanpa
+              Semua metrik utama ditampilkan langsung dari data administrator, tanpa
               perlu pindah halaman.
             </p>
 
@@ -244,7 +244,7 @@ export default function AdminDashboardPage() {
               />
               <PriorityLine
                 label="Pembayaran Tertunda"
-                value={`${data.stats.pendingPayments} invoice`}
+                value={`${data.stats.pendingPayments} faktur`}
                 ok={data.stats.pendingPayments === 0}
               />
               <PriorityLine

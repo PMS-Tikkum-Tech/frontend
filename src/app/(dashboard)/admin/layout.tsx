@@ -23,6 +23,7 @@ import RoleGuard from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import { updateSelfProfilePicture } from "@/lib/profile.api";
+import AdminCursor from "@/components/ui/AdminCursor";
 
 const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -116,12 +117,13 @@ export default function AdminDashboardLayout({
     { label: "Tagihan & Pembayaran", href: "/admin/billing", icon: CreditCard },
     { label: "Komunikasi", href: "/admin/communication", icon: Bell },
     { label: "Akun", href: "/admin/account", icon: Shield },
-    { label: "Log Aktivitas", href: "/admin/log-activity", icon: History },
+    { label: "Catatan Aktivitas", href: "/admin/log-activity", icon: History },
   ];
 
   return (
     <RoleGuard allowedRoles={["admin"]}>
-      <div className="min-h-screen bg-slate-50 lg:flex">
+      <div className="admin-custom-cursor min-h-screen bg-slate-50 lg:flex">
+        <AdminCursor />
         {isSidebarOpen ? (
           <button
             type="button"
@@ -237,7 +239,7 @@ export default function AdminDashboardLayout({
                   href="/"
                   className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 md:inline-flex"
                 >
-                  Beranda Kyra Stay
+                  Beranda KIKOST
                 </Link>
 
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -261,7 +263,7 @@ export default function AdminDashboardLayout({
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
-                        alt="Avatar admin"
+                        alt="Avatar administrator"
                         className="h-full w-full object-cover"
                         onError={() => setFailedAvatarKey(user?.avatar ?? null)}
                       />
@@ -274,7 +276,7 @@ export default function AdminDashboardLayout({
 
                   <div className="hidden text-sm sm:block">
                     <p className="font-semibold text-slate-800">
-                      {user?.name || "Admin"}
+                      {user?.name || "Administrator"}
                     </p>
                     <p className="text-xs text-slate-500">Administrator</p>
                     {avatarNotice ? (

@@ -23,7 +23,7 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
 const formatCurrency = (value?: number) => {
   if (!value || value <= 0) {
-    return "Hubungi admin";
+    return "Hubungi administrator";
   }
 
   return `Rp ${CURRENCY_FORMATTER.format(value)}`;
@@ -45,7 +45,7 @@ const formatPriceRange = (min?: number, max?: number) => {
   const normalizedMax = max || 0;
 
   if (normalizedMin <= 0 && normalizedMax <= 0) {
-    return "Hubungi admin";
+    return "Hubungi administrator";
   }
 
   if (normalizedMax <= 0 || normalizedMax === normalizedMin) {

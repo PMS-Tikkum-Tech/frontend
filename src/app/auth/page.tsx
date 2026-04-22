@@ -77,7 +77,7 @@ function AuthPageContent() {
   const authPhone = searchParams.get("phone");
   const title =
     mode === "register"
-      ? "Buat Akun Kyra Stay"
+      ? "Buat Akun KIKOST"
       : mode === "verify"
         ? "Verifikasi OTP"
         : "Masuk ke Akun Anda";
@@ -104,11 +104,11 @@ function AuthPageContent() {
           </Link>
 
           <h1 className="mt-6 max-w-xl text-3xl font-semibold leading-tight md:text-5xl">
-            Selamat datang di Kyra Stay
+            Selamat datang di KIKOST
           </h1>
 
           <p className="mt-4 max-w-lg text-sm text-slate-600 md:text-base">
-            Masuk atau daftar untuk mulai menggunakan layanan Kyra Stay.
+            Masuk atau daftar untuk mulai menggunakan layanan KIKOST.
           </p>
         </section>
 
@@ -162,7 +162,7 @@ function AuthPageContent() {
 
           {registered && (
             <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              Pendaftaran berhasil. Silakan login.
+              Pendaftaran berhasil. Silakan masuk.
             </div>
           )}
 

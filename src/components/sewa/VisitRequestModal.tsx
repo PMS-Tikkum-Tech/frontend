@@ -93,12 +93,12 @@ export default function VisitRequestModal({
     setError(null);
 
     if (!preferredDate || !preferredTime) {
-      setError("Tanggal dan jam visit wajib diisi.");
+      setError("Tanggal dan jam kunjungan wajib diisi.");
       return;
     }
 
     if (preferredDate < todayDate) {
-      setError("Tanggal visit tidak boleh kurang dari hari ini.");
+      setError("Tanggal kunjungan tidak boleh kurang dari hari ini.");
       return;
     }
 
@@ -138,7 +138,7 @@ export default function VisitRequestModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Ajukan Jadwal Visit
+              Ajukan Jadwal Kunjungan
             </h2>
             <p className="mt-1 text-xs text-slate-500">{propertyName}</p>
           </div>
@@ -158,7 +158,7 @@ export default function VisitRequestModal({
             <label className="block space-y-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
                 <CalendarDays size={14} />
-                Tanggal Visit
+                Tanggal Kunjungan
               </span>
               <input
                 type="date"
@@ -172,7 +172,7 @@ export default function VisitRequestModal({
             <label className="block space-y-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
                 <Clock3 size={14} />
-                Jam Visit
+                Jam Kunjungan
               </span>
               <input
                 type="time"
@@ -217,7 +217,7 @@ export default function VisitRequestModal({
               disabled={isSubmitting}
               className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Mengirim..." : "Kirim Permintaan Visit"}
+              {isSubmitting ? "Mengirim..." : "Kirim Permintaan Kunjungan"}
             </button>
           </div>
         </form>

@@ -18,11 +18,11 @@ export const PENDING_TENANT_REGISTRATION_STORAGE_KEY =
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return "Tidak bisa terhubung ke server. Pastikan backend aktif di port 3001.";
+      return "Tidak bisa terhubung ke layanan. Pastikan sistem aktif di port 3001.";
     }
 
     if (error.response?.status === 404) {
-      return "Endpoint OTP pendaftaran tidak ditemukan. Cek konfigurasi NEXT_PUBLIC_API_URL.";
+      return "Layanan OTP pendaftaran tidak ditemukan. Periksa konfigurasi NEXT_PUBLIC_API_URL.";
     }
 
     const payload = error.response?.data as
@@ -113,7 +113,7 @@ export default function RegisterForm() {
         )}
       </div>
 
-      {/* Alamat Email */}
+      {/* Alamat email */}
       <div>
         <label className="block text-sm font-medium mb-1">Alamat Email</label>
 

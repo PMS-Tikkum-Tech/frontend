@@ -50,8 +50,17 @@ const isSessionExpired = (expiresAt?: string | null) => {
   return Date.now() >= expiresAtMs;
 };
 
+const isProtectedPath = (pathname: string) =>
+  pathname.startsWith("/admin") ||
+  pathname.startsWith("/owner") ||
+  pathname.startsWith("/tenant");
+
 const redirectToAuth = () => {
   if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!isProtectedPath(window.location.pathname)) {
     return;
   }
 

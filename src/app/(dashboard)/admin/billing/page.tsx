@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Bell,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Download,
   Eye,
   Filter,
   Pencil,
@@ -25,13 +25,13 @@ import {
   getAdminPropertyUnits,
   getAdminTenants,
   getApiErrorMessage,
-  pushAdminPaymentInvoice,
   updateAdminPayment,
   type AdminPayment,
   type AdminPropertyListItem,
   type AdminPropertyUnitRow,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -186,6 +186,52 @@ const getPaymentRowKey = (payment: AdminPayment) =>
 const isManualBookingRecord = (payment: AdminPayment) =>
   payment.record_type === "manual_booking";
 
+const getProofExtensionFromContentType = (contentType?: string | null) => {
+  if (!contentType) {
+    return "";
+  }
+
+  if (contentType.includes("pdf")) {
+    return ".pdf";
+  }
+
+  if (contentType.includes("png")) {
+    return ".png";
+  }
+
+  if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+    return ".jpg";
+  }
+
+  return "";
+};
+
+const getProofExtensionFromUrl = (url?: string | null) => {
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname.match(/\.(pdf|png|jpe?g)$/i)?.[0] || "";
+  } catch {
+    return url.match(/\.(pdf|png|jpe?g)$/i)?.[0] || "";
+  }
+};
+
+const getProofDownloadName = (
+  invoiceId: string,
+  sourceUrl?: string | null,
+  contentType?: string | null
+) => {
+  const safeInvoiceId = invoiceId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const extension =
+    getProofExtensionFromContentType(contentType) ||
+    getProofExtensionFromUrl(sourceUrl);
+
+  return `bukti-transfer-${safeInvoiceId}${extension}`;
+};
+
 export default function AdminBillingPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -205,6 +251,8 @@ export default function AdminBillingPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [notice, setNotice] = useState<Notice>(null);
   const [viewPayment, setViewPayment] = useState<AdminPayment | null>(null);
+  const [approveConfirmationPayment, setApproveConfirmationPayment] =
+    useState<AdminPayment | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<BillingFormMode>("create");
   const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
@@ -212,8 +260,10 @@ export default function AdminBillingPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
-  const [isPushingId, setIsPushingId] = useState<number | null>(null);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
+  const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<string | null>(
+    null
+  );
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -316,6 +366,26 @@ export default function AdminBillingPage() {
     }
   };
 
+  const statusFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        payments,
+        (payment) => payment.status,
+        (value) => paymentStatusLabel[value]
+      ),
+    [payments]
+  );
+
+  const propertyFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        payments,
+        (payment) => payment.property.id || null,
+        (value, payment) => payment.property.name || `Properti #${value}`
+      ),
+    [payments]
+  );
+
   const filtered = useMemo(() => {
     const filteredItems = payments.filter((payment) => {
       const searchable = `${payment.invoice_id} ${payment.property.name || ""} ${
@@ -370,6 +440,18 @@ export default function AdminBillingPage() {
   }, [search, status, propertyFilter, sortBy]);
 
   useEffect(() => {
+    if (!hasFilterOption(statusFilterOptions, status)) {
+      setStatus("");
+    }
+  }, [status, statusFilterOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(propertyFilterOptions, propertyFilter)) {
+      setPropertyFilter("");
+    }
+  }, [propertyFilter, propertyFilterOptions]);
+
+  useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
@@ -419,7 +501,7 @@ export default function AdminBillingPage() {
       setNotice({
         variant: "error",
         message:
-          "Booking pembayaran tenant manual belum punya endpoint edit dari modul tagihan biasa.",
+          "Pemesanan pembayaran penyewa manual belum memiliki layanan ubah dari modul tagihan biasa.",
       });
       return;
     }
@@ -512,7 +594,7 @@ export default function AdminBillingPage() {
       setNotice({
         variant: "error",
         message:
-          "Booking pembayaran tenant manual tidak bisa dihapus dari tabel tagihan ini.",
+          "Pemesanan pembayaran penyewa manual tidak bisa dihapus dari tabel tagihan ini.",
       });
       return;
     }
@@ -545,34 +627,75 @@ export default function AdminBillingPage() {
     }
   };
 
-  const handlePushInvoice = async (payment: AdminPayment) => {
-    if (isManualBookingRecord(payment)) {
+  const handleDownloadProof = async (payment: AdminPayment) => {
+    const proofUrl = resolveAssetUrl(payment.transfer_proof_url);
+
+    if (!proofUrl) {
       setNotice({
         variant: "error",
-        message:
-          "Booking pembayaran tenant manual tidak dikirim ke Xendit dari tabel ini.",
+        message: "Bukti transfer tidak tersedia untuk diunduh.",
       });
       return;
     }
 
-    setIsPushingId(payment.id);
+    const downloadKey = getPaymentRowKey(payment);
+    setIsDownloadingProofKey(downloadKey);
     setNotice(null);
 
     try {
-      await pushAdminPaymentInvoice(payment.id);
-      setNotice({
-        variant: "success",
-        message: `Invoice #${payment.invoice_id} berhasil dikirim ke Xendit.`,
-      });
-      setRefreshKey((previous) => previous + 1);
-    } catch (pushError) {
+      const response = await fetch(proofUrl);
+      if (!response.ok) {
+        throw new Error("Gagal mengambil file bukti transfer.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = getProofDownloadName(
+        payment.invoice_id,
+        proofUrl,
+        blob.type || response.headers.get("content-type")
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+    } catch (downloadError) {
       setNotice({
         variant: "error",
-        message: getApiErrorMessage(pushError, "Gagal mengirim invoice."),
+        message: getApiErrorMessage(
+          downloadError,
+          "Gagal mengunduh bukti transfer."
+        ),
       });
     } finally {
-      setIsPushingId(null);
+      setIsDownloadingProofKey(null);
     }
+  };
+
+  const openApproveConfirmation = (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      if (payment.booking_status !== "pending_review") {
+        setNotice({
+          variant: "error",
+          message:
+            payment.booking_status === "awaiting_payment"
+              ? "Pemesanan ini belum mengirim bukti transfer, jadi belum bisa di-ACC."
+              : "Pemesanan penyewa ini belum berada pada status peninjauan administrator.",
+        });
+        return;
+      }
+
+      setApproveConfirmationPayment(payment);
+      return;
+    }
+
+    if (payment.status === "paid") {
+      return;
+    }
+
+    setApproveConfirmationPayment(payment);
   };
 
   const handleApprovePayment = async (payment: AdminPayment) => {
@@ -582,8 +705,8 @@ export default function AdminBillingPage() {
           variant: "error",
           message:
             payment.booking_status === "awaiting_payment"
-              ? "Booking ini belum submit bukti transfer, jadi belum bisa di-ACC."
-              : "Booking tenant ini belum berada pada status review admin.",
+              ? "Pemesanan ini belum mengirim bukti transfer, jadi belum bisa di-ACC."
+              : "Pemesanan penyewa ini belum berada pada status peninjauan administrator.",
         });
         return;
       }
@@ -595,20 +718,21 @@ export default function AdminBillingPage() {
         await approveAdminManualRentalBooking(payment.id, {
           commission_type: "percentage",
           commission_percentage: 0,
-          notes: "Approved from admin billing",
+          notes: "Disetujui dari tagihan administrator",
         });
 
         setNotice({
           variant: "success",
-          message: `Pembayaran booking #${payment.invoice_id} berhasil di-ACC.`,
+          message: `Pembayaran pemesanan #${payment.invoice_id} berhasil di-ACC.`,
         });
+        setApproveConfirmationPayment(null);
         setRefreshKey((previous) => previous + 1);
       } catch (approveError) {
         setNotice({
           variant: "error",
           message: getApiErrorMessage(
             approveError,
-            "Gagal melakukan ACC pembayaran booking."
+            "Gagal melakukan ACC pembayaran pemesanan."
           ),
         });
       } finally {
@@ -635,6 +759,7 @@ export default function AdminBillingPage() {
         variant: "success",
         message: `Pembayaran #${payment.invoice_id} berhasil di-ACC.`,
       });
+      setApproveConfirmationPayment(null);
       setRefreshKey((previous) => previous + 1);
     } catch (approveError) {
       setNotice({
@@ -646,6 +771,13 @@ export default function AdminBillingPage() {
       setIsApprovingId(null);
     }
   };
+
+  const approveConfirmationIsManual = approveConfirmationPayment
+    ? isManualBookingRecord(approveConfirmationPayment)
+    : false;
+  const isApproveConfirmationBusy = approveConfirmationPayment
+    ? isApprovingId === approveConfirmationPayment.id
+    : false;
 
   return (
     <div className="space-y-7">
@@ -662,7 +794,7 @@ export default function AdminBillingPage() {
               Kelola Tagihan & Pembayaran
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
-              Pantau status pembayaran, atur tagihan, dan kirim invoice ke Xendit.
+              Pantau status pembayaran, atur tagihan, dan tinjau bukti pembayaran.
             </p>
           </div>
 
@@ -683,7 +815,7 @@ export default function AdminBillingPage() {
         <SummaryCard label="Lunas" value={String(stats.paid)} tone="success" />
         <SummaryCard label="Terlambat" value={String(stats.overdue)} tone="danger" />
         <SummaryCard
-          label="Outstanding"
+          label="Tunggakan"
           value={`Rp ${stats.totalOutstanding.toLocaleString("id-ID")}`}
         />
       </section>
@@ -696,7 +828,7 @@ export default function AdminBillingPage() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
-              placeholder="Cari invoice, properti, unit, atau penyewa..."
+              placeholder="Cari faktur, properti, unit, atau penyewa..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
@@ -714,10 +846,11 @@ export default function AdminBillingPage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
               <option value="">Semua Status</option>
-              <option value="waiting">Menunggu</option>
-              <option value="paid">Lunas</option>
-              <option value="overdue">Terlambat</option>
-              <option value="cancelled">Dibatalkan</option>
+              {statusFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -727,9 +860,9 @@ export default function AdminBillingPage() {
             className="h-11 min-w-[220px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
           >
             <option value="">Semua Properti</option>
-            {properties.map((property) => (
-              <option key={property.id} value={property.id}>
-                {property.name}
+            {propertyFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -758,7 +891,7 @@ export default function AdminBillingPage() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
-            Reset
+            Atur Ulang
           </button>
 
           {error && (
@@ -799,30 +932,38 @@ export default function AdminBillingPage() {
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1120px] w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
+          <table className="w-full min-w-[1160px] table-fixed text-sm leading-5">
+            <colgroup>
+              <col className="w-[220px]" />
+              <col className="w-[210px]" />
+              <col className="w-[160px]" />
+              <col className="w-[150px]" />
+              <col className="w-[140px]" />
+              <col className="w-[110px]" />
+              <col className="w-[170px]" />
+            </colgroup>
+            <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
               <tr>
-                <th className="p-4 text-left">Invoice</th>
-                <th className="p-4 text-left">Properti</th>
-                <th className="p-4 text-left">Penyewa</th>
-                <th className="p-4 text-left">Jatuh Tempo</th>
-                <th className="p-4 text-left">Jumlah</th>
-                <th className="p-4 text-left">Status</th>
-                <th className="p-4 text-left">Xendit</th>
-                <th className="p-4 text-left">Aksi</th>
+                <th className="px-3 py-3 text-left">Faktur</th>
+                <th className="px-3 py-3 text-left">Properti</th>
+                <th className="px-3 py-3 text-left">Penyewa</th>
+                <th className="px-3 py-3 text-left">Jatuh Tempo</th>
+                <th className="px-3 py-3 text-left">Jumlah</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="px-3 py-3 text-left">Aksi</th>
               </tr>
             </thead>
 
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-500">
+                  <td colSpan={7} className="p-6 text-center text-slate-500">
                     Memuat data tagihan...
                   </td>
                 </tr>
               ) : pagedPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-500">
+                  <td colSpan={7} className="p-6 text-center text-slate-500">
                     Tidak ada data tagihan.
                   </td>
                 </tr>
@@ -830,78 +971,103 @@ export default function AdminBillingPage() {
                 pagedPayments.map((payment) => (
                   <tr
                     key={getPaymentRowKey(payment)}
-                    className="border-t border-slate-100 hover:bg-slate-50"
+                    className="border-t border-slate-100 align-top hover:bg-slate-50"
                   >
-                    <td className="p-4">
-                      <p className="font-semibold text-slate-800">#{payment.invoice_id}</p>
-                      <p className="text-xs text-slate-500">
+                    <td className="px-3 py-3">
+                      <p
+                        className="break-all font-semibold text-slate-800"
+                        title={`#${payment.invoice_id}`}
+                      >
+                        #{payment.invoice_id}
+                      </p>
+                      <p className="whitespace-nowrap text-xs text-slate-500">
                         Dibuat: {formatDate(payment.created_at)}
                       </p>
                       {payment.transfer_proof_url ? (
-                        <a
-                          href={resolveAssetUrl(payment.transfer_proof_url) || "#"}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-1 inline-flex text-xs font-medium text-emerald-600 underline-offset-2 hover:underline"
-                        >
-                          Lihat bukti transfer
-                        </a>
+                        <div className="mt-2 flex items-center gap-1.5 whitespace-nowrap">
+                          <a
+                            href={resolveAssetUrl(payment.transfer_proof_url) || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-7 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                            title="Lihat bukti transfer"
+                          >
+                            Lihat
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDownloadProof(payment);
+                            }}
+                            disabled={
+                              isDownloadingProofKey === getPaymentRowKey(payment)
+                            }
+                            className="inline-flex h-7 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            <Download size={12} />
+                            {isDownloadingProofKey === getPaymentRowKey(payment)
+                              ? "Unduh..."
+                              : "Unduh"}
+                          </button>
+                        </div>
                       ) : (
                         <p className="mt-1 text-xs text-slate-500">
-                          Bukti transfer belum ada
+                          Belum ada bukti
                         </p>
                       )}
                     </td>
 
-                    <td className="p-4">
-                      <p className="text-slate-700">{payment.property.name || "-"}</p>
-                      <p className="text-xs text-slate-500">
+                    <td className="px-3 py-3">
+                      <p
+                        className="break-words text-slate-700"
+                        title={payment.property.name || "-"}
+                      >
+                        {payment.property.name || "-"}
+                      </p>
+                      <p
+                        className="break-words text-xs text-slate-500"
+                        title={payment.unit.name || "-"}
+                      >
                         Unit: {payment.unit.name || "-"}
                       </p>
                     </td>
 
-                    <td className="p-4 text-slate-700">
-                      {payment.tenant.full_name || "-"}
+                    <td className="px-3 py-3 text-slate-700">
+                      <p
+                        className="break-words"
+                        title={payment.tenant.full_name || "-"}
+                      >
+                        {payment.tenant.full_name || "-"}
+                      </p>
                     </td>
 
-                    <td className="p-4">
-                      <p className="text-slate-700">{formatDate(payment.due_date)}</p>
-                      <p className="text-xs text-slate-500">
+                    <td className="px-3 py-3">
+                      <p className="whitespace-nowrap text-slate-700">
+                        {formatDate(payment.due_date)}
+                      </p>
+                      <p className="whitespace-nowrap text-xs text-slate-500">
                         Bayar: {formatDateTime(payment.paid_at)}
                       </p>
                     </td>
 
-                    <td className="p-4 font-semibold text-slate-800">
+                    <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-800">
                       Rp {Number(payment.amount || 0).toLocaleString("id-ID")}
                     </td>
 
-                    <td className="p-4">
+                    <td className="px-3 py-3">
                       <StatusBadge status={payment.status} />
                       {payment.booking_status_label ? (
-                        <p className="mt-1 text-xs text-slate-500">
-                          Booking: {payment.booking_status_label}
+                        <p
+                          className="mt-1 break-words text-xs text-slate-500"
+                          title={payment.booking_status_label}
+                        >
+                          Pemesanan: {payment.booking_status_label}
                         </p>
                       ) : null}
                     </td>
 
-                    <td className="p-4">
-                      {isManualBookingRecord(payment) ? (
-                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                          Manual
-                        </span>
-                      ) : payment.xendit_invoice_id ? (
-                        <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                          Terkirim
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                          Belum
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => setViewPayment(payment)}
@@ -914,7 +1080,7 @@ export default function AdminBillingPage() {
                           type="button"
                           onClick={() => handleEditPayment(payment)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Edit tagihan"
+                          title="Ubah tagihan"
                         >
                           <Pencil size={16} />
                         </button>
@@ -932,7 +1098,7 @@ export default function AdminBillingPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            void handleApprovePayment(payment);
+                            openApproveConfirmation(payment);
                           }}
                           disabled={
                             payment.status === "paid" ||
@@ -946,24 +1112,6 @@ export default function AdminBillingPage() {
                           }
                         >
                           <CheckCircle2 size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handlePushInvoice(payment);
-                          }}
-                          disabled={
-                            isPushingId === payment.id ||
-                            Boolean(payment.xendit_invoice_id)
-                          }
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          title={
-                            payment.xendit_invoice_id
-                              ? "Invoice sudah dikirim ke Xendit"
-                              : "Kirim invoice ke Xendit"
-                          }
-                        >
-                          <Bell size={16} />
                         </button>
                       </div>
                     </td>
@@ -1016,6 +1164,96 @@ export default function AdminBillingPage() {
         </div>
       </section>
 
+      {approveConfirmationPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="px-6 pb-5 pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Konfirmasi ACC
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                    Setujui pembayaran ini?
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Pastikan bukti transfer dan nominal sudah sesuai sebelum
+                    pembayaran disetujui.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Faktur</span>
+                  <span className="text-right font-semibold text-slate-900">
+                    #{approveConfirmationPayment.invoice_id}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Penyewa</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {approveConfirmationPayment.tenant.full_name || "-"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Properti</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {approveConfirmationPayment.property.name || "-"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Unit</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {approveConfirmationPayment.unit.name || "-"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Jumlah</span>
+                  <span className="whitespace-nowrap text-right font-semibold text-slate-900">
+                    Rp{" "}
+                    {Number(approveConfirmationPayment.amount || 0).toLocaleString(
+                      "id-ID"
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                {approveConfirmationIsManual
+                  ? "Setelah di-ACC, pembayaran menjadi lunas dan unit akan diproses sebagai terisi."
+                  : "Setelah di-ACC, status tagihan akan berubah menjadi lunas."}
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setApproveConfirmationPayment(null)}
+                disabled={isApproveConfirmationBusy}
+                className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-medium text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleApprovePayment(approveConfirmationPayment);
+                }}
+                disabled={isApproveConfirmationBusy}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70"
+              >
+                <CheckCircle2 size={16} />
+                {isApproveConfirmationBusy ? "Memproses..." : "Ya, ACC Pembayaran"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
@@ -1033,7 +1271,7 @@ export default function AdminBillingPage() {
             <div className="space-y-3 px-6 py-5 text-sm">
               <div className="mb-1 rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Invoice #{viewPayment.invoice_id}
+                  Faktur #{viewPayment.invoice_id}
                 </p>
                 <p className="mt-1 font-semibold text-slate-800">
                   {viewPayment.property.name || "-"} • {viewPayment.unit.name || "-"}
@@ -1042,11 +1280,7 @@ export default function AdminBillingPage() {
                   Penyewa: {viewPayment.tenant.full_name || "-"}
                 </p>
               </div>
-              <DetailRow label="Invoice" value={`#${viewPayment.invoice_id}`} />
-              <DetailRow
-                label="Xendit Invoice ID"
-                value={viewPayment.xendit_invoice_id || "-"}
-              />
+              <DetailRow label="Faktur" value={`#${viewPayment.invoice_id}`} />
               <DetailRow label="Properti" value={viewPayment.property.name || "-"} />
               <DetailRow label="Unit" value={viewPayment.unit.name || "-"} />
               <DetailRow
@@ -1058,7 +1292,7 @@ export default function AdminBillingPage() {
                 value={paymentStatusLabel[viewPayment.status] || viewPayment.status}
               />
               <DetailRow
-                label="Status Booking Tenant"
+                label="Status Pemesanan Penyewa"
                 value={viewPayment.booking_status_label || "-"}
               />
               <DetailRow
@@ -1083,25 +1317,42 @@ export default function AdminBillingPage() {
                 value={viewPayment.transfer_bank_name || "-"}
               />
               <DetailRow
-                label="Waktu Submit Bukti"
+                label="Waktu Pengiriman Bukti"
                 value={formatDateTime(viewPayment.payment_submitted_at)}
               />
               <DetailRow
-                label="Waktu Review Admin"
+                label="Waktu Peninjauan Administrator"
                 value={formatDateTime(viewPayment.reviewed_at)}
               />
               <DetailRow
                 label="Bukti Transfer"
                 value={
                   viewPayment.transfer_proof_url ? (
-                    <a
-                      href={resolveAssetUrl(viewPayment.transfer_proof_url) || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-blue-600 underline-offset-2 hover:underline"
-                    >
-                      Lihat bukti transfer
-                    </a>
+                    <span className="inline-flex flex-wrap items-center gap-3">
+                      <a
+                        href={resolveAssetUrl(viewPayment.transfer_proof_url) || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-blue-600 underline-offset-2 hover:underline"
+                      >
+                        Lihat bukti transfer
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleDownloadProof(viewPayment);
+                        }}
+                        disabled={
+                          isDownloadingProofKey === getPaymentRowKey(viewPayment)
+                        }
+                        className="inline-flex items-center gap-1 font-medium text-emerald-700 underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-60"
+                      >
+                        <Download size={13} />
+                        {isDownloadingProofKey === getPaymentRowKey(viewPayment)
+                          ? "Mengunduh..."
+                          : "Unduh"}
+                      </button>
+                    </span>
                   ) : (
                     "-"
                   )
@@ -1128,7 +1379,7 @@ export default function AdminBillingPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
-                {formMode === "create" ? "Tambah Tagihan" : "Edit Tagihan"}
+                {formMode === "create" ? "Tambah Tagihan" : "Ubah Tagihan"}
               </h2>
               <button
                 type="button"
@@ -1405,7 +1656,7 @@ function StatusBadge({
 }) {
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+      className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${
         paymentStatusStyle[status] || "bg-slate-100 text-slate-700"
       }`}
     >

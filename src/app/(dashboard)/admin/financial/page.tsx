@@ -47,6 +47,7 @@ import {
   type AdminPropertyListItem,
   type AdminPropertyUnitRow,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const COLORS = [
   "#1E2746",
@@ -58,6 +59,11 @@ const COLORS = [
 ];
 
 const PAGE_SIZE = 10;
+
+const categoryLabelMap: Record<string, string> = {
+  income: "Pemasukan",
+  expense: "Pengeluaran",
+};
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -232,6 +238,27 @@ export default function AdminFinancialPage() {
     };
   }, [period, refreshKey]);
 
+  const categoryFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        transactions,
+        (transaction) => transaction.category,
+        (value) => categoryLabelMap[value]
+      ),
+    [transactions]
+  );
+
+  const propertyFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        transactions,
+        (transaction) => transaction.property.id || null,
+        (value, transaction) =>
+          transaction.property_label || transaction.property.name || `Properti #${value}`
+      ),
+    [transactions]
+  );
+
   const filteredTransactions = useMemo(() => {
     const filtered = transactions.filter((transaction) => {
       const searchable = `${transaction.property_label} ${transaction.description}`.toLowerCase();
@@ -271,6 +298,18 @@ export default function AdminFinancialPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, category, propertyFilter, sortBy]);
+
+  useEffect(() => {
+    if (!hasFilterOption(categoryFilterOptions, category)) {
+      setCategory("");
+    }
+  }, [category, categoryFilterOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(propertyFilterOptions, propertyFilter)) {
+      setPropertyFilter("");
+    }
+  }, [propertyFilter, propertyFilterOptions]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -553,8 +592,11 @@ export default function AdminFinancialPage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
               <option value="">Semua Kategori</option>
-              <option value="income">Pemasukan</option>
-              <option value="expense">Pengeluaran</option>
+              {categoryFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -564,9 +606,9 @@ export default function AdminFinancialPage() {
             className="h-11 min-w-[220px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
           >
             <option value="">Semua Properti</option>
-            {properties.map((property) => (
-              <option key={property.id} value={property.id}>
-                {property.name}
+            {propertyFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -605,7 +647,7 @@ export default function AdminFinancialPage() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
-            Reset
+            Atur Ulang
           </button>
 
           {error && (
@@ -870,7 +912,7 @@ export default function AdminFinancialPage() {
                           type="button"
                           onClick={() => openEditModal(transaction)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Edit transaksi"
+                          title="Ubah transaksi"
                         >
                           <Pencil size={16} />
                         </button>
@@ -1023,7 +1065,7 @@ export default function AdminFinancialPage() {
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
-                {formMode === "create" ? "Tambah Transaksi" : "Edit Transaksi"}
+                {formMode === "create" ? "Tambah Transaksi" : "Ubah Transaksi"}
               </h2>
               <button
                 type="button"
@@ -1237,7 +1279,7 @@ export default function AdminFinancialPage() {
 }
 
 function toCategoryLabel(category: "income" | "expense") {
-  return category === "income" ? "Pemasukan" : "Pengeluaran";
+  return categoryLabelMap[category] || category;
 }
 
 function CategoryBadge({ category }: { category: "income" | "expense" }) {

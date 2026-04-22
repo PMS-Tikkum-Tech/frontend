@@ -69,7 +69,7 @@ const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`
   : normalizedWhatsappDigits;
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-  "Halo admin Kyra Stay, saya ingin tanya soal hunian yang tersedia."
+  "Halo administrator Kyra Stay, saya ingin tanya soal hunian yang tersedia."
 )}`;
 
 type PropertyItem = {
@@ -98,7 +98,7 @@ type PropertyMedia = {
 
 const formatCurrency = (value?: number) => {
   if (!value || value <= 0) {
-    return "Hubungi admin";
+    return "Hubungi administrator";
   }
 
   return `Rp${CURRENCY_FORMATTER.format(value)}`;
@@ -206,6 +206,19 @@ const extractDistrict = (address?: string | null) => {
   }
 
   return address.split(",")[0]?.trim() || "Bogor";
+};
+
+const extractSearchLocation = (property: Pick<PropertyItem, "area" | "district">) => {
+  const normalizedAddress = property.area.toLowerCase();
+  const matchedKeyword = AREA_COORDINATES.flatMap((area) => area.keywords).find(
+    (keyword) => normalizedAddress.includes(keyword)
+  );
+
+  if (matchedKeyword) {
+    return formatLabel(matchedKeyword);
+  }
+
+  return property.district;
 };
 
 const FALLBACK_COORDINATE = {
@@ -445,17 +458,17 @@ const serviceHighlights = [
 const bookingSteps = [
   {
     title: "Pilih Area dan Unit",
-    description: "Filter berdasarkan lokasi, tipe hunian, dan budget bulananmu.",
+    description: "Saring berdasarkan lokasi, tipe hunian, dan tanggal masuk.",
     icon: <Search size={18} />,
   },
   {
-    title: "Jadwalkan Visit",
-    description: "Tentukan waktu kunjungan langsung dari halaman listing.",
+    title: "Jadwalkan Kunjungan",
+    description: "Tentukan waktu kunjungan langsung dari halaman daftar hunian.",
     icon: <Calendar size={18} />,
   },
   {
-    title: "Booking Online",
-    description: "Lanjutkan booking dan pembayaran dengan proses yang transparan.",
+    title: "Pemesanan Daring",
+    description: "Lanjutkan pemesanan dan pembayaran dengan proses yang transparan.",
     icon: <Home size={18} />,
   },
 ];
@@ -466,7 +479,7 @@ const testimonials = [
     role: "Penghuni 11 bulan",
     avatar: "/avatars/penghuni-nadia.svg",
     quote:
-      "Informasi unitnya detail, jadi tidak buang waktu pas survei. Proses booking juga cepat.",
+      "Informasi unitnya detail, jadi tidak buang waktu saat survei. Proses pemesanan juga cepat.",
   },
   {
     name: "Raka, Teknik IPB",
@@ -486,12 +499,12 @@ const testimonials = [
 
 const faqItems = [
   {
-    question: "Apakah bisa booking tanpa survei lokasi?",
+    question: "Apakah bisa memesan tanpa survei lokasi?",
     answer:
-      "Bisa. Kamu tetap disarankan melihat detail unit, foto, dan fasilitas sebelum checkout.",
+      "Bisa. Kamu tetap disarankan melihat detail unit, foto, dan fasilitas sebelum membayar.",
   },
   {
-    question: "Bagaimana cara mengajukan jadwal visit?",
+    question: "Bagaimana cara mengajukan jadwal kunjungan?",
     answer:
       "Masuk ke halaman sewa, pilih properti yang diinginkan, lalu tentukan tanggal kunjungan.",
   },
@@ -509,11 +522,11 @@ const footerColumns = [
   },
   {
     title: "Layanan",
-    items: ["Pencarian Kost", "Jadwal Visit", "Pembayaran", "Pusat Bantuan"],
+    items: ["Pencarian Kost", "Jadwal Kunjungan", "Pembayaran", "Pusat Bantuan"],
   },
   {
     title: "Kontak",
-    items: ["WhatsApp Admin", "support@kyrastay.id", "Bogor, Jawa Barat"],
+    items: ["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"],
   },
 ];
 
@@ -662,6 +675,12 @@ export default function PublicHomePage() {
     return ["Semua", ...availableDistricts];
   }, [properties]);
 
+  const searchLocationExamples = useMemo(() => {
+    return Array.from(
+      new Set(properties.map((property) => extractSearchLocation(property)).filter(Boolean))
+    ).slice(0, 3);
+  }, [properties]);
+
   useEffect(() => {
     if (activeDistrict === "Semua") {
       return;
@@ -700,7 +719,7 @@ export default function PublicHomePage() {
 
   const handleToggleFavorite = async (item: PropertyItem) => {
     if (!isTenant) {
-      showErrorToast("Masuk sebagai tenant untuk menyimpan properti favorit.", {
+      showErrorToast("Masuk sebagai penyewa untuk menyimpan properti favorit.", {
         action: {
           label: "Masuk / Daftar",
           href: "/auth?next=%2Fsewa",
@@ -769,8 +788,8 @@ export default function PublicHomePage() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-base text-white/90">
-                Eksplor hunian siap huni dengan fasilitas lengkap, proses booking
-                cepat, dan dukungan admin responsif tanpa ribet.
+                Jelajahi hunian siap huni dengan fasilitas lengkap, proses pemesanan
+                cepat, dan dukungan administrator responsif tanpa repot.
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
@@ -816,7 +835,7 @@ export default function PublicHomePage() {
           </div>
 
           <div className="-mb-20 mt-10">
-            <SearchPanel />
+            <SearchPanel locationExamples={searchLocationExamples} />
           </div>
         </div>
       </section>
@@ -843,7 +862,7 @@ export default function PublicHomePage() {
                 Potongan biaya admin dan bonus khusus penghuni baru
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-white">
-                Klaim promo saat booking unit. Berlaku untuk periode pendaftaran
+                Klaim promo saat memesan unit. Berlaku untuk periode pendaftaran
                 bulan ini.
               </p>
 
@@ -854,19 +873,19 @@ export default function PublicHomePage() {
 
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <PromoChip
-                  title="Diskon Admin"
+                  title="Diskon Khusus"
                   subtitle="Hingga Rp300.000"
                   icon={<Wallet size={16} />}
                   variant="inverted"
                 />
                 <PromoChip
-                  title="Free Survey"
-                  subtitle="Tanpa biaya visit"
+                  title="Survei Gratis"
+                  subtitle="Tanpa biaya kunjungan"
                   icon={<MapPin size={16} />}
                   variant="inverted"
                 />
                 <PromoChip
-                  title="Cashback"
+                  title="Uang Kembali"
                   subtitle="Khusus pembayaran awal"
                   icon={<Gift size={16} />}
                   variant="inverted"
@@ -889,13 +908,13 @@ export default function PublicHomePage() {
                 Tim Admin Siap Bantu Cari Unit Terbaik
               </h3>
               <p className="mt-2 text-sm text-slate-600">
-                Konsultasi cepat untuk rekomendasi unit sesuai budget, lokasi, dan
+                Konsultasi cepat untuk rekomendasi unit sesuai anggaran, lokasi, dan
                 kebutuhanmu.
               </p>
 
               <div className="mt-4 space-y-1.5 text-xs text-slate-600">
                 <p>• Rekomendasi unit yang masih tersedia</p>
-                <p>• Bantuan jadwal visit dan proses booking</p>
+                <p>• Bantuan jadwal kunjungan dan proses pemesanan</p>
               </div>
 
               <a
@@ -983,8 +1002,8 @@ export default function PublicHomePage() {
                 </h3>
                 <p className="mt-1 text-sm text-slate-600">
                   {showCatalogLoginNotice
-                    ? "Backend yang dipakai saat ini hanya membuka katalog properti setelah pengguna masuk."
-                    : "Data properti akan muncul otomatis setelah ditambahkan dari dashboard admin."}
+                    ? "Sistem yang dipakai saat ini hanya membuka katalog properti setelah pengguna masuk."
+                    : "Data properti akan muncul otomatis setelah ditambahkan dari dasbor administrator."}
                 </p>
                 {showCatalogLoginNotice ? (
                   <Link
@@ -1051,14 +1070,14 @@ export default function PublicHomePage() {
           <div className="relative">
             <p className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
               <Calendar size={13} />
-              Alur Booking
+              Alur Pemesanan
             </p>
             <h2 className="mt-3 text-2xl font-semibold leading-tight text-slate-900">
-              Cara Booking Dalam 3 Langkah
+              Cara Memesan Dalam 3 Langkah
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
               Proses sewa dirancang sederhana supaya kamu bisa cepat memilih unit,
-              visit, dan lanjut booking tanpa ribet.
+              berkunjung, dan lanjut memesan tanpa repot.
             </p>
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -1143,7 +1162,7 @@ export default function PublicHomePage() {
                 Dapatkan rekomendasi unit paling cocok untukmu
               </h3>
               <p className="mt-2 text-sm text-white/85">
-                Tim kami bantu pilihkan unit berdasarkan budget, lokasi, dan gaya
+                Tim kami bantu pilihkan unit berdasarkan anggaran, lokasi, dan gaya
                 hidupmu.
               </p>
 
@@ -1222,12 +1241,15 @@ export default function PublicHomePage() {
   );
 }
 
-function SearchPanel() {
+function SearchPanel({ locationExamples }: { locationExamples: string[] }) {
   const router = useRouter();
   const [location, setLocation] = useState("");
   const [unitType, setUnitType] = useState("Semua");
   const [moveInDate, setMoveInDate] = useState("");
-  const [budgetRange, setBudgetRange] = useState("");
+  const locationPlaceholder =
+    locationExamples.length > 0
+      ? `Contoh: ${locationExamples.join(", ")}`
+      : "Contoh: Dramaga";
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -1239,9 +1261,6 @@ function SearchPanel() {
     }
     if (moveInDate) {
       params.set("move_in", moveInDate);
-    }
-    if (budgetRange) {
-      params.set("budget", budgetRange);
     }
 
     const query = params.toString();
@@ -1257,7 +1276,7 @@ function SearchPanel() {
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
             <Search size={13} />
-            Smart Search
+            Pencarian Cerdas
           </p>
           <h3 className="mt-2 text-xl font-semibold text-slate-900">
             Cari Kost Sesuai Kebutuhanmu
@@ -1281,15 +1300,15 @@ function SearchPanel() {
           </button>
           <button
             type="button"
-            onClick={() => setBudgetRange("lt_2000000")}
+            onClick={() => setUnitType("Kost Campur")}
             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
           >
-            &lt; 2 Juta
+            Kost Campur
           </button>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3">
         <Field
           icon={<MapPin size={16} />}
           label="Lokasi"
@@ -1298,7 +1317,7 @@ function SearchPanel() {
               type="text"
               value={location}
               onChange={(event) => setLocation(event.target.value)}
-              placeholder="Contoh: Dramaga, Cihideung"
+              placeholder={locationPlaceholder}
               className="h-10 w-full rounded-lg bg-transparent px-1 text-sm text-slate-700 outline-none placeholder:text-slate-400"
             />
           }
@@ -1330,23 +1349,6 @@ function SearchPanel() {
               onChange={(event) => setMoveInDate(event.target.value)}
               className="h-10 w-full rounded-lg bg-transparent px-1 text-sm text-slate-700 outline-none"
             />
-          }
-        />
-        <Field
-          icon={<Wallet size={16} />}
-          label="Budget Bulanan"
-          input={
-            <select
-              value={budgetRange}
-              onChange={(event) => setBudgetRange(event.target.value)}
-              className="h-10 w-full rounded-lg bg-transparent px-1 text-sm text-slate-700 outline-none"
-            >
-              <option value="">Semua Budget</option>
-              <option value="lt_1500000">&lt; Rp1.500.000</option>
-              <option value="lt_2000000">&lt; Rp2.000.000</option>
-              <option value="2000000_3000000">Rp2.000.000 - Rp3.000.000</option>
-              <option value="gt_3000000">&gt; Rp3.000.000</option>
-            </select>
           }
         />
       </div>

@@ -107,7 +107,7 @@ export default function OwnerDashboardLayout({
   // ⭐ MENU OWNER (beda dengan admin)
   const menuItems = [
     { label: "Dasbor", href: "/owner", icon: LayoutDashboard },
-    { label: "Profit & Hunian", href: "/owner/profit-hunian", icon: BarChart3 },
+    { label: "Laba & Hunian", href: "/owner/profit-hunian", icon: BarChart3 },
   ];
 
   return (
@@ -257,14 +257,14 @@ export default function OwnerDashboardLayout({
                     className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-slate-200 disabled:cursor-not-allowed disabled:opacity-70"
                     title={
                       OWNER_AVATAR_MANAGED_BY_BACKEND
-                        ? "Foto profil owner mengikuti konfigurasi backend"
+                        ? "Foto profil pemilik mengikuti konfigurasi sistem"
                         : "Klik untuk ubah foto profil"
                     }
                   >
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
-                        alt="Avatar owner"
+                        alt="Avatar pemilik"
                         className="h-full w-full object-cover"
                         onError={() => setFailedAvatarKey(user?.avatar ?? null)}
                       />
@@ -277,12 +277,12 @@ export default function OwnerDashboardLayout({
 
                   <div className="hidden text-sm sm:block">
                     <p className="font-semibold text-slate-800">
-                      {user?.name || "Owner"}
+                      {user?.name || "Pemilik"}
                     </p>
                     <p className="text-xs text-slate-500">Pemilik Properti</p>
                     {OWNER_AVATAR_MANAGED_BY_BACKEND ? (
                       <p className="text-[11px] text-slate-500">
-                        Foto profil owner belum dapat diubah mandiri dari backend saat ini.
+                        Foto profil pemilik belum dapat diubah mandiri dari sistem saat ini.
                       </p>
                     ) : null}
                     {avatarNotice ? (

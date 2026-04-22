@@ -25,7 +25,7 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 const statusLabelMap: Record<TenantPayment["status"], string> = {
   waiting: "Menunggu Pembayaran",
   paid: "Lunas",
-  overdue: "Terlambat",
+  overdue: "Jatuh Tempo",
   cancelled: "Dibatalkan",
 };
 
@@ -81,6 +81,33 @@ const formatDateTime = (value?: string | null) => {
     hour: "2-digit",
     minute: "2-digit",
   });
+};
+
+const isDueDateReached = (value?: string | null) => {
+  if (!value) {
+    return false;
+  }
+
+  const dueDate = new Date(value);
+  if (Number.isNaN(dueDate.getTime())) {
+    return false;
+  }
+
+  const dueDay = new Date(dueDate);
+  dueDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return dueDay.getTime() <= today.getTime();
+};
+
+const getPaymentDisplayStatus = (payment: TenantPayment): TenantPayment["status"] => {
+  if (payment.status === "waiting" && isDueDateReached(payment.due_date)) {
+    return "overdue";
+  }
+
+  return payment.status;
 };
 
 export default function TenantPaymentsPage() {
@@ -145,7 +172,8 @@ export default function TenantPaymentsPage() {
   const outstandingPayments = useMemo(() => {
     return sortedHistory
       .filter((payment) => {
-        return payment.status === "waiting" || payment.status === "overdue";
+        const displayStatus = getPaymentDisplayStatus(payment);
+        return displayStatus === "waiting" || displayStatus === "overdue";
       })
       .sort((a, b) => {
         const aDate = new Date(a.due_date || a.created_at || 0).getTime();
@@ -159,7 +187,9 @@ export default function TenantPaymentsPage() {
       return sortedHistory;
     }
 
-    return sortedHistory.filter((payment) => payment.status === filter);
+    return sortedHistory.filter(
+      (payment) => getPaymentDisplayStatus(payment) === filter
+    );
   }, [filter, sortedHistory]);
 
   const stats = useMemo(() => {
@@ -172,8 +202,18 @@ export default function TenantPaymentsPage() {
       total: sortedHistory.length,
       outstandingCount: outstandingPayments.length,
       outstandingAmount,
-      paidCount: sortedHistory.filter((item) => item.status === "paid").length,
-      overdueCount: sortedHistory.filter((item) => item.status === "overdue").length,
+      paidCount: sortedHistory.filter(
+        (item) => getPaymentDisplayStatus(item) === "paid"
+      ).length,
+      waitingCount: sortedHistory.filter(
+        (item) => getPaymentDisplayStatus(item) === "waiting"
+      ).length,
+      overdueCount: sortedHistory.filter(
+        (item) => getPaymentDisplayStatus(item) === "overdue"
+      ).length,
+      cancelledCount: sortedHistory.filter(
+        (item) => getPaymentDisplayStatus(item) === "cancelled"
+      ).length,
     };
   }, [outstandingPayments, sortedHistory]);
 
@@ -238,7 +278,7 @@ export default function TenantPaymentsPage() {
             />
             <FilterChip
               active={filter === "waiting"}
-              label={`Menunggu (${sortedHistory.filter((item) => item.status === "waiting").length})`}
+              label={`Menunggu (${stats.waitingCount})`}
               onClick={() => setFilter("waiting")}
             />
             <FilterChip
@@ -248,12 +288,12 @@ export default function TenantPaymentsPage() {
             />
             <FilterChip
               active={filter === "overdue"}
-              label={`Terlambat (${stats.overdueCount})`}
+              label={`Jatuh Tempo (${stats.overdueCount})`}
               onClick={() => setFilter("overdue")}
             />
             <FilterChip
               active={filter === "cancelled"}
-              label={`Dibatalkan (${sortedHistory.filter((item) => item.status === "cancelled").length})`}
+              label={`Dibatalkan (${stats.cancelledCount})`}
               onClick={() => setFilter("cancelled")}
             />
           </div>
@@ -383,31 +423,52 @@ function FilterChip({
 }
 
 function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
+  const displayStatus = getPaymentDisplayStatus(payment);
+  const isDue = displayStatus === "overdue";
+
   return (
-    <article className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow">
+    <article
+      className={`rounded-2xl border p-5 shadow-sm transition hover:shadow ${
+        isDue
+          ? "border-red-200 bg-red-50/70 hover:border-red-300"
+          : "bg-white hover:border-green-300"
+      }`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-slate-800">
             {payment.property.name || "-"}
           </h3>
           <p className="mt-1 text-sm text-slate-500">{payment.unit.name || "-"}</p>
-          <p className="mt-2 text-xs text-slate-500">Invoice: {payment.invoice_id}</p>
+          <p className="mt-2 text-xs text-slate-500">Faktur: {payment.invoice_id}</p>
         </div>
 
         <span
           className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
-            statusBadgeMap[payment.status]
+            statusBadgeMap[displayStatus]
           }`}
         >
-          {statusIconMap[payment.status]}
-          {statusLabelMap[payment.status]}
+          {statusIconMap[displayStatus]}
+          {statusLabelMap[displayStatus]}
         </span>
       </div>
 
-      <div className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm md:grid-cols-2">
+      <div
+        className={`mt-4 grid gap-3 rounded-xl border p-3 text-sm md:grid-cols-2 ${
+          isDue ? "border-red-200 bg-white" : "border-slate-200 bg-slate-50"
+        }`}
+      >
         <div>
-          <p className="text-xs text-slate-500">Jatuh Tempo</p>
-          <p className="mt-1 font-medium text-slate-900">{formatDate(payment.due_date)}</p>
+          <p className={isDue ? "text-xs text-red-600" : "text-xs text-slate-500"}>
+            Jatuh Tempo
+          </p>
+          <p
+            className={`mt-1 font-medium ${
+              isDue ? "text-red-700" : "text-slate-900"
+            }`}
+          >
+            {formatDate(payment.due_date)}
+          </p>
         </div>
         <div>
           <p className="text-xs text-slate-500">Nominal</p>
@@ -421,22 +482,31 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
 }
 
 function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
+  const displayStatus = getPaymentDisplayStatus(payment);
+  const isDue = displayStatus === "overdue";
+
   return (
-    <article className="rounded-2xl border bg-white p-4 shadow-sm transition hover:border-green-300 hover:shadow">
+    <article
+      className={`rounded-2xl border p-4 shadow-sm transition hover:shadow ${
+        isDue
+          ? "border-red-200 bg-red-50/70 hover:border-red-300"
+          : "bg-white hover:border-green-300"
+      }`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">
             {payment.property.name || "-"} • {payment.unit.name || "-"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Invoice: {payment.invoice_id}</p>
+          <p className="mt-1 text-xs text-slate-500">Faktur: {payment.invoice_id}</p>
         </div>
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
-            statusBadgeMap[payment.status]
+            statusBadgeMap[displayStatus]
           }`}
         >
-          {statusIconMap[payment.status]}
-          {statusLabelMap[payment.status]}
+          {statusIconMap[displayStatus]}
+          {statusLabelMap[displayStatus]}
         </span>
       </div>
 
@@ -445,7 +515,11 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
       </p>
 
       <div className="mt-3 grid gap-2 text-xs text-slate-500">
-        <p className="inline-flex items-center gap-1">
+        <p
+          className={`inline-flex items-center gap-1 ${
+            isDue ? "font-medium text-red-700" : ""
+          }`}
+        >
           <CalendarClock size={12} />
           Jatuh tempo: {formatDate(payment.due_date)}
         </p>

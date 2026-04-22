@@ -35,6 +35,7 @@ import {
   type AdminUser,
   updateAdminProperty,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -55,13 +56,15 @@ const formatDate = (value?: string | null) => {
 
 const paymentLabelMap: Record<string, string> = {
   paid: "Lunas",
-  unpaid: "Belum Bayar",
+  unpaid: "Belum Dibayar",
 };
 
 const unitStatusLabelMap: Record<string, string> = {
   vacant: "Kosong",
   occupied: "Terisi",
   maintenance: "Perawatan",
+  cleaning: "Pembersihan",
+  renovation: "Renovasi",
 };
 
 const paymentBadgeClassMap: Record<string, string> = {
@@ -285,6 +288,26 @@ export default function DetailPropertiPage() {
     };
   }, [propertyId, refreshKey]);
 
+  const tenantStatusOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        tenantRows,
+        (tenant) => tenant.payment_status,
+        (value) => paymentLabelMap[value]
+      ),
+    [tenantRows]
+  );
+
+  const unitStatusOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        unitRows,
+        (unit) => unit.status,
+        (value) => unitStatusLabelMap[value]
+      ),
+    [unitRows]
+  );
+
   const tenantFiltered = useMemo(() => {
     return tenantRows.filter((tenant) => {
       return (
@@ -302,6 +325,18 @@ export default function DetailPropertiPage() {
       );
     });
   }, [unitRows, unitSearch, unitStatus]);
+
+  useEffect(() => {
+    if (!hasFilterOption(tenantStatusOptions, tenantStatus)) {
+      setTenantStatus("");
+    }
+  }, [tenantStatus, tenantStatusOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(unitStatusOptions, unitStatus)) {
+      setUnitStatus("");
+    }
+  }, [unitStatus, unitStatusOptions]);
 
   const maintenanceActiveCount = useMemo(() => {
     return maintenanceRows.filter(
@@ -579,7 +614,7 @@ export default function DetailPropertiPage() {
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Pencil size={16} />
-              {isUpdating ? "Menyimpan..." : "Edit Properti"}
+              {isUpdating ? "Menyimpan..." : "Ubah Properti"}
             </button>
 
             <button
@@ -668,15 +703,15 @@ export default function DetailPropertiPage() {
 
           {propertyDetail.stats.total_units === 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Properti ini belum tampil di tenant karena belum memiliki unit.
+              Properti ini belum tampil di sisi penyewa karena belum memiliki unit.
               Tambahkan minimal satu unit dengan status <span className="font-semibold">kosong</span>
-              {" "}agar properti masuk ke katalog tenant.
+              {" "}agar properti masuk ke katalog penyewa.
             </div>
           ) : propertyDetail.stats.vacant_units === 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Properti ini belum tampil di tenant karena semua unit sedang
+              Properti ini belum tampil di sisi penyewa karena semua unit sedang
               terisi atau perawatan. Ubah minimal satu unit ke status
-              <span className="font-semibold"> kosong</span> agar tampil di katalog tenant.
+              <span className="font-semibold"> kosong</span> agar tampil di katalog penyewa.
             </div>
           ) : null}
 
@@ -916,8 +951,11 @@ export default function DetailPropertiPage() {
                 className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
               >
                 <option value="">Semua Status Pembayaran</option>
-                <option value="paid">Lunas</option>
-                <option value="unpaid">Belum Bayar</option>
+                {tenantStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1094,9 +1132,11 @@ export default function DetailPropertiPage() {
                 className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
               >
                 <option value="">Semua Status</option>
-                <option value="occupied">Terisi</option>
-                <option value="vacant">Kosong</option>
-                <option value="maintenance">Perawatan</option>
+                {unitStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1232,7 +1272,7 @@ export default function DetailPropertiPage() {
         owners={modalOwners}
         onClose={() => setShowEditModal(false)}
         onSave={handleUpdateProperty}
-        title="Edit Properti"
+        title="Ubah Properti"
         submitLabel={isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
         initialValue={editInitialValue}
       />

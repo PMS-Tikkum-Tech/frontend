@@ -233,7 +233,7 @@ export default function JadwalVisitPage() {
         <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Jadwal Visit</h1>
+          <h1 className="text-3xl font-semibold">Jadwal Kunjungan</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Pantau semua jadwal kunjungan teknisi dari laporan perawatan unitmu
             dalam satu tampilan yang ringkas.
@@ -264,7 +264,7 @@ export default function JadwalVisitPage() {
                 ? `${nextVisit.property.name || "-"} • ${formatDate(
                     nextVisit.requested_date || nextVisit.repair_date
                   )}`
-                : "Belum ada jadwal visit mendatang"}
+                : "Belum ada jadwal kunjungan mendatang"}
             </p>
             <p className="mt-1 text-xs text-white/85">
               {nextVisit

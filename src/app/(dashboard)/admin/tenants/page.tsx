@@ -27,6 +27,7 @@ import {
   updateAdminUser,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -59,6 +60,11 @@ type Notice = {
 } | null;
 
 const PAGE_SIZE = 10;
+
+const statusLabelMap: Record<string, string> = {
+  active: "Aktif",
+  inactive: "Nonaktif",
+};
 
 const getInitialTenantForm = (): TenantFormState => ({
   fullName: "",
@@ -138,6 +144,16 @@ export default function AdminTenantsPage() {
     };
   }, [refreshKey]);
 
+  const statusFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        tenants,
+        (tenant) => tenant.account_status,
+        (value) => statusLabelMap[value]
+      ),
+    [tenants]
+  );
+
   const filtered = useMemo(() => {
     return tenants.filter((tenant) => {
       const searchable = `${tenant.full_name} ${tenant.email} ${
@@ -157,6 +173,12 @@ export default function AdminTenantsPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, status]);
+
+  useEffect(() => {
+    if (!hasFilterOption(statusFilterOptions, status)) {
+      setStatus("");
+    }
+  }, [status, statusFilterOptions]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -401,8 +423,11 @@ export default function AdminTenantsPage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
               <option value="">Semua Status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
+              {statusFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -416,7 +441,7 @@ export default function AdminTenantsPage() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
-            Reset
+            Atur Ulang
           </button>
         </div>
 
@@ -525,7 +550,7 @@ export default function AdminTenantsPage() {
                           type="button"
                           onClick={() => openEditModal(tenant)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Edit penyewa"
+                          title="Ubah penyewa"
                         >
                           <Pencil size={16} />
                         </button>
@@ -598,7 +623,7 @@ export default function AdminTenantsPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
-                {formMode === "create" ? "Tambah Penyewa" : "Edit Penyewa"}
+                {formMode === "create" ? "Tambah Penyewa" : "Ubah Penyewa"}
               </h2>
 
               <button

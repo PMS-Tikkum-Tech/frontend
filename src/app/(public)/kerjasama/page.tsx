@@ -28,23 +28,23 @@ const SERVICE_ITEMS: Array<{
   icon: ReactNode;
 }> = [
   {
-    title: "Pemasaran & Listing",
+    title: "Pemasaran & Daftar Hunian",
     desc: "Optimasi halaman properti agar lebih mudah ditemukan calon penyewa.",
     icon: <Megaphone size={17} />,
   },
   {
     title: "Seleksi Penyewa",
-    desc: "Proses screening awal untuk meningkatkan kualitas dan kecocokan penyewa.",
+    desc: "Proses penyaringan awal untuk meningkatkan kualitas dan kecocokan penyewa.",
     icon: <SearchCheck size={17} />,
   },
   {
     title: "Pengelolaan Pembayaran",
-    desc: "Monitoring tagihan, pengingat jatuh tempo, dan rekap pembayaran berkala.",
+    desc: "Pemantauan tagihan, pengingat jatuh tempo, dan rekap pembayaran berkala.",
     icon: <WalletCards size={17} />,
   },
   {
     title: "Perawatan Properti",
-    desc: "Koordinasi keluhan penghuni dan tindak lanjut maintenance lebih terstruktur.",
+    desc: "Koordinasi keluhan penghuni dan tindak lanjut perawatan lebih terstruktur.",
     icon: <Wrench size={17} />,
   },
   {
@@ -54,7 +54,7 @@ const SERVICE_ITEMS: Array<{
   },
   {
     title: "Dukungan Penghuni",
-    desc: "Pendampingan komunikasi tenant agar pengalaman tinggal tetap positif.",
+    desc: "Pendampingan komunikasi penyewa agar pengalaman tinggal tetap positif.",
     icon: <CircleUserRound size={17} />,
   },
 ];
@@ -72,10 +72,10 @@ const PARTNERSHIP_MODELS: Array<{
   {
     title: "Model Sewa Tetap",
     desc: "Pendapatan bulanan lebih stabil sesuai nilai sewa yang disepakati.",
-    fit: "Cocok untuk: pemilik yang mengutamakan cashflow konsisten.",
+    fit: "Cocok untuk: pemilik yang mengutamakan arus kas konsisten.",
   },
   {
-    title: "Model Hybrid",
+    title: "Model Campuran",
     desc: "Kombinasi komponen tetap dan variabel untuk fleksibilitas manajemen.",
     fit: "Cocok untuk: properti dengan segmen pasar yang dinamis.",
   },
@@ -103,7 +103,7 @@ const PARTNERSHIP_FOOTER_COLUMNS = [
   },
   {
     title: "Kontak",
-    items: ["WhatsApp Admin", "support@kyrastay.id", "Bogor, Jawa Barat"],
+    items: ["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"],
   },
 ];
 const rawWhatsappNumber =
@@ -113,7 +113,7 @@ const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`
   : normalizedWhatsappDigits;
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-  "Halo admin Kyra Stay, saya ingin konsultasi soal kerja sama properti."
+  "Halo administrator Kyra Stay, saya ingin konsultasi soal kerja sama properti."
 )}`;
 
 export default function KerjasamaPage() {
@@ -182,10 +182,10 @@ export default function KerjasamaPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#0F7A2A]/75 via-[#0F7A2A]/25 to-transparent" />
               <div className="absolute right-4 bottom-4 left-4 z-20 rounded-2xl border border-white/30 bg-white/10 p-4 backdrop-blur-sm">
                 <p className="text-sm font-semibold">
-                  Dashboard Operasional dan Finansial
+                  Dasbor Operasional dan Finansial
                 </p>
                 <p className="mt-1 text-xs text-white/85">
-                  Monitoring hunian, pembayaran, dan laporan performa dalam satu
+                  Pemantauan hunian, pembayaran, dan laporan kinerja dalam satu
                   panel.
                 </p>
               </div>
@@ -212,17 +212,17 @@ export default function KerjasamaPage() {
               30 Hari Pertama Kemitraan
             </p>
             <h2 className="mt-3 text-xl font-bold md:text-2xl">
-              Timeline Onboarding yang Jelas
+              Linimasa Orientasi yang Jelas
             </h2>
             <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
               <p className="rounded-xl bg-slate-50 px-3 py-2">
                 Minggu 1: Audit unit & evaluasi pasar
               </p>
               <p className="rounded-xl bg-slate-50 px-3 py-2">
-                Minggu 2: Penyiapan listing & aset konten
+                Minggu 2: Penyiapan daftar hunian & aset konten
               </p>
               <p className="rounded-xl bg-slate-50 px-3 py-2">
-                Minggu 3-4: Aktivasi listing & mulai akuisisi tenant
+                Minggu 3-4: Aktivasi daftar hunian & mulai akuisisi penyewa
               </p>
             </div>
           </div>
@@ -261,17 +261,17 @@ export default function KerjasamaPage() {
           <BenefitCard
             icon={<ChartSpline size={18} />}
             title="Okupansi Lebih Tinggi"
-            desc="Promosi digital tersegmentasi dan optimasi listing untuk mempercepat keterisian unit."
+            desc="Promosi digital tersegmentasi dan optimasi daftar hunian untuk mempercepat keterisian unit."
           />
           <BenefitCard
             icon={<ShieldCheck size={18} />}
             title="Operasional Lebih Terkontrol"
-            desc="Manajemen tenant, pembayaran, dan pemeliharaan berjalan dalam SOP yang jelas."
+            desc="Manajemen penyewa, pembayaran, dan pemeliharaan berjalan dalam SOP yang jelas."
           />
           <BenefitCard
             icon={<BadgeDollarSign size={18} />}
             title="Pendapatan Lebih Stabil"
-            desc="Penentuan harga berbasis data pasar untuk menjaga cashflow properti."
+            desc="Penentuan harga berbasis data pasar untuk menjaga arus kas properti."
           />
         </div>
       </section>
@@ -289,7 +289,7 @@ export default function KerjasamaPage() {
             </div>
             <p className="max-w-xl text-sm text-slate-600">
               Seluruh proses inti dikelola dalam satu alur, sehingga keputusan
-              bisnis lebih cepat dan kualitas layanan tenant tetap terjaga.
+              bisnis lebih cepat dan kualitas layanan penyewa tetap terjaga.
             </p>
           </div>
 
@@ -342,7 +342,7 @@ export default function KerjasamaPage() {
             <StepCard
               number="4"
               title="Aktivasi Operasional"
-              desc="Listing dipublikasikan dan operasional mulai berjalan."
+              desc="Daftar hunian dipublikasikan dan operasional mulai berjalan."
             />
           </div>
         </div>
@@ -381,7 +381,7 @@ export default function KerjasamaPage() {
               icon={<Users size={16} />}
               title="Manajemen Penyewa"
               before="Manual dan tersebar"
-              after="Terpusat dalam dashboard"
+              after="Terpusat dalam dasbor"
             />
             <CompareRow
               icon={<ClipboardCheck size={16} />}
@@ -530,7 +530,7 @@ export default function KerjasamaPage() {
                 />
               </div>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-green-50/95">
-                Program kemitraan properti dengan proses onboarding terstruktur
+                Program kemitraan properti dengan proses orientasi terstruktur
                 dan pendampingan operasional dari tim Kyra Stay.
               </p>
               <p className="mt-4 text-sm text-green-100">

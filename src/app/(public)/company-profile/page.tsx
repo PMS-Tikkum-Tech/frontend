@@ -15,16 +15,16 @@ import RevealOnScroll from "@/components/ui/RevealOnScroll";
 
 const COMPANY_HIGHLIGHTS = [
   { label: "Perusahaan", value: "Kinara Land" },
-  { label: "Brand Operasional", value: "Kyra Stay" },
+  { label: "Merek Operasional", value: "Kyra Stay" },
   { label: "Fokus", value: "Hunian Mahasiswa & Properti Produktif" },
-  { label: "Model", value: "Develop, Operate, Grow" },
+  { label: "Model", value: "Kembangkan, Kelola, Tumbuhkan" },
 ];
 
 const BUSINESS_PILLARS: Array<{ icon: ReactNode; title: string; desc: string }> = [
   {
     icon: <Building2 size={18} />,
     title: "Pengembangan Properti",
-    desc: "Merancang aset hunian yang relevan dengan demand nyata di sekitar kampus.",
+    desc: "Merancang aset hunian yang relevan dengan permintaan nyata di sekitar kampus.",
   },
   {
     icon: <Layers3 size={18} />,
@@ -34,7 +34,7 @@ const BUSINESS_PILLARS: Array<{ icon: ReactNode; title: string; desc: string }> 
   {
     icon: <ChartLine size={18} />,
     title: "Optimasi Kinerja Aset",
-    desc: "Mengelola okupansi, pricing, dan performa unit secara terukur.",
+    desc: "Mengelola okupansi, harga, dan kinerja unit secara terukur.",
   },
   {
     icon: <Handshake size={18} />,
@@ -61,7 +61,7 @@ const PORTFOLIO_ITEMS = [
     name: "Kinara Manunggal",
     location: "Bogor Barat",
     image: "/bg.jpg",
-    desc: "Aset hunian produktif dengan demand stabil sepanjang kalender akademik.",
+    desc: "Aset hunian produktif dengan permintaan stabil sepanjang kalender akademik.",
   },
   {
     name: "Kinara Kost Cifor",
@@ -72,10 +72,10 @@ const PORTFOLIO_ITEMS = [
 ];
 
 const GOVERNANCE_FLOW = [
-  "Akuisisi dan kurasi aset berdasarkan lokasi dan demand pasar",
+  "Akuisisi dan kurasi aset berdasarkan lokasi dan permintaan pasar",
   "Standarisasi unit, fasilitas, dan SOP layanan penghuni",
-  "Operasional harian melalui brand Kyra Stay",
-  "Evaluasi berkala untuk peningkatan nilai aset dan pengalaman tenant",
+  "Operasional harian melalui merek Kyra Stay",
+  "Evaluasi berkala untuk peningkatan nilai aset dan pengalaman penyewa",
 ];
 
 export default function CompanyProfilePage() {
@@ -84,7 +84,7 @@ export default function CompanyProfilePage() {
       <section className="relative overflow-hidden bg-[#1E293B] text-white">
         <Image
           src="/bg.jpg"
-          alt="Company Profile Kinara Land"
+          alt="Profil Perusahaan Kinara Land"
           fill
           priority
           className="object-cover opacity-25"
@@ -107,7 +107,7 @@ export default function CompanyProfilePage() {
             </h1>
             <p className="mt-4 max-w-2xl text-sm text-white/85 md:text-base">
               Kinara Land berperan sebagai perusahaan pengembangan dan pengelolaan
-              properti yang menaungi Kyra Stay sebagai brand operasional hunian
+              properti yang menaungi Kyra Stay sebagai merek operasional hunian
               mahasiswa. Fokus kami adalah membangun aset produktif dengan model
               operasional yang konsisten dan terukur.
             </p>

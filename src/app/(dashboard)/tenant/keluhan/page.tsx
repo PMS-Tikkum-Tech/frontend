@@ -217,7 +217,7 @@ export default function ComplaintPage() {
       <section className="rounded-2xl border bg-white p-5 shadow-sm md:p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Nama Tenant">
+            <Field label="Nama Penyewa">
               <input
                 type="text"
                 value={user?.name || "-"}
@@ -324,7 +324,7 @@ export default function ComplaintPage() {
               className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
               disabled={isSubmitting}
             >
-              Reset Form
+              Atur Ulang Formulir
             </button>
             <button
               type="submit"

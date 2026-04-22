@@ -224,7 +224,7 @@ export default function ProfilePanel({
 
                 <MenuItem
                   icon={<CalendarCheck size={20} />}
-                  title="Jadwal Visit"
+                  title="Jadwal Kunjungan"
                   subtitle="Daftar kunjungan yang sudah dijadwalkan"
                   href="/tenant/jadwal-visit"
                   onClose={onClose}
@@ -241,7 +241,7 @@ export default function ProfilePanel({
                 <MenuItem
                   icon={<Bell size={20} />}
                   title="Notifikasi"
-                  subtitle="Update status & info penting"
+                  subtitle="Pembaruan status & info penting"
                   href="/tenant/notifikasi"
                   onClose={onClose}
                   showIndicator={hasUnreadNotifications}
@@ -280,7 +280,7 @@ export default function ProfilePanel({
                 <MenuItem
                   icon={<MessageCircle size={20} />}
                   title="Pusat Bantuan"
-                  subtitle="Chat admin via WhatsApp"
+                  subtitle="Hubungi administrator melalui WhatsApp"
                   href="/tenant/bantuan"
                   onClose={onClose}
                 />

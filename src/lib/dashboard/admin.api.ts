@@ -178,7 +178,7 @@ export interface AdminUser {
   emergency_contact_number?: string | null;
   relationship?: string | null;
   nik?: string | null;
-  role: "admin" | "owner" | "tenant";
+  role: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status: "active" | "inactive";
   profile_picture_url?: string | null;
   created_at?: string | null;
@@ -187,14 +187,14 @@ export interface AdminUser {
 
 export interface AdminUserCreatePayload {
   full_name: string;
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   phone_number?: string;
   emergency_contact_name?: string;
   emergency_contact_number?: string;
   relationship?: string;
   nik?: string;
-  role?: "admin" | "owner" | "tenant";
+  role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status?: "active" | "inactive";
 }
 
@@ -207,7 +207,7 @@ export interface AdminUserUpdatePayload {
   emergency_contact_number?: string;
   relationship?: string;
   nik?: string;
-  role?: "admin" | "owner" | "tenant";
+  role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status?: "active" | "inactive";
 }
 

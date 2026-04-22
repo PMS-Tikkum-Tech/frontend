@@ -44,6 +44,15 @@ const ACCEPTED_FILE_TYPES = [
   "image/jpg",
   "image/png",
 ];
+const DAYS_IN_MONTH_FOR_DAILY_RATE = 30;
+
+const RENT_DURATION_OPTIONS = [
+  { value: "daily", label: "1 Hari" },
+  { value: "6", label: "6 bulan" },
+  { value: "12", label: "12 bulan" },
+] as const;
+
+type RentDurationValue = (typeof RENT_DURATION_OPTIONS)[number]["value"];
 
 const PAYMENT_METHODS = [
   {
@@ -80,7 +89,7 @@ type PaymentMethodValue = (typeof PAYMENT_METHODS)[number]["value"];
 
 const formatCurrency = (value?: number | null) => {
   if (!value || value <= 0) {
-    return "Hubungi admin";
+    return "Hubungi administrator";
   }
 
   return `Rp ${CURRENCY_FORMATTER.format(value)}`;
@@ -230,7 +239,7 @@ function TenantCreatePaymentPageContent() {
   const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
-  const [durationMonths, setDurationMonths] = useState(6);
+  const [rentDuration, setRentDuration] = useState<RentDurationValue>("6");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>(
     PAYMENT_METHODS[0].value
   );
@@ -253,14 +262,28 @@ function TenantCreatePaymentPageContent() {
   const monthlyPrice = useMemo(() => {
     return resolveMonthlyPrice(property, unit);
   }, [property, unit]);
+  const isDailyRent = rentDuration === "daily";
+  const durationMonths = isDailyRent ? 1 : Number(rentDuration);
+  const dailyPrice = useMemo(() => {
+    if (!monthlyPrice || monthlyPrice <= 0) {
+      return 0;
+    }
+
+    return Math.ceil(monthlyPrice / DAYS_IN_MONTH_FOR_DAILY_RATE);
+  }, [monthlyPrice]);
+  const displayedBasePrice = isDailyRent ? dailyPrice : monthlyPrice;
 
   const estimatedTotal = useMemo(() => {
+    if (isDailyRent) {
+      return dailyPrice;
+    }
+
     if (!monthlyPrice || durationMonths <= 0) {
       return 0;
     }
 
     return monthlyPrice * durationMonths;
-  }, [durationMonths, monthlyPrice]);
+  }, [dailyPrice, durationMonths, isDailyRent, monthlyPrice]);
 
   const estimatedEndDate = useMemo(() => {
     if (!checkInDate) {
@@ -272,12 +295,16 @@ function TenantCreatePaymentPageContent() {
       return "-";
     }
 
+    if (isDailyRent) {
+      return formatDate(parsed.toISOString());
+    }
+
     const endDate = new Date(parsed);
     endDate.setMonth(endDate.getMonth() + durationMonths);
     endDate.setDate(endDate.getDate() - 1);
 
     return formatDate(endDate.toISOString());
-  }, [checkInDate, durationMonths]);
+  }, [checkInDate, durationMonths, isDailyRent]);
 
   useEffect(() => {
     let active = true;
@@ -340,7 +367,7 @@ function TenantCreatePaymentPageContent() {
         setLoadingError(
           getApiErrorMessage(
             error,
-            "Gagal memuat data checkout. Silakan coba beberapa saat lagi."
+            "Gagal memuat data pembayaran. Silakan coba beberapa saat lagi."
           )
         );
       } finally {
@@ -403,7 +430,7 @@ function TenantCreatePaymentPageContent() {
     }
 
     if (!transferProof) {
-      setSubmitError("Upload bukti transfer terlebih dahulu.");
+      setSubmitError("Unggah bukti transfer terlebih dahulu.");
       return;
     }
 
@@ -419,6 +446,7 @@ function TenantCreatePaymentPageContent() {
         unit_id: unit.id,
         check_in_date: checkInDate,
         duration_months: durationMonths,
+        duration_type: isDailyRent ? "daily" : "monthly",
         payment_method: paymentMethod,
         note: senderSource.trim(),
         terms_accepted: termsAccepted,
@@ -459,7 +487,7 @@ function TenantCreatePaymentPageContent() {
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
         <p className="inline-flex items-center gap-2 text-sm font-semibold text-red-700">
           <CircleAlert size={16} />
-          Data checkout belum siap
+          Data pembayaran belum siap
         </p>
         <p className="mt-2 text-sm text-red-700">
           {loadingError || "Unit tidak dapat diproses saat ini."}
@@ -499,10 +527,10 @@ function TenantCreatePaymentPageContent() {
             <ArrowLeft size={13} />
             Kembali ke Detail Properti
           </Link>
-          <h1 className="mt-4 text-3xl font-semibold">Checkout Pembayaran Sewa</h1>
+          <h1 className="mt-4 text-3xl font-semibold">Pembayaran Sewa</h1>
           <p className="mt-2 max-w-3xl text-sm text-white/90">
-            Lengkapi informasi sewa, pilih kanal pembayaran, lalu upload bukti
-            transfer untuk diteruskan ke admin.
+            Lengkapi informasi sewa, pilih kanal pembayaran, lalu unggah bukti
+            transfer untuk diteruskan ke administrator.
           </p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -511,7 +539,7 @@ function TenantCreatePaymentPageContent() {
               label="1. Detail Informasi Sewa"
             />
             <StepBadge icon={<CreditCard size={15} />} label="2. Pilih Metode Bayar" />
-            <StepBadge icon={<FileUp size={15} />} label="3. Upload Bukti Transfer" />
+            <StepBadge icon={<FileUp size={15} />} label="3. Unggah Bukti Transfer" />
           </div>
         </div>
       </section>
@@ -523,12 +551,12 @@ function TenantCreatePaymentPageContent() {
             Pengajuan pembayaran berhasil dikirim
           </p>
           <p className="mt-2 text-sm text-emerald-800">
-            Kode booking: <span className="font-semibold">{successData.invoiceId}</span>
+            Kode pemesanan: <span className="font-semibold">{successData.invoiceId}</span>
           </p>
           <p className="mt-1 text-sm text-emerald-800">
             Status saat ini:{" "}
             <span className="font-semibold">
-              {successData.status === "waiting" ? "Menunggu Review Admin" : successData.status}
+              {successData.status === "waiting" ? "Menunggu Peninjauan Administrator" : successData.status}
             </span>
           </p>
           <p className="mt-1 text-sm text-emerald-800">
@@ -574,18 +602,17 @@ function TenantCreatePaymentPageContent() {
               <LabelField label="Durasi Sewa">
                 <div className="relative">
                   <select
-                    value={durationMonths}
-                    onChange={(event) => setDurationMonths(Number(event.target.value))}
+                    value={rentDuration}
+                    onChange={(event) =>
+                      setRentDuration(event.target.value as RentDurationValue)
+                    }
                     className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-10 text-sm text-slate-700 outline-none transition focus:border-blue-400"
                   >
-                    {Array.from({ length: 12 }).map((_, index) => {
-                      const month = index + 1;
-                      return (
-                        <option key={month} value={month}>
-                          {month} bulan
-                        </option>
-                      );
-                    })}
+                    {RENT_DURATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown
                     size={16}
@@ -656,7 +683,7 @@ function TenantCreatePaymentPageContent() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">
-              Upload Bukti Transfer
+              Unggah Bukti Transfer
             </h2>
             <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-blue-300 hover:bg-blue-50">
               <FileUp size={20} className="text-blue-700" />
@@ -690,8 +717,8 @@ function TenantCreatePaymentPageContent() {
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span>
-                  Saya menyetujui syarat dan ketentuan sewa, data booking, serta
-                  proses verifikasi pembayaran oleh admin.
+                  Saya menyetujui syarat dan ketentuan sewa, data pemesanan, serta
+                  proses verifikasi pembayaran oleh administrator.
                 </span>
               </label>
             </div>
@@ -715,7 +742,7 @@ function TenantCreatePaymentPageContent() {
             </div>
 
             <div className="space-y-3 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Ringkasan Booking</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Ringkasan Pemesanan</h3>
 
               <SummaryRow
                 icon={<Building2 size={14} />}
@@ -724,13 +751,13 @@ function TenantCreatePaymentPageContent() {
               />
               <SummaryRow
                 icon={<ReceiptText size={14} />}
-                label="Harga per bulan"
-                value={formatCurrency(monthlyPrice)}
+                label={isDailyRent ? "Tarif Harian" : "Harga per bulan"}
+                value={formatCurrency(displayedBasePrice)}
               />
               <SummaryRow
                 icon={<CalendarClock size={14} />}
                 label="Durasi"
-                value={`${durationMonths} bulan`}
+                value={isDailyRent ? "1 Hari" : `${durationMonths} bulan`}
               />
               <SummaryRow
                 icon={<Clock3 size={14} />}
@@ -747,7 +774,7 @@ function TenantCreatePaymentPageContent() {
 
               <p className="inline-flex items-start gap-1.5 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 <ShieldCheck size={13} className="mt-0.5" />
-                Data pembayaran akan masuk ke dashboard admin untuk proses review.
+                Pembayaran akan masuk ke admin untuk proses peninjauan.
               </p>
 
               {submitError ? (

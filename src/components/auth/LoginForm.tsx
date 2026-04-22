@@ -115,11 +115,11 @@ const GoogleLogo = () => (
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return "Tidak bisa terhubung ke API Kyra Stay. Pastikan backend aktif dan NEXT_PUBLIC_API_URL sudah benar.";
+      return "Tidak bisa terhubung ke layanan KIKOST. Pastikan sistem aktif dan NEXT_PUBLIC_API_URL sudah benar.";
     }
 
     if (error.response?.status === 404) {
-      return "Endpoint login tidak ditemukan. Cek konfigurasi NEXT_PUBLIC_API_URL.";
+      return "Layanan masuk tidak ditemukan. Periksa konfigurasi NEXT_PUBLIC_API_URL.";
     }
 
     const payload = error.response?.data as
@@ -128,11 +128,11 @@ const getErrorMessage = (error: unknown) => {
     return (
       payload?.errors?.[0] ??
       payload?.message ??
-      "Login gagal. Silakan coba lagi."
+      "Masuk gagal. Silakan coba lagi."
     );
   }
 
-  return "Terjadi kesalahan saat login.";
+  return "Terjadi kesalahan saat masuk.";
 };
 
 const getGooglePayload = (error: unknown) => {
@@ -159,7 +159,7 @@ const getGooglePhoneVerificationData = (error: unknown) => {
 const getGoogleErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return "Tidak bisa terhubung ke API Kyra Stay. Pastikan backend aktif dan NEXT_PUBLIC_API_URL sudah benar.";
+      return "Tidak bisa terhubung ke layanan KIKOST. Pastikan sistem aktif dan NEXT_PUBLIC_API_URL sudah benar.";
     }
 
     const payload = error.response?.data as
@@ -174,19 +174,19 @@ const getGoogleErrorMessage = (error: unknown) => {
       payload?.message === "Phone verification required" ||
       payload?.data?.requires_phone_verification
     ) {
-      return "Akun Google ini membutuhkan verifikasi nomor HP. Silakan daftar manual dulu (OTP WhatsApp), lalu login kembali.";
+      return "Akun Google ini membutuhkan verifikasi nomor HP. Silakan daftar manual terlebih dahulu (OTP WhatsApp), lalu masuk kembali.";
     }
 
     if (
       payload?.errors?.some((item) => item.includes("GOOGLE_OAUTH_CLIENT_IDS"))
     ) {
-      return "Login Google belum aktif di server. Hubungi admin sistem.";
+      return "Masuk dengan Google belum aktif di layanan. Hubungi administrator sistem.";
     }
 
     return (
       payload?.errors?.[0] ??
       payload?.message ??
-      "Login dengan Google gagal. Silakan coba lagi."
+      "Masuk dengan Google gagal. Silakan coba lagi."
     );
   }
 
@@ -194,7 +194,7 @@ const getGoogleErrorMessage = (error: unknown) => {
     return error.message;
   }
 
-  return "Login dengan Google gagal. Silakan coba lagi.";
+  return "Masuk dengan Google gagal. Silakan coba lagi.";
 };
 
 export default function LoginForm() {
@@ -280,7 +280,7 @@ export default function LoginForm() {
       setGoogleError(null);
 
       if (!response.credential) {
-        setGoogleError("Token Google tidak ditemukan. Coba ulangi proses login.");
+        setGoogleError("Token Google tidak ditemukan. Coba ulangi proses masuk.");
         return;
       }
 
@@ -306,7 +306,7 @@ export default function LoginForm() {
             debugCode: null,
           });
           setGoogleInfoMessage(
-            "Nomor HP diperlukan untuk menyelesaikan login tenant via Google."
+            "Nomor HP diperlukan untuk menyelesaikan proses masuk penyewa melalui Google."
           );
           return;
         }
@@ -629,7 +629,7 @@ export default function LoginForm() {
 
       {isGoogleSubmitting && (
         <p className="text-center text-xs text-slate-500">
-          Memproses login Google...
+          Memproses masuk Google...
         </p>
       )}
 
@@ -640,9 +640,9 @@ export default function LoginForm() {
               Lengkapi verifikasi nomor HP
             </p>
             <p className="mt-1 text-xs text-sky-800">
-              Backend hanya menerima data Google dasar. Masukkan nomor HP untuk
-              OTP WhatsApp, lalu login Google akan diselesaikan ke endpoint
-              backend yang sama.
+              Sistem hanya menerima data Google dasar. Masukkan nomor HP untuk
+              OTP WhatsApp, lalu proses masuk Google akan diselesaikan ke layanan
+              sistem yang sama.
             </p>
             {pendingGoogleVerification.fullName && (
               <p className="mt-2 text-xs text-sky-700">
@@ -668,7 +668,7 @@ export default function LoginForm() {
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-100"
             />
             <p className="mt-1 text-[11px] text-sky-700">
-              Nomor HP tenant akan diverifikasi dengan OTP WhatsApp.
+              Nomor HP penyewa akan diverifikasi dengan OTP WhatsApp.
             </p>
           </div>
 
@@ -721,7 +721,7 @@ export default function LoginForm() {
                   disabled={isGoogleOtpBusy}
                   className="text-slate-600 transition hover:text-slate-900 disabled:opacity-50"
                 >
-                  Batalkan login Google
+                  Batalkan masuk Google
                 </button>
               </div>
             </div>
@@ -765,7 +765,7 @@ export default function LoginForm() {
                   disabled={isGoogleOtpBusy}
                   className="text-slate-600 transition hover:text-slate-900 disabled:opacity-50"
                 >
-                  Batalkan login Google
+                  Batalkan masuk Google
                 </button>
               </div>
             </>

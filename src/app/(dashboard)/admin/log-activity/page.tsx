@@ -18,6 +18,7 @@ import {
   getApiErrorMessage,
   type AdminLogActivity,
 } from "@/lib/dashboard/admin.api";
+import { formatFilterLabel, uniqueFilterOptions } from "@/lib/filter-options";
 import type { ApiPaginationMeta } from "@/types/api";
 
 type SortValue = "newest" | "oldest";
@@ -55,7 +56,7 @@ const moduleLabelMap: Record<string, string> = {
   Auth: "Autentikasi",
   Communication: "Komunikasi",
   Financial: "Keuangan",
-  LogActivity: "Log Aktivitas",
+  LogActivity: "Catatan Aktivitas",
   Maintenance: "Perawatan",
   Payment: "Tagihan & Pembayaran",
   Property: "Properti",
@@ -190,7 +191,7 @@ export default function AdminLogActivityPage() {
         setError(
           getApiErrorMessage(
             loadError,
-            "Log aktivitas gagal dimuat. Silakan coba lagi."
+            "Catatan aktivitas gagal dimuat. Silakan coba lagi."
           )
         );
         setLogs([]);
@@ -293,6 +294,37 @@ export default function AdminLogActivityPage() {
     setCurrentPage(1);
   };
 
+  const actionFilterOptions = useMemo(() => {
+    const options = uniqueFilterOptions(
+      logs,
+      (item) => item.action,
+      (value) => actionLabelMap[value]
+    );
+
+    if (action && !options.some((option) => option.value === action)) {
+      return [
+        { value: action, label: actionLabelMap[action] || formatFilterLabel(action) },
+        ...options,
+      ];
+    }
+
+    return options;
+  }, [action, logs]);
+
+  const moduleFilterOptions = useMemo(() => {
+    const options = uniqueFilterOptions(
+      logs,
+      (item) => item.module_name,
+      (value) => toModuleLabel(value)
+    );
+
+    if (moduleName && !options.some((option) => option.value === moduleName)) {
+      return [{ value: moduleName, label: toModuleLabel(moduleName) }, ...options];
+    }
+
+    return options;
+  }, [logs, moduleName]);
+
   const summary = useMemo(() => {
     const createCount = logs.filter((item) => item.action === "create").length;
     const updateCount = logs.filter((item) => item.action === "update").length;
@@ -317,9 +349,9 @@ export default function AdminLogActivityPage() {
       <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-5 text-white shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Log Aktivitas</h1>
+            <h1 className="text-2xl font-semibold">Catatan Aktivitas</h1>
             <p className="text-sm text-blue-100">
-              Pantau jejak perubahan seluruh modul admin secara real-time.
+              Pantau jejak perubahan seluruh modul administrator secara langsung.
             </p>
           </div>
 
@@ -339,7 +371,7 @@ export default function AdminLogActivityPage() {
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          title="Total Log"
+          title="Total Catatan"
           value={summary.total}
           caption="Sesuai filter yang aktif"
         />
@@ -376,7 +408,7 @@ export default function AdminLogActivityPage() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
-              placeholder="Cari aktivitas, admin, atau modul"
+              placeholder="Cari aktivitas, administrator, atau modul"
               value={search}
               onChange={(event) =>
                 handleFilterChange(() => setSearch(event.target.value))
@@ -393,9 +425,11 @@ export default function AdminLogActivityPage() {
             className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
           >
             <option value="">Semua Aksi</option>
-            <option value="create">Buat</option>
-            <option value="update">Perbarui</option>
-            <option value="delete">Hapus</option>
+            {actionFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -406,14 +440,11 @@ export default function AdminLogActivityPage() {
             className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
           >
             <option value="">Semua Modul</option>
-            <option value="Auth">Autentikasi</option>
-            <option value="User">Akun Pengguna</option>
-            <option value="Property">Properti</option>
-            <option value="Unit">Unit</option>
-            <option value="Maintenance">Perawatan</option>
-            <option value="Payment">Tagihan & Pembayaran</option>
-            <option value="Financial">Keuangan</option>
-            <option value="Communication">Komunikasi</option>
+            {moduleFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -460,7 +491,7 @@ export default function AdminLogActivityPage() {
             onClick={clearFilters}
             className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Reset
+            Atur Ulang
           </button>
 
           <button
@@ -498,7 +529,7 @@ export default function AdminLogActivityPage() {
             <thead className="bg-slate-50 text-slate-700">
               <tr>
                 <th className="p-4 text-left font-semibold">Waktu</th>
-                <th className="p-4 text-left font-semibold">Nama Admin</th>
+                <th className="p-4 text-left font-semibold">Nama Administrator</th>
                 <th className="p-4 text-left font-semibold">Modul</th>
                 <th className="p-4 text-left font-semibold">Deskripsi</th>
                 <th className="p-4 text-left font-semibold">Aksi</th>
@@ -510,13 +541,13 @@ export default function AdminLogActivityPage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-slate-500">
-                    Memuat log aktivitas...
+                    Memuat catatan aktivitas...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-slate-500">
-                    Tidak ada log aktivitas.
+                    Tidak ada catatan aktivitas.
                   </td>
                 </tr>
               ) : (
@@ -563,7 +594,7 @@ export default function AdminLogActivityPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
           <p>
             Menampilkan {pagination.showingFrom}-{pagination.showingTo} dari{" "}
-            {pagination.totalCount} log
+            {pagination.totalCount} catatan
           </p>
 
           <div className="flex items-center gap-2">
@@ -601,7 +632,7 @@ export default function AdminLogActivityPage() {
           <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
-                Detail Log Aktivitas
+                Detail Catatan Aktivitas
               </h2>
 
               <button
@@ -639,7 +670,7 @@ export default function AdminLogActivityPage() {
                 label="Waktu"
                 value={formatTimestamp(viewLog.created_at || viewLog.timestamp)}
               />
-              <DetailRow label="Admin" value={viewLog.admin_name || "-"} />
+              <DetailRow label="Administrator" value={viewLog.admin_name || "-"} />
               <DetailRow label="Modul" value={toModuleLabel(viewLog.module_name)} />
               <DetailRow
                 label="Aksi"

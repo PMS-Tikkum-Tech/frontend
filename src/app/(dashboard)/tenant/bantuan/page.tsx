@@ -18,7 +18,7 @@ const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`
   : normalizedWhatsappDigits;
 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-  "Halo admin Kyra Stay, saya butuh bantuan terkait akun/penyewaan saya."
+  "Halo administrator Kyra Stay, saya butuh bantuan terkait akun/penyewaan saya."
 )}`;
 
 export default function TenantBantuanPage() {
@@ -46,7 +46,7 @@ export default function TenantBantuanPage() {
         >
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-green-700">
             <MessageCircleMore size={16} />
-            WhatsApp Admin
+            WhatsApp Administrator
           </p>
           <p className="mt-2 text-sm text-slate-700">
             Kanal tercepat untuk pertanyaan umum, kendala akun, dan kebutuhan
@@ -81,7 +81,7 @@ export default function TenantBantuanPage() {
           <GuideCard
             icon={<ClipboardList size={16} />}
             title="Status Perawatan"
-            desc="Pantau progres teknisi di menu Perawatan dan Jadwal Visit."
+            desc="Pantau progres teknisi di menu Perawatan dan Jadwal Kunjungan."
           />
           <GuideCard
             icon={<CreditCard size={16} />}

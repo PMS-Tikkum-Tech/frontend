@@ -149,7 +149,7 @@ export default function PublicHeader() {
                   href={dashboardHref}
                   className="hidden sm:inline-flex rounded-full bg-sky-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-sky-700 md:px-4 md:text-sm"
                 >
-                  Masuk Dashboard
+                  Masuk Dasbor
                 </Link>
               ) : null}
               {user.role === "tenant" ? (
@@ -276,7 +276,7 @@ export default function PublicHeader() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="inline-flex w-full justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white"
               >
-                Masuk Dashboard
+                Masuk Dasbor
               </Link>
             ) : null}
           </div>

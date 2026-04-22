@@ -33,7 +33,7 @@ const CORE_VALUES: Array<{ icon: ReactNode; title: string; desc: string }> = [
   {
     icon: <Wifi size={18} />,
     title: "Fasilitas Siap Pakai",
-    desc: "Akses internet stabil, area tinggal nyaman, dan dukungan maintenance terjadwal.",
+    desc: "Akses internet stabil, area tinggal nyaman, dan dukungan perawatan terjadwal.",
   },
   {
     icon: <LineChart size={18} />,
@@ -72,7 +72,7 @@ const QUALITY_FLOW: Array<{ title: string; desc: string }> = [
   },
   {
     title: "Standarisasi Layanan",
-    desc: "Proses onboarding penghuni, pembayaran, dan dukungan harian disusun terstruktur.",
+    desc: "Proses orientasi penghuni, pembayaran, dan dukungan harian disusun terstruktur.",
   },
   {
     title: "Pemantauan Berkala",
@@ -80,7 +80,7 @@ const QUALITY_FLOW: Array<{ title: string; desc: string }> = [
   },
   {
     title: "Perbaikan Berkelanjutan",
-    desc: "Masukan tenant dan pemilik diterjemahkan menjadi peningkatan kualitas layanan.",
+    desc: "Masukan penyewa dan pemilik diterjemahkan menjadi peningkatan kualitas layanan.",
   },
 ];
 
@@ -112,11 +112,11 @@ const ABOUT_FOOTER_COLUMNS = [
   },
   {
     title: "Layanan",
-    items: ["Pencarian Kost", "Jadwal Visit", "Favorit", "Pusat Bantuan"],
+    items: ["Pencarian Kost", "Jadwal Kunjungan", "Favorit", "Pusat Bantuan"],
   },
   {
     title: "Kontak",
-    items: ["WhatsApp Admin", "support@kyrastay.id", "Bogor, Jawa Barat"],
+    items: ["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"],
   },
 ];
 
@@ -202,7 +202,7 @@ export default function TentangPage() {
       <section className="relative z-20 mx-auto mt-6 max-w-6xl px-6">
         <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60 md:grid-cols-4">
           <StatCard value="120+" label="Properti Aktif" />
-          <StatCard value="10.000+" label="Tenant Aktif" />
+          <StatCard value="10.000+" label="Penyewa Aktif" />
           <StatCard value="95%" label="Rata-rata Okupansi" />
           <StatCard value="15+" label="Area Terjangkau" />
         </div>
@@ -212,7 +212,7 @@ export default function TentangPage() {
         <div className="grid gap-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B3D91]">
-              Company Profile
+              Profil Perusahaan
             </p>
             <h2 className="mt-2 text-2xl font-bold md:text-3xl">
               Profil Perusahaan Kyra Stay
@@ -241,10 +241,10 @@ export default function TentangPage() {
               Cakupan Peran Perusahaan
             </p>
             <ul className="mt-3 space-y-2 text-sm text-slate-600">
-              <li>Kurasi properti berdasarkan lokasi, fasilitas, dan demand pasar.</li>
-              <li>Pengelolaan operasional tenant dari onboarding hingga maintenance.</li>
+              <li>Kurasi properti berdasarkan lokasi, fasilitas, dan permintaan pasar.</li>
+              <li>Pengelolaan operasional penyewa dari orientasi hingga perawatan.</li>
               <li>Pelaporan performa properti untuk pemilik secara berkala.</li>
-              <li>Pengembangan layanan berkelanjutan berbasis feedback penghuni.</li>
+              <li>Pengembangan layanan berkelanjutan berbasis umpan balik penghuni.</li>
             </ul>
           </div>
         </div>
@@ -409,7 +409,7 @@ export default function TentangPage() {
             </h2>
           </div>
           <p className="max-w-xl text-sm text-slate-600">
-            Masukan tenant menjadi acuan utama kami dalam meningkatkan kualitas
+            Masukan penyewa menjadi acuan utama kami dalam meningkatkan kualitas
             layanan secara berkelanjutan.
           </p>
         </div>

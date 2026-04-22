@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kyra Stay PMS",
-  description: "Property Management System - Kyra Stay",
+  title: "KIKOST",
+  description: "Sistem Manajemen Properti - KIKOST",
 };
 
 export default function AuthLayout({

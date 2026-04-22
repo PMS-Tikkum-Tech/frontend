@@ -75,7 +75,7 @@ const SewaLocationsMap = dynamic(
 
 const formatCurrency = (value?: number) => {
   if (!value || value <= 0) {
-    return "Hubungi admin";
+    return "Hubungi administrator";
   }
 
   return `Rp ${CURRENCY_FORMATTER.format(value)}`;
@@ -780,11 +780,11 @@ export default function SewaPage() {
             Rekomendasi Hunian Mahasiswa IPB
           </p>
           <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight">
-            Temukan Kost yang Nyaman, Aman, dan Sesuai Budget Kamu
+            Temukan Kost yang Nyaman, Aman, dan Sesuai Anggaran Kamu
           </h1>
           <p className="mt-3 max-w-3xl text-sm text-white/90">
             Jelajahi pilihan hunian dengan fasilitas lengkap, lokasi strategis,
-            dan proses booking yang praktis.
+            dan proses pemesanan yang praktis.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -1070,7 +1070,7 @@ export default function SewaPage() {
             </h3>
             <p className="mt-1 text-sm text-slate-600">
               {showCatalogLoginNotice
-                ? "Backend yang digunakan saat ini hanya menampilkan katalog properti setelah pengguna masuk."
+                ? "Sistem yang digunakan saat ini hanya menampilkan katalog properti setelah pengguna masuk."
                 : "Ubah kata kunci pencarian atau tipe hunian untuk hasil yang lebih luas."}
             </p>
             {showCatalogLoginNotice ? (
@@ -1091,7 +1091,7 @@ export default function SewaPage() {
                 }}
                 className="mt-4 inline-flex h-10 items-center rounded-xl bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700"
               >
-                Reset Filter
+                Atur Ulang Filter
               </button>
             )}
           </div>
@@ -1131,7 +1131,7 @@ export default function SewaPage() {
                 </h3>
               </div>
               <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700">
-                Update realtime
+                Pembaruan langsung
               </span>
             </div>
 
@@ -1178,7 +1178,7 @@ export default function SewaPage() {
               Siap Lanjut Cari Hunian yang Paling Cocok?
             </h3>
             <p className="mt-2 text-sm text-white/90">
-              Simpan kandidat terbaik, konsultasikan budget, dan dapatkan
+              Simpan kandidat terbaik, konsultasikan anggaran, dan dapatkan
               rekomendasi unit yang sesuai kebutuhanmu.
             </p>
 
@@ -1189,7 +1189,7 @@ export default function SewaPage() {
               </p>
               <p className="inline-flex items-center gap-2 text-sm text-white/95">
                 <CheckCircle2 size={15} className="text-emerald-300" />
-                Bantuan admin untuk shortlist unit
+                Bantuan administrator untuk daftar pilihan unit
               </p>
               <p className="inline-flex items-center gap-2 text-sm text-white/95">
                 <CheckCircle2 size={15} className="text-emerald-300" />
@@ -1237,7 +1237,7 @@ export default function SewaPage() {
                 />
               </div>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-50/95">
-                Listing KiKost dikelola tim Kyra Stay agar proses pencarian dan
+                Daftar hunian KiKost dikelola tim KIKOST agar proses pencarian dan
                 sewa lebih jelas, cepat, dan tepercaya.
               </p>
               <p className="mt-4 text-sm text-blue-100">
@@ -1251,11 +1251,11 @@ export default function SewaPage() {
             />
             <FooterCol
               title="Layanan"
-              items={["Pencarian Kost", "Jadwal Visit", "Favorit", "Pusat Bantuan"]}
+              items={["Pencarian Kost", "Jadwal Kunjungan", "Favorit", "Pusat Bantuan"]}
             />
             <FooterCol
               title="Kontak"
-              items={["WhatsApp Admin", "support@kyrastay.id", "Bogor, Jawa Barat"]}
+              items={["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"]}
             />
           </div>
 

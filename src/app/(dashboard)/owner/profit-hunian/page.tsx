@@ -37,11 +37,11 @@ export default function OwnerProfitHunianPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
-              Modul Owner
+              Modul Pemilik
             </p>
-            <h1 className="text-2xl font-semibold">Profit & Hunian</h1>
+            <h1 className="text-2xl font-semibold">Laba & Hunian</h1>
             <p className="text-sm text-blue-100">
-              Ringkasan ini berasal dari data cashflow dan booking owner di backend.
+              Ringkasan ini berasal dari data arus kas dan pemesanan pemilik di sistem.
             </p>
           </div>
 
@@ -90,21 +90,21 @@ export default function OwnerProfitHunianPage() {
           tone={data.stats.netProfit >= 0 ? "success" : "danger"}
         />
         <SummaryCard
-          title="Total Booking"
+          title="Total Pemesanan"
           value={String(data.stats.totalBookings)}
-          subtitle="Semua booking periode aktif"
+          subtitle="Semua pemesanan periode aktif"
           icon={<Home size={18} />}
           tone="info"
         />
         <SummaryCard
-          title="Booking Aktif"
+          title="Pemesanan Aktif"
           value={String(data.stats.activeBookings)}
           subtitle={`${data.stats.occupancyRate.toLocaleString("id-ID")}% aktif`}
           icon={<CalendarClock size={18} />}
           tone="info"
         />
         <SummaryCard
-          title="Booking Pending"
+          title="Pemesanan Menunggu"
           value={String(data.stats.pendingBookings)}
           subtitle="Menunggu proses lanjutan"
           icon={<CalendarClock size={18} />}
@@ -118,7 +118,7 @@ export default function OwnerProfitHunianPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-4 text-base font-semibold text-slate-800">
-          Breakdown Per Properti
+          Rincian Per Properti
         </h3>
 
         <div className="overflow-x-auto">
@@ -126,8 +126,8 @@ export default function OwnerProfitHunianPage() {
             <thead className="bg-slate-50 text-slate-700">
               <tr>
                 <th className="p-3 text-left font-semibold">Properti</th>
-                <th className="p-3 text-center font-semibold">Total Booking</th>
-                <th className="p-3 text-center font-semibold">Booking Aktif</th>
+                <th className="p-3 text-center font-semibold">Total Pemesanan</th>
+                <th className="p-3 text-center font-semibold">Pemesanan Aktif</th>
                 <th className="p-3 text-center font-semibold">Aktif (%)</th>
                 <th className="p-3 text-center font-semibold">Pendapatan</th>
                 <th className="p-3 text-center font-semibold">Pengeluaran</th>
@@ -192,8 +192,8 @@ export default function OwnerProfitHunianPage() {
               <tr>
                 <th className="p-3 text-left font-semibold">Periode</th>
                 <th className="p-3 text-left font-semibold">Properti</th>
-                <th className="p-3 text-center font-semibold">Total Booking</th>
-                <th className="p-3 text-center font-semibold">Booking Aktif</th>
+                <th className="p-3 text-center font-semibold">Total Pemesanan</th>
+                <th className="p-3 text-center font-semibold">Pemesanan Aktif</th>
                 <th className="p-3 text-center font-semibold">Aktif (%)</th>
                 <th className="p-3 text-center font-semibold">Pendapatan</th>
                 <th className="p-3 text-center font-semibold">Pengeluaran</th>

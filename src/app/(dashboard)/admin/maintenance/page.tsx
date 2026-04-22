@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +28,7 @@ import {
   type AdminMaintenanceRequest,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const statusLabelMap: Record<string, string> = {
   unassigned: "Belum Ditugaskan",
@@ -41,6 +43,14 @@ const priorityLabelMap: Record<string, string> = {
   high: "Tinggi",
   medium: "Sedang",
   low: "Rendah",
+};
+
+const roleLabelMap: Record<string, string> = {
+  admin: "Administrator",
+  owner: "Pemilik",
+  tenant: "Penyewa",
+  housekeeper: "Petugas Kebersihan",
+  technician: "Teknisi",
 };
 
 const PAGE_SIZE = 10;
@@ -94,9 +104,18 @@ const toInputDate = (value?: string | null) => {
   return date.toISOString().slice(0, 10);
 };
 
+const getTodayInputDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 const parseFilenameFromDisposition = (contentDisposition: string) => {
   const match = /filename="?([^"]+)"?/i.exec(contentDisposition || "");
-  return match?.[1] || "maintenance-requests.csv";
+  return match?.[1] || "permintaan-perawatan.csv";
 };
 
 const getInitialEditForm = (issue: AdminMaintenanceRequest): EditFormState => ({
@@ -120,6 +139,9 @@ export default function AdminMaintenancePage() {
   const [notice, setNotice] = useState<Notice>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+  const [isCompletingId, setIsCompletingId] = useState<number | null>(null);
+  const [completeConfirmationIssue, setCompleteConfirmationIssue] =
+    useState<AdminMaintenanceRequest | null>(null);
   const [viewIssue, setViewIssue] = useState<AdminMaintenanceRequest | null>(null);
   const [editIssue, setEditIssue] = useState<AdminMaintenanceRequest | null>(null);
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
@@ -192,6 +214,26 @@ export default function AdminMaintenancePage() {
     [issues]
   );
 
+  const statusFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        issues,
+        (item) => item.status,
+        (value) => statusLabelMap[value]
+      ),
+    [issues]
+  );
+
+  const priorityFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        issues,
+        (item) => item.priority,
+        (value) => priorityLabelMap[value]
+      ),
+    [issues]
+  );
+
   const filtered = useMemo(() => {
     const filteredItems = issues.filter((item) => {
       const searchable = `${item.issue} ${item.property.name || ""} ${
@@ -224,6 +266,18 @@ export default function AdminMaintenancePage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, status, priority, sortBy]);
+
+  useEffect(() => {
+    if (!hasFilterOption(statusFilterOptions, status)) {
+      setStatus("");
+    }
+  }, [status, statusFilterOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(priorityFilterOptions, priority)) {
+      setPriority("");
+    }
+  }, [priority, priorityFilterOptions]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -273,6 +327,49 @@ export default function AdminMaintenancePage() {
       });
     } finally {
       setIsDeletingId(null);
+    }
+  };
+
+  const openCompleteConfirmation = (issue: AdminMaintenanceRequest) => {
+    if (issue.status === "completed") {
+      return;
+    }
+
+    setNotice(null);
+    setCompleteConfirmationIssue(issue);
+  };
+
+  const handleCompleteIssue = async (issue: AdminMaintenanceRequest) => {
+    if (issue.status === "completed") {
+      setCompleteConfirmationIssue(null);
+      return;
+    }
+
+    setIsCompletingId(issue.id);
+    setNotice(null);
+
+    try {
+      await updateAdminMaintenanceRequest(issue.id, {
+        status: "completed",
+        repair_date: issue.repair_date || getTodayInputDate(),
+      });
+
+      setNotice({
+        variant: "success",
+        message: "Tiket perawatan berhasil ditandai selesai.",
+      });
+      setCompleteConfirmationIssue(null);
+      setRefreshKey((prev) => prev + 1);
+    } catch (completeError) {
+      setNotice({
+        variant: "error",
+        message: getApiErrorMessage(
+          completeError,
+          "Gagal menandai tiket sebagai selesai."
+        ),
+      });
+    } finally {
+      setIsCompletingId(null);
     }
   };
 
@@ -432,12 +529,11 @@ export default function AdminMaintenancePage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
               <option value="">Semua Status</option>
-              <option value="unassigned">Belum Ditugaskan</option>
-              <option value="assigned">Ditugaskan</option>
-              <option value="in_progress">Sedang Dikerjakan</option>
-              <option value="pending_vendor">Menunggu Vendor</option>
-              <option value="completed">Selesai</option>
-              <option value="cancelled">Dibatalkan</option>
+              {statusFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -452,9 +548,11 @@ export default function AdminMaintenancePage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
               <option value="">Semua Prioritas</option>
-              <option value="high">Tinggi</option>
-              <option value="medium">Sedang</option>
-              <option value="low">Rendah</option>
+              {priorityFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -481,7 +579,7 @@ export default function AdminMaintenancePage() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
-            Reset
+            Atur Ulang
           </button>
 
           {error && (
@@ -612,9 +710,26 @@ export default function AdminMaintenancePage() {
                           type="button"
                           onClick={() => openEditModal(issue)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Edit tiket"
+                          title="Ubah tiket"
                         >
                           <Pencil size={16} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openCompleteConfirmation(issue)}
+                          disabled={
+                            issue.status === "completed" ||
+                            isCompletingId === issue.id
+                          }
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          title={
+                            issue.status === "completed"
+                              ? "Tiket sudah selesai"
+                              : "Tandai selesai"
+                          }
+                        >
+                          <CheckCircle2 size={16} />
                         </button>
 
                         <button
@@ -678,6 +793,93 @@ export default function AdminMaintenancePage() {
           </div>
         </div>
       </section>
+
+      {completeConfirmationIssue && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="px-6 pb-5 pt-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+                  <AlertTriangle size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    Konfirmasi Selesai
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                    Tandai tiket ini selesai?
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Pastikan pekerjaan perawatan sudah selesai sebelum status tiket
+                    diubah.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Tiket</span>
+                  <span className="text-right font-semibold text-slate-900">
+                    TKT-{completeConfirmationIssue.id}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Keluhan</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {completeConfirmationIssue.issue || "-"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Properti</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {completeConfirmationIssue.property.name || "-"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Unit</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {completeConfirmationIssue.unit.name || "-"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <span className="text-slate-500">Penyewa</span>
+                  <span className="text-right font-medium text-slate-800">
+                    {completeConfirmationIssue.tenant.full_name || "-"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+                Setelah dikonfirmasi, status tiket akan berubah menjadi selesai.
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setCompleteConfirmationIssue(null)}
+                disabled={isCompletingId === completeConfirmationIssue.id}
+                className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-medium text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleCompleteIssue(completeConfirmationIssue);
+                }}
+                disabled={isCompletingId === completeConfirmationIssue.id}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70"
+              >
+                <CheckCircle2 size={16} />
+                {isCompletingId === completeConfirmationIssue.id
+                  ? "Memproses..."
+                  : "Ya, Tandai Selesai"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewIssue && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -752,7 +954,7 @@ export default function AdminMaintenancePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-800">Edit Perawatan</h2>
+              <h2 className="text-lg font-semibold text-slate-800">Ubah Perawatan</h2>
               <button
                 type="button"
                 onClick={closeEditModal}
@@ -844,7 +1046,7 @@ export default function AdminMaintenancePage() {
                   <option value="">Belum ditugaskan</option>
                   {technicians.map((person) => (
                     <option key={person.id} value={person.id}>
-                      {person.full_name} ({person.role})
+                      {person.full_name} ({roleLabelMap[person.role] || person.role})
                     </option>
                   ))}
                 </select>

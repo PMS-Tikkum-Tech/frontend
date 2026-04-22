@@ -1,12 +1,14 @@
 "use client";
 
 import { Filter, RotateCcw, Search } from "lucide-react";
+import type { FilterOption } from "@/lib/filter-options";
 
 interface Props {
   search: string;
   setSearch: (value: string) => void;
   status: string;
   setStatus: (value: string) => void;
+  statusOptions: FilterOption[];
   resultCount: number;
   totalCount: number;
   onReset: () => void;
@@ -17,6 +19,7 @@ export default function PropertyFilters({
   setSearch,
   status,
   setStatus,
+  statusOptions,
   resultCount,
   totalCount,
   onReset,
@@ -51,9 +54,11 @@ export default function PropertyFilters({
             className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
           >
             <option value="">Semua Status</option>
-            <option value="occupied">Terisi</option>
-            <option value="vacant">Kosong</option>
-            <option value="maintenance">Perawatan</option>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -64,7 +69,7 @@ export default function PropertyFilters({
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RotateCcw size={14} />
-          Reset
+          Atur Ulang
         </button>
       </div>
 

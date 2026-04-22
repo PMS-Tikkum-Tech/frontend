@@ -153,3 +153,14 @@
     transition: none;
   }
 }
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-custom-cursor,
+  .admin-custom-cursor :where(a, button, [role="button"], label) {
+    cursor: none;
+  }
+
+  .admin-custom-cursor :where(input, textarea, select) {
+    cursor: auto;
+  }
+}

@@ -341,10 +341,10 @@ export default function TenantKostDetailPage() {
               value={formatCurrency(latestPayment?.amount ?? currentStay?.monthly_rent_amount)}
               helper={
                 latestPayment?.invoice_id
-                  ? `Invoice #${latestPayment.invoice_id}`
+                  ? `Faktur #${latestPayment.invoice_id}`
                   : currentStay?.booking_code
-                    ? `Booking #${currentStay.booking_code}`
-                    : "Belum ada invoice"
+                    ? `Pemesanan #${currentStay.booking_code}`
+                    : "Belum ada faktur"
               }
             />
             <SummaryCard

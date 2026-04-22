@@ -25,6 +25,7 @@ import {
   type AdminPropertyListItem,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const statusStyleMap: Record<string, string> = {
   sent: "bg-blue-100 text-blue-700",
@@ -77,7 +78,7 @@ type VisitRequestContext = {
   note: string;
 };
 
-const VISIT_REQUEST_SUBJECT_PREFIX = "permintaan jadwal visit";
+const VISIT_REQUEST_SUBJECT_PREFIX = "permintaan jadwal kunjungan";
 const VISIT_TENANT_MESSAGE_MARKER = "pesan untuk penyewa:";
 
 const getVisitMessageValue = (message: string, label: string) => {
@@ -106,6 +107,7 @@ const isVisitRequestCommunication = (
 
   return (
     subject.startsWith(VISIT_REQUEST_SUBJECT_PREFIX) ||
+    subject.startsWith("permintaan jadwal visit") ||
     (message.includes("tanggal preferensi:") &&
       message.includes("jam preferensi:") &&
       message.includes("nama penyewa:"))
@@ -208,7 +210,7 @@ const buildVisitFollowUpMessage = ({
   tenantMessage: string;
 }) => {
   return [
-    "Permintaan jadwal visit telah ditinjau admin.",
+    "Permintaan jadwal kunjungan telah ditinjau administrator.",
     `Nama penyewa: ${context.tenantName}`,
     `Email penyewa: ${context.tenantEmail}`,
     `Nomor HP penyewa: ${context.tenantPhone}`,
@@ -219,7 +221,7 @@ const buildVisitFollowUpMessage = ({
     `Tanggal kunjungan disetujui: ${formatVisitFollowUpDate(followUpDate)}`,
     `Jam kunjungan disetujui: ${followUpTime || "-"}`,
     `Catatan penyewa: ${context.note}`,
-    `Catatan admin: ${adminNote || "-"}`,
+    `Catatan administrator: ${adminNote || "-"}`,
     "Pesan untuk penyewa:",
     tenantMessage || "-",
   ].join("\n");
@@ -408,6 +410,26 @@ export default function AdminCommunicationPage() {
     };
   }, [refreshKey]);
 
+  const statusFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        messages,
+        (message) => message.status,
+        (value) => statusLabelMap[value]
+      ),
+    [messages]
+  );
+
+  const propertyFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        messages,
+        (message) => message.property.id || null,
+        (value, message) => message.property.name || message.target_property || `Properti #${value}`
+      ),
+    [messages]
+  );
+
   const filtered = useMemo(() => {
     const filteredMessages = messages.filter((message) => {
       const searchable =
@@ -458,6 +480,18 @@ export default function AdminCommunicationPage() {
   }, [search, status, propertyFilter, sortBy]);
 
   useEffect(() => {
+    if (!hasFilterOption(statusFilterOptions, status)) {
+      setStatus("");
+    }
+  }, [status, statusFilterOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(propertyFilterOptions, propertyFilter)) {
+      setPropertyFilter("");
+    }
+  }, [propertyFilter, propertyFilterOptions]);
+
+  useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
@@ -498,7 +532,14 @@ export default function AdminCommunicationPage() {
     const followUpTime = toInputTime(
       getVisitMessageValue(message.message || "", "Jam kunjungan disetujui")
     );
-    const adminNote = getVisitMessageValue(message.message || "", "Catatan admin");
+    const adminNoteValue = getVisitMessageValue(
+      message.message || "",
+      "Catatan administrator"
+    );
+    const adminNote =
+      adminNoteValue !== "-"
+        ? adminNoteValue
+        : getVisitMessageValue(message.message || "", "Catatan admin");
 
     setNotice(null);
     setFormMode("edit");
@@ -566,7 +607,7 @@ export default function AdminCommunicationPage() {
     }
 
     if (isVisitRequestEdit && (!form.visitFollowUpDate || !form.visitFollowUpTime)) {
-      setFormError("Tanggal dan jam tindak lanjut visit wajib diisi.");
+      setFormError("Tanggal dan jam tindak lanjut kunjungan wajib diisi.");
       return;
     }
 
@@ -645,7 +686,7 @@ export default function AdminCommunicationPage() {
         setNotice({
           variant: "success",
           message: isVisitRequestEdit
-            ? "Tindak lanjut permintaan jadwal visit berhasil diperbarui."
+            ? "Tindak lanjut permintaan jadwal kunjungan berhasil diperbarui."
             : "Pesan komunikasi berhasil diperbarui.",
         });
       }
@@ -703,7 +744,7 @@ export default function AdminCommunicationPage() {
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
               Kirim pesan massal, jadwalkan pengiriman, dan tindak lanjuti permintaan
-              jadwal visit.
+              jadwal kunjungan.
             </p>
           </div>
 
@@ -727,7 +768,7 @@ export default function AdminCommunicationPage() {
           tone="warning"
         />
         <SummaryCard label="Gagal" value={String(stats.failed)} tone="danger" />
-        <SummaryCard label="Permintaan Visit" value={String(stats.visitRequests)} />
+        <SummaryCard label="Permintaan Kunjungan" value={String(stats.visitRequests)} />
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -756,9 +797,11 @@ export default function AdminCommunicationPage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
               <option value="">Semua Status</option>
-              <option value="sent">Terkirim</option>
-              <option value="scheduled">Terjadwal</option>
-              <option value="failed">Gagal</option>
+              {statusFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -768,9 +811,9 @@ export default function AdminCommunicationPage() {
             className="h-11 min-w-[220px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
           >
             <option value="">Semua Properti</option>
-            {properties.map((property) => (
-              <option key={property.id} value={property.id}>
-                {property.name}
+            {propertyFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -799,7 +842,7 @@ export default function AdminCommunicationPage() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
-            Reset
+            Atur Ulang
           </button>
 
           {error && (
@@ -883,7 +926,7 @@ export default function AdminCommunicationPage() {
                       <p className="font-medium text-slate-700">{message.subject}</p>
                       {isVisitRequestCommunication(message) ? (
                         <span className="mt-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                          Permintaan Visit
+                          Permintaan Kunjungan
                         </span>
                       ) : null}
                     </td>
@@ -911,7 +954,7 @@ export default function AdminCommunicationPage() {
                           type="button"
                           onClick={() => openEditModal(message)}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Edit pesan"
+                          title="Ubah pesan"
                         >
                           <Pencil size={16} />
                         </button>
@@ -1052,7 +1095,7 @@ export default function AdminCommunicationPage() {
                         className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
                       >
                         <span className="text-slate-700">
-                          {recipient.tenant_name || `Tenant #${recipient.tenant_id}`}
+                          {recipient.tenant_name || `Penyewa #${recipient.tenant_id}`}
                         </span>
                         <span className="text-slate-500">
                           {statusLabelMap[recipient.status] || recipient.status}
@@ -1086,8 +1129,8 @@ export default function AdminCommunicationPage() {
                 {formMode === "create"
                   ? "Tambah Pesan Komunikasi"
                   : isVisitRequestEdit
-                    ? "Tindak Lanjut Permintaan Jadwal Visit"
-                    : "Edit Pesan Komunikasi"}
+                    ? "Tindak Lanjut Permintaan Jadwal Kunjungan"
+                    : "Ubah Pesan Komunikasi"}
               </h2>
               <button
                 type="button"
@@ -1103,7 +1146,7 @@ export default function AdminCommunicationPage() {
               {isVisitRequestEdit && visitRequestContext ? (
                 <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                   <p className="text-sm font-semibold text-sky-800">
-                    Ringkasan Permintaan Visit
+                    Ringkasan Permintaan Kunjungan
                   </p>
                   <div className="grid grid-cols-1 gap-2 text-xs text-slate-700 md:grid-cols-2">
                     <VisitContextRow label="Nama Penyewa" value={visitRequestContext.tenantName} />
@@ -1184,7 +1227,7 @@ export default function AdminCommunicationPage() {
 
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Catatan Internal Admin (Opsional)
+                      Catatan Internal Administrator (Opsional)
                     </label>
                     <textarea
                       value={form.visitAdminNote}
@@ -1196,7 +1239,7 @@ export default function AdminCommunicationPage() {
                       }
                       rows={2}
                       className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#4F6EF7]"
-                      placeholder="Contoh: Koordinasikan dengan PIC properti sebelum visit."
+                      placeholder="Contoh: Koordinasikan dengan penanggung jawab properti sebelum kunjungan."
                     />
                   </div>
                 </>
@@ -1287,7 +1330,7 @@ export default function AdminCommunicationPage() {
                   className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#4F6EF7]"
                   placeholder={
                     isVisitRequestEdit
-                      ? "Tuliskan balasan yang akan diterima penyewa untuk konfirmasi visit."
+                      ? "Tuliskan balasan yang akan diterima penyewa untuk konfirmasi kunjungan."
                       : "Tuliskan detail informasi yang ingin disampaikan ke penyewa."
                   }
                 />
@@ -1334,7 +1377,7 @@ export default function AdminCommunicationPage() {
 
               {isVisitRequestEdit && (
                 <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-sm font-medium text-slate-700">Penerima Permintaan Visit</p>
+                  <p className="text-sm font-medium text-slate-700">Penerima Permintaan Kunjungan</p>
                   <div className="max-h-40 space-y-2 overflow-auto text-xs text-slate-700">
                     {form.selectedTenantIds.length === 0 ? (
                       <p className="text-slate-500">Data penerima tidak ditemukan.</p>
@@ -1347,7 +1390,7 @@ export default function AdminCommunicationPage() {
                             className="rounded-lg border border-slate-200 bg-white px-3 py-2"
                           >
                             <p className="font-medium text-slate-800">
-                              {tenant?.full_name || `Tenant #${tenantId}`}
+                              {tenant?.full_name || `Penyewa #${tenantId}`}
                             </p>
                             <p className="text-slate-500">{tenant?.email || "-"}</p>
                           </div>

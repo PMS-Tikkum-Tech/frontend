@@ -17,6 +17,7 @@ import {
   type AdminPropertyUpsertPayload,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 import type { Property } from "@/types/dashboard";
 
 interface PropertySummary {
@@ -31,6 +32,14 @@ const initialSummary: PropertySummary = {
   occupiedUnit: 0,
   vacantUnit: 0,
   totalRevenue: 0,
+};
+
+const propertyStatusLabelMap: Record<string, string> = {
+  occupied: "Terisi",
+  vacant: "Kosong",
+  maintenance: "Perawatan",
+  cleaning: "Pembersihan",
+  renovation: "Renovasi",
 };
 
 export default function AdminPropertiesPage() {
@@ -122,6 +131,22 @@ export default function AdminPropertiesPage() {
     });
   }, [properties, search, status]);
 
+  const statusFilterOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        properties,
+        (property) => property.status,
+        (value) => propertyStatusLabelMap[value]
+      ),
+    [properties]
+  );
+
+  useEffect(() => {
+    if (!hasFilterOption(statusFilterOptions, status)) {
+      setStatus("");
+    }
+  }, [status, statusFilterOptions]);
+
   const totalPropertyCount = properties.length;
 
   const handleCreateProperty = async (payload: AdminPropertyUpsertPayload) => {
@@ -204,10 +229,10 @@ export default function AdminPropertiesPage() {
       </div>
 
       <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-        Properti yang baru dibuat belum otomatis tampil di tenant. Katalog tenant
+        Properti yang baru dibuat belum otomatis tampil di sisi penyewa. Katalog penyewa
         mengambil data dari unit yang tersedia, jadi setiap properti harus punya
         minimal satu unit dengan status <span className="font-semibold">kosong</span>
-        {" "}agar muncul di sisi tenant.
+        {" "}agar muncul di sisi penyewa.
       </div>
 
       <PropertyFilters
@@ -215,6 +240,7 @@ export default function AdminPropertiesPage() {
         setSearch={setSearch}
         status={status}
         setStatus={setStatus}
+        statusOptions={statusFilterOptions}
         resultCount={filtered.length}
         totalCount={totalPropertyCount}
         onReset={() => {
@@ -250,7 +276,7 @@ export default function AdminPropertiesPage() {
             Tidak ada properti yang sesuai filter
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Coba ubah kata kunci pencarian atau reset filter status properti.
+            Coba ubah kata kunci pencarian atau atur ulang penyaring status properti.
           </p>
           <button
             onClick={() => {
@@ -259,7 +285,7 @@ export default function AdminPropertiesPage() {
             }}
             className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Reset Filter
+            Atur Ulang Filter
           </button>
         </div>
       ) : (

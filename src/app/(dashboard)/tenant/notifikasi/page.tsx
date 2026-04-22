@@ -149,7 +149,7 @@ export default function NotifikasiPage() {
         <div className="relative">
           <h1 className="text-3xl font-semibold">Notifikasi</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
-            Semua pengumuman penting dari admin terkait hunianmu akan tampil di
+            Semua pengumuman penting dari administrator terkait hunianmu akan tampil di
             halaman ini.
           </p>
 
@@ -209,13 +209,13 @@ export default function NotifikasiPage() {
         <div className="rounded-2xl border bg-white p-10 text-center">
           <h2 className="text-xl font-semibold text-green-600">
             {showBackendNotice
-              ? "Inbox tenant belum tersedia"
+              ? "Kotak masuk penyewa belum tersedia"
               : "Belum Ada Notifikasi"}
           </h2>
           <p className="mx-auto mt-2 max-w-md text-slate-600">
             {showBackendNotice
-              ? "Backend yang digunakan saat ini belum membuka endpoint notifikasi khusus tenant."
-              : "Semua pengumuman penting dari admin akan muncul di halaman ini."}
+              ? "Sistem yang digunakan saat ini belum membuka layanan notifikasi khusus penyewa."
+              : "Semua pengumuman penting dari administrator akan muncul di halaman ini."}
           </p>
         </div>
       ) : (

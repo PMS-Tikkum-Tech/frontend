@@ -92,7 +92,7 @@ const AREA_COORDINATES: Array<{
 
 const formatCurrency = (value?: number) => {
   if (!value || value <= 0) {
-    return "Hubungi admin";
+    return "Hubungi administrator";
   }
 
   return `Rp ${CURRENCY_FORMATTER.format(value)}`;
@@ -857,7 +857,7 @@ export default function SewaPropertyDetailPage() {
           <aside className="space-y-4 rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-700 p-5 text-white shadow-sm">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               <Sparkles size={13} />
-              Data properti berasal dari input admin
+              Data properti berasal dari input administrator
             </p>
 
             <div>
@@ -901,7 +901,7 @@ export default function SewaPropertyDetailPage() {
               Properti ini tersedia di area {extractDistrict(property.address)} dengan
               tipe {formatLabel(property.property_type).toLowerCase()}. Detail
               unit, harga, dan fasilitas sudah terintegrasi dari data yang
-              dimasukkan admin di dashboard.
+              dimasukkan administrator di dasbor.
             </p>
           </article>
 
@@ -920,7 +920,7 @@ export default function SewaPropertyDetailPage() {
                 ))
               ) : (
                 <p className="text-sm text-slate-500">
-                  Fasilitas belum ditambahkan oleh admin.
+                  Fasilitas belum ditambahkan oleh administrator.
                 </p>
               )}
             </div>
@@ -970,7 +970,7 @@ export default function SewaPropertyDetailPage() {
                     Saat ini belum ada unit kosong pada properti ini.
                   </p>
                   <p className="mt-1">
-                    Kamu tetap bisa ajukan visit untuk masuk daftar prioritas saat
+                    Kamu tetap bisa mengajukan kunjungan untuk masuk daftar prioritas saat
                     unit tersedia.
                   </p>
                 </div>
@@ -1029,7 +1029,7 @@ export default function SewaPropertyDetailPage() {
 
                       <div className="mt-4 flex items-center justify-between gap-3">
                         <p className="text-[11px] text-slate-500">
-                          Unit ini dapat dipilih langsung untuk booking.
+                          Unit ini dapat dipilih langsung untuk pemesanan.
                         </p>
                         <Link
                           href={
@@ -1053,7 +1053,7 @@ export default function SewaPropertyDetailPage() {
               <p className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 <NotebookPen size={13} className="text-blue-700" />
                 Detail ketersediaan unit disinkronkan dari data properti yang
-                diinput admin.
+                diinput administrator.
               </p>
             </div>
           </article>

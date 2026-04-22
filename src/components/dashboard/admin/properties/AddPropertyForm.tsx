@@ -155,7 +155,7 @@ export default function AddPropertyForm({
         name="catatan"
         value={form.catatan}
         onChange={handleChange}
-        placeholder="Hanya terlihat oleh admin"
+        placeholder="Hanya terlihat oleh administrator"
       />
 
       {/* ================= SUBMIT ================= */}

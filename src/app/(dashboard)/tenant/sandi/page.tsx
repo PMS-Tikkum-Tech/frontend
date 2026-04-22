@@ -196,7 +196,7 @@ export default function TenantSandiPage() {
               disabled={isSubmitting || TENANT_PASSWORD_MANAGED_BY_BACKEND}
             >
               {TENANT_PASSWORD_MANAGED_BY_BACKEND
-                ? "Menunggu Dukungan Backend"
+                ? "Menunggu Dukungan Sistem"
                 : isSubmitting
                   ? "Menyimpan..."
                   : "Simpan Kata Sandi Baru"}

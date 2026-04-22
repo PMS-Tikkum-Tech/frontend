@@ -6,5 +6,5 @@ export const loginSchema = z.object({
     .email("Format email tidak valid")
     .max(100, "Email terlalu panjang"),
 
-  password: z.string().min(8, "Password minimal 8 karakter").max(100),
+  password: z.string().min(8, "Kata sandi minimal 8 karakter").max(100),
 });

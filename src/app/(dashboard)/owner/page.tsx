@@ -49,11 +49,11 @@ export default function OwnerDashboardPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
-              Modul Owner
+              Modul Pemilik
             </p>
-            <h1 className="text-2xl font-semibold">Dasbor Owner</h1>
+            <h1 className="text-2xl font-semibold">Dasbor Pemilik</h1>
             <p className="text-sm text-blue-100">
-              Data ditampilkan berdasarkan endpoint owner dari backend.
+              Data ditampilkan berdasarkan layanan pemilik dari sistem.
             </p>
           </div>
 
@@ -81,27 +81,27 @@ export default function OwnerDashboardPage() {
         <SummaryCard
           title="Total Properti"
           value={String(data.stats.totalProperty)}
-          subtitle="Dari data booking & cashflow"
+          subtitle="Dari data pemesanan & arus kas"
           icon={<Building2 size={18} />}
         />
         <SummaryCard
-          title="Total Booking"
+          title="Total Pemesanan"
           value={String(data.stats.totalBookings)}
-          subtitle={`${data.stats.approvedBookings} booking disetujui`}
+          subtitle={`${data.stats.approvedBookings} pemesanan disetujui`}
           icon={<Home size={18} />}
           tone="info"
         />
         <SummaryCard
-          title="Booking Aktif"
+          title="Pemesanan Aktif"
           value={String(data.stats.activeBookings)}
           subtitle={`${data.stats.occupancyRate.toLocaleString("id-ID")}% aktif`}
           icon={<CalendarClock size={18} />}
           tone="success"
         />
         <SummaryCard
-          title="Pendapatan Owner"
+          title="Pendapatan Pemilik"
           value={formatCurrency(data.stats.totalRevenue)}
-          subtitle="Kas masuk owner"
+          subtitle="Kas masuk pemilik"
           icon={<TrendingUp size={18} />}
           tone="success"
         />
@@ -129,8 +129,8 @@ export default function OwnerDashboardPage() {
             <thead className="bg-slate-50 text-slate-700">
               <tr>
                 <th className="p-3 text-left font-semibold">Properti</th>
-                <th className="p-3 text-center font-semibold">Total Booking</th>
-                <th className="p-3 text-center font-semibold">Booking Aktif</th>
+                <th className="p-3 text-center font-semibold">Total Pemesanan</th>
+                <th className="p-3 text-center font-semibold">Pemesanan Aktif</th>
                 <th className="p-3 text-center font-semibold">Aktif (%)</th>
                 <th className="p-3 text-center font-semibold">Pendapatan</th>
                 <th className="p-3 text-center font-semibold">Pengeluaran</th>
@@ -142,7 +142,7 @@ export default function OwnerDashboardPage() {
               {isLoading ? (
                 <tr className="border-t border-slate-100">
                   <td colSpan={7} className="p-4 text-center text-slate-500">
-                    Memuat data owner...
+                    Memuat data pemilik...
                   </td>
                 </tr>
               ) : data.propertyBreakdown.length === 0 ? (
@@ -186,21 +186,21 @@ export default function OwnerDashboardPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-4 text-base font-semibold text-slate-800">
-          Booking Terbaru
+          Pemesanan Terbaru
         </h3>
 
         <div className="overflow-x-auto">
           <table className="min-w-[930px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
-                <th className="p-3 text-left font-semibold">Kode Booking</th>
+                <th className="p-3 text-left font-semibold">Kode Pemesanan</th>
                 <th className="p-3 text-left font-semibold">Properti</th>
                 <th className="p-3 text-left font-semibold">Unit</th>
                 <th className="p-3 text-left font-semibold">Status</th>
                 <th className="p-3 text-left font-semibold">Status Sewa</th>
                 <th className="p-3 text-left font-semibold">Mulai</th>
                 <th className="p-3 text-left font-semibold">Selesai</th>
-                <th className="p-3 text-right font-semibold">Nominal Owner</th>
+                <th className="p-3 text-right font-semibold">Nominal Pemilik</th>
               </tr>
             </thead>
 
@@ -208,13 +208,13 @@ export default function OwnerDashboardPage() {
               {isLoading ? (
                 <tr className="border-t border-slate-100">
                   <td colSpan={8} className="p-4 text-center text-slate-500">
-                    Memuat booking terbaru...
+                    Memuat pemesanan terbaru...
                   </td>
                 </tr>
               ) : data.latestBookings.length === 0 ? (
                 <tr className="border-t border-slate-100">
                   <td colSpan={8} className="p-4 text-center text-slate-500">
-                    Belum ada data booking.
+                    Belum ada data pemesanan.
                   </td>
                 </tr>
               ) : (

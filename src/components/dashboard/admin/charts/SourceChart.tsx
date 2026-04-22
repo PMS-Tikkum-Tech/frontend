@@ -24,7 +24,7 @@ export default function SourceChart({ data }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
       <h2 className="text-base font-semibold text-slate-800 mb-6">
-        Sumber Tenant
+        Sumber Penyewa
       </h2>
 
       <ResponsiveContainer width="100%" height={300}>

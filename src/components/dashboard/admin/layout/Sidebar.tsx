@@ -14,69 +14,69 @@ export default function Sidebar() {
           href="/admin"
           className="block px-4 py-3 rounded-lg bg-[#C9A74E] text-black font-medium"
         >
-          Dashboard
+          Dasbor
         </Link>
 
         <Link
           href="/admin/properties"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Properties
+          Properti
         </Link>
 
         <Link
           href="/admin/tenants"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Tenants
+          Penyewa
         </Link>
 
         <Link
           href="/admin/maintenance"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Maintenance
+          Perawatan
         </Link>
 
         <Link
           href="/admin/financial"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Financial
+          Keuangan
         </Link>
 
         <Link
           href="/admin/billing"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Billing & Payment
+          Tagihan & Pembayaran
         </Link>
 
         <Link
           href="/admin/communication"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Communication
+          Komunikasi
         </Link>
 
         <Link
           href="/admin/account"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Account
+          Akun
         </Link>
 
         <Link
           href="/admin/log-activity"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Log Activity
+          Catatan Aktivitas
         </Link>
       </nav>
 
       <div className="p-6 border-t border-white/10">
         <button className="text-sm text-red-400 hover:text-red-300">
-          Logout
+          Keluar
         </button>
       </div>
     </aside>

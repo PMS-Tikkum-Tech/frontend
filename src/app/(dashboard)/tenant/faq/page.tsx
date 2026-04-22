@@ -11,7 +11,7 @@ const categories = [
   "Pemesanan Kost",
   "Pembayaran & Tagihan",
   "Tinggal di Kost",
-  "Maintenance",
+  "Perawatan",
   "Akun & Keamanan",
 ];
 
@@ -19,7 +19,7 @@ const faqs: Record<string, FaqItem[]> = {
   Umum: [
     {
       q: "Apa itu Kyra Stay?",
-      a: "Kyra Stay adalah platform manajemen dan pencarian kost khusus mahasiswa IPB dengan fasilitas lengkap dan harga transparan.",
+      a: "Kyra Stay adalah layanan manajemen dan pencarian kost khusus mahasiswa IPB dengan fasilitas lengkap dan harga transparan.",
     },
     {
       q: "Bagaimana cara mencari kost?",
@@ -33,13 +33,13 @@ const faqs: Record<string, FaqItem[]> = {
     },
     {
       q: "Apakah saya bisa menjadwalkan kunjungan dulu?",
-      a: "Bisa. Kamu dapat mengajukan jadwal visit sebelum memutuskan untuk melanjutkan pemesanan.",
+      a: "Bisa. Kamu dapat mengajukan jadwal kunjungan sebelum memutuskan untuk melanjutkan pemesanan.",
     },
   ],
   "Pembayaran & Tagihan": [
     {
       q: "Metode pembayaran apa saja yang tersedia?",
-      a: "Pembayaran mendukung transfer bank, e-wallet, dan metode lain yang tersedia di invoice.",
+      a: "Pembayaran mendukung transfer bank, dompet digital, dan metode lain yang tersedia di faktur.",
     },
     {
       q: "Di mana saya melihat status tagihan?",
@@ -53,17 +53,17 @@ const faqs: Record<string, FaqItem[]> = {
     },
     {
       q: "Bagaimana jika ingin memperpanjang sewa?",
-      a: "Silakan hubungi admin melalui Pusat Bantuan agar proses perpanjangan dapat dibantu lebih lanjut.",
+      a: "Silakan hubungi administrator melalui Pusat Bantuan agar proses perpanjangan dapat dibantu lebih lanjut.",
     },
   ],
-  Maintenance: [
+  Perawatan: [
     {
       q: "Bagaimana melaporkan kerusakan?",
       a: "Masuk ke menu Ajukan Keluhan, pilih unit, lalu isi detail masalah dan prioritasnya.",
     },
     {
       q: "Di mana saya memantau progres perbaikan?",
-      a: "Progres dapat dipantau di menu Perawatan dan Jadwal Visit.",
+      a: "Progres dapat dipantau di menu Perawatan dan Jadwal Kunjungan.",
     },
   ],
   "Akun & Keamanan": [
@@ -72,8 +72,8 @@ const faqs: Record<string, FaqItem[]> = {
       a: "Buka menu Ubah Kata Sandi, isi kata sandi saat ini, lalu masukkan kata sandi baru.",
     },
     {
-      q: "Bagaimana jika lupa akun login?",
-      a: "Hubungi admin melalui Pusat Bantuan agar tim dapat membantu verifikasi akun kamu.",
+      q: "Bagaimana jika lupa akun masuk?",
+      a: "Hubungi administrator melalui Pusat Bantuan agar tim dapat membantu verifikasi akun kamu.",
     },
   ],
 };
@@ -107,7 +107,7 @@ export default function FAQPage() {
         <div className="relative space-y-3">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
             <LifeBuoy size={14} />
-            Pusat Bantuan Tenant
+            Pusat Bantuan Penyewa
           </p>
           <h1 className="text-3xl font-semibold">Pertanyaan Umum (FAQ)</h1>
           <p className="max-w-2xl text-sm text-white/90">

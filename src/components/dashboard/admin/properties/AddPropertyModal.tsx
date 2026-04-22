@@ -332,7 +332,7 @@ export default function AddPropertyModal({
               onChange={(event) => updateFormField("ownerId", event.target.value)}
               className="h-11 w-full rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
             >
-              <option value="">Pilih owner</option>
+              <option value="">Pilih pemilik</option>
               {owners.map((owner) => (
                 <option key={owner.id} value={owner.id}>
                   {owner.full_name} ({owner.email})
