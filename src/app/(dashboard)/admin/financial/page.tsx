@@ -650,16 +650,6 @@ export default function AdminFinancialPage() {
             Atur Ulang
           </button>
 
-          {error && (
-            <button
-              type="button"
-              onClick={() => setRefreshKey((prev) => prev + 1)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 hover:bg-red-100"
-            >
-              <RotateCcw size={14} />
-              Muat Ulang
-            </button>
-          )}
         </div>
 
         <p className="mt-3 text-xs text-slate-500">

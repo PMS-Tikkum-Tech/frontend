@@ -204,12 +204,50 @@ export interface TenantCurrentStay {
   updated_at?: string | null;
 }
 
+export interface TenantStaySummary {
+  booking_id: number;
+  booking_code?: string | null;
+  occupancy_status?: string | null;
+  status_label?: string | null;
+  property_name?: string | null;
+  unit_name?: string | null;
+  monthly_rent_amount?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  duration_months?: number | null;
+  roomphoto_urls?: string[];
+  transfer_proof_url?: string | null;
+  can_report_maintenance: boolean;
+  can_submit_payment: boolean;
+}
+
 export type TenantVisitRequestPayload = {
   property_id: number;
   preferred_date?: string;
   preferred_time?: string;
   note?: string;
 };
+
+export type TenantVisitRequestStatus =
+  | "pending"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
+
+export interface TenantVisitRequest {
+  id: number;
+  property: {
+    id: number;
+    name?: string | null;
+    address?: string | null;
+  };
+  preferred_date?: string | null;
+  preferred_time?: string | null;
+  note?: string | null;
+  status: TenantVisitRequestStatus;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
 
 export type PublicPropertyAvailabilityStatus =
   | "available"
@@ -1146,12 +1184,8 @@ const mapManualBookingStatusToTenantPayment = (
     return "paid";
   }
 
-  if (status === "cancelled") {
+  if (status === "cancelled" || status === "denied" || status === "expired") {
     return "cancelled";
-  }
-
-  if (status === "denied" || status === "expired") {
-    return "overdue";
   }
 
   return "waiting";
@@ -1190,12 +1224,13 @@ const mapManualBookingToTenantPayment = (
 };
 
 const TENANT_FAVORITES_STORAGE_KEY = "kyra.tenant.favorite.property.ids";
+const TENANT_VISIT_REQUESTS_STORAGE_KEY = "kikost.tenant.visit.requests";
 export const PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE =
   "Katalog properti tersedia setelah login.";
 export const PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE =
   "Unit properti tersedia setelah login.";
 export const TENANT_VISIT_REQUEST_UNAVAILABLE_MESSAGE =
-  "Endpoint pengajuan jadwal visit belum tersedia pada backend.";
+  "Endpoint pengajuan jadwal survei kost belum tersedia pada backend.";
 export const TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE =
   "Notifikasi tenant belum tersedia pada backend terbaru.";
 
@@ -1233,6 +1268,92 @@ const saveFavoritePropertyIds = (ids: Set<number>) => {
     );
   } catch {
     // ignore storage errors
+  }
+};
+
+const tenantVisitRequestStatuses: TenantVisitRequestStatus[] = [
+  "pending",
+  "confirmed",
+  "completed",
+  "cancelled",
+];
+
+const normalizeStoredTenantVisitRequest = (
+  value: unknown
+): TenantVisitRequest | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const item = value as Partial<TenantVisitRequest>;
+  const id = typeof item.id === "number" ? item.id : Number(item.id);
+  const propertyId =
+    typeof item.property?.id === "number"
+      ? item.property.id
+      : Number(item.property?.id);
+
+  if (!Number.isFinite(id) || !Number.isFinite(propertyId)) {
+    return null;
+  }
+
+  const status = tenantVisitRequestStatuses.includes(
+    item.status as TenantVisitRequestStatus
+  )
+    ? (item.status as TenantVisitRequestStatus)
+    : "pending";
+
+  return {
+    id,
+    property: {
+      id: propertyId,
+      name: item.property?.name || `Kost #${propertyId}`,
+      address: item.property?.address || null,
+    },
+    preferred_date: item.preferred_date || null,
+    preferred_time: item.preferred_time || null,
+    note: item.note || null,
+    status,
+    created_at: item.created_at || null,
+    updated_at: item.updated_at || null,
+  };
+};
+
+const getStoredTenantVisitRequests = () => {
+  if (typeof window === "undefined") {
+    return [] as TenantVisitRequest[];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(TENANT_VISIT_REQUESTS_STORAGE_KEY);
+    if (!raw) {
+      return [] as TenantVisitRequest[];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [] as TenantVisitRequest[];
+    }
+
+    return parsed
+      .map(normalizeStoredTenantVisitRequest)
+      .filter((item): item is TenantVisitRequest => Boolean(item));
+  } catch {
+    return [] as TenantVisitRequest[];
+  }
+};
+
+const saveStoredTenantVisitRequests = (requests: TenantVisitRequest[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      TENANT_VISIT_REQUESTS_STORAGE_KEY,
+      JSON.stringify(requests)
+    );
+  } catch {
+    // Abaikan error penyimpanan lokal agar alur pengguna tidak terhenti.
   }
 };
 
@@ -1435,6 +1556,29 @@ export const getTenantPayments = async (
 export const getTenantCurrentStay = () =>
   getItem<TenantCurrentStay>("/api/v1/manual_rentals/stays/current");
 
+export const getTenantStays = async (
+  params?: QueryParams
+): Promise<ListResult<TenantStaySummary>> => {
+  const response = await getList<TenantStaySummary>(
+    "/api/v1/manual_rentals/stays",
+    params
+  );
+
+  return {
+    ...response,
+    data: response.data.map((item) => ({
+      ...item,
+      roomphoto_urls: (item.roomphoto_urls || []).map((path) => {
+        return toAbsoluteAssetUrl(path) || path;
+      }),
+      transfer_proof_url: toAbsoluteAssetUrl(item.transfer_proof_url),
+    })),
+  };
+};
+
+export const getTenantStayDetail = (bookingId: number | string) =>
+  getItem<TenantCurrentStay>(`/api/v1/manual_rentals/stays/${bookingId}`);
+
 export const getTenantMaintenanceRequests = async (
   params?: QueryParams
 ): Promise<ListResult<TenantMaintenanceRequest>> => {
@@ -1601,6 +1745,56 @@ export const getPublicPropertyUnits = (
   );
 };
 
+export const getTenantVisitRequests = async (
+  params?: QueryParams
+): Promise<ListResult<TenantVisitRequest>> => {
+  let requests = getStoredTenantVisitRequests();
+  const statusFilter = params?.status?.toString();
+  const searchFilter = params?.search?.toString().trim().toLowerCase();
+
+  if (statusFilter && tenantVisitRequestStatuses.includes(statusFilter as TenantVisitRequestStatus)) {
+    requests = requests.filter((item) => item.status === statusFilter);
+  }
+
+  if (searchFilter) {
+    requests = requests.filter((item) => {
+      const searchableText = [
+        item.property.name,
+        item.property.address,
+        item.preferred_date,
+        item.preferred_time,
+        item.note,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(searchFilter);
+    });
+  }
+
+  requests = [...requests].sort((first, second) => {
+    const firstDate = new Date(
+      first.preferred_date || first.created_at || 0
+    ).getTime();
+    const secondDate = new Date(
+      second.preferred_date || second.created_at || 0
+    ).getTime();
+
+    return firstDate - secondDate;
+  });
+
+  const page = getNumberParam(params?.page, 1);
+  const perPage = getNumberParam(params?.per_page, 20);
+  const paginated = paginateArray(requests, page, perPage);
+
+  return {
+    data: paginated.data,
+    meta: paginated.meta,
+    message: "Jadwal kunjungan kost berhasil dimuat.",
+  };
+};
+
 export const addTenantFavorite = async (propertyId: number) => {
   const ids = getFavoritePropertyIds();
   ids.add(propertyId);
@@ -1633,8 +1827,97 @@ export const removeTenantFavoriteByProperty = async (propertyId: number) => {
 export const createTenantVisitRequest = async (
   payload: TenantVisitRequestPayload
 ) => {
-  void payload;
-  throw new Error(TENANT_VISIT_REQUEST_UNAVAILABLE_MESSAGE);
+  const propertyId = Number(payload.property_id);
+  const preferredDate = payload.preferred_date?.trim();
+  const preferredTime = payload.preferred_time?.trim();
+
+  if (!Number.isFinite(propertyId) || propertyId <= 0) {
+    throw new Error("Kost wajib dipilih.");
+  }
+
+  if (!preferredDate || !preferredTime) {
+    throw new Error("Tanggal dan jam survei wajib diisi.");
+  }
+
+  let propertyName = `Kost #${propertyId}`;
+  let propertyAddress: string | null = null;
+
+  try {
+    const propertiesResponse = await getPublicProperties({
+      page: 1,
+      per_page: 100,
+    });
+    const matchedProperty = propertiesResponse.data.find(
+      (item) => item.id === propertyId
+    );
+
+    if (matchedProperty) {
+      propertyName = matchedProperty.name || propertyName;
+      propertyAddress = matchedProperty.address || null;
+    }
+  } catch {
+    // Data kost tetap disimpan memakai ID jika katalog sedang tidak dapat diakses.
+  }
+
+  const now = new Date().toISOString();
+  const request: TenantVisitRequest = {
+    id: Date.now(),
+    property: {
+      id: propertyId,
+      name: propertyName,
+      address: propertyAddress,
+    },
+    preferred_date: preferredDate,
+    preferred_time: preferredTime,
+    note: payload.note?.trim() || null,
+    status: "pending",
+    created_at: now,
+    updated_at: now,
+  };
+
+  const existingRequests = getStoredTenantVisitRequests();
+  saveStoredTenantVisitRequests([request, ...existingRequests]);
+
+  return {
+    data: request,
+    message: "Permintaan jadwal survei berhasil dikirim.",
+  };
+};
+
+export const cancelTenantVisitRequest = async (requestId: number | string) => {
+  const numericId = Number(requestId);
+
+  if (!Number.isFinite(numericId)) {
+    throw new Error("Jadwal survei tidak valid.");
+  }
+
+  const requests = getStoredTenantVisitRequests();
+  const targetRequest = requests.find((request) => request.id === numericId);
+
+  if (!targetRequest) {
+    throw new Error("Jadwal survei tidak ditemukan.");
+  }
+
+  if (targetRequest.status === "completed") {
+    throw new Error("Jadwal survei yang sudah selesai tidak bisa dibatalkan.");
+  }
+
+  const updatedRequest: TenantVisitRequest = {
+    ...targetRequest,
+    status: "cancelled",
+    updated_at: new Date().toISOString(),
+  };
+
+  saveStoredTenantVisitRequests(
+    requests.map((request) =>
+      request.id === numericId ? updatedRequest : request
+    )
+  );
+
+  return {
+    data: updatedRequest,
+    message: "Jadwal survei berhasil dibatalkan.",
+  };
 };
 
 export const createTenantBookingPayment = async (

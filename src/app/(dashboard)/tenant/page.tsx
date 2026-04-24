@@ -8,7 +8,6 @@ import {
   CalendarCheck,
   CreditCard,
   Home,
-  RotateCcw,
   Wrench,
 } from "lucide-react";
 import {
@@ -320,12 +319,6 @@ export default function TenantHomePage() {
   };
 
   const isInitialLoading = isLoading && !hasLoadedOnce;
-  const refreshLabel = isLoading
-    ? hasLoadedOnce
-      ? "Menyegarkan..."
-      : "Memuat..."
-    : "Muat Ulang";
-
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -340,16 +333,6 @@ export default function TenantHomePage() {
             </p>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={refreshData}
-          disabled={isLoading}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <RotateCcw size={14} className={isLoading ? "animate-spin" : ""} />
-          {refreshLabel}
-        </button>
       </div>
 
       {isInitialLoading ? (
@@ -478,7 +461,7 @@ export default function TenantHomePage() {
               href="/tenant/jadwal-visit"
               icon={<CalendarCheck size={18} />}
               title="Jadwal Kunjungan"
-              description="Kelola jadwal kunjungan yang sudah kamu ajukan."
+              description="Pantau jadwal survei kost yang sudah kamu ajukan."
               actionLabel="Lihat Jadwal"
             />
           </div>

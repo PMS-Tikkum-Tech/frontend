@@ -1194,9 +1194,9 @@ export default function PublicHomePage() {
                 <Image
                   src="/logo-header.png"
                   alt="KiKost"
-                  width={108}
-                  height={34}
-                  className="h-8 w-auto rounded object-contain"
+                  width={204}
+                  height={64}
+                  className="h-16 w-auto rounded object-contain"
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image
@@ -1781,19 +1781,19 @@ function TestimonialCard({
     <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
       <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-sky-100/60 blur-2xl" />
 
-      <div className="relative flex items-start gap-3">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
+      <div className="relative">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
           <Image
             src={avatar}
             alt={`Foto ${name}`}
-            width={58}
-            height={58}
-            className="rounded-xl object-cover"
+            width={360}
+            height={460}
+            className="h-52 w-full object-cover"
             unoptimized
           />
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
+        <div className="mt-3 min-w-0">
+          <p className="truncate text-base font-semibold text-slate-900">{name}</p>
           <p className="mt-0.5 text-xs text-slate-500">{role}</p>
           <div className="mt-2 flex items-center gap-1 text-amber-500">
             <Star size={13} fill="currentColor" />
@@ -1804,7 +1804,7 @@ function TestimonialCard({
           </div>
         </div>
 
-        <div className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+        <div className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 text-sky-700 shadow-sm">
           <Quote size={15} />
         </div>
       </div>

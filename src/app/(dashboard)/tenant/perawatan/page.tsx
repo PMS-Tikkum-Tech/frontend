@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   CircleAlert,
   Clock3,
-  RefreshCw,
   Wrench,
 } from "lucide-react";
 import {
@@ -202,13 +201,6 @@ export default function TenantMaintenancePage() {
             />
           </div>
 
-          <button
-            onClick={() => setRefreshKey((value) => value + 1)}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700"
-          >
-            <RefreshCw size={14} />
-            Muat Ulang
-          </button>
         </div>
       </section>
 

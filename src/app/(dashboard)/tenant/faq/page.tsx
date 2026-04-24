@@ -63,13 +63,13 @@ const faqs: Record<string, FaqItem[]> = {
     },
     {
       q: "Di mana saya memantau progres perbaikan?",
-      a: "Progres dapat dipantau di menu Perawatan dan Jadwal Kunjungan.",
+      a: "Progres dapat dipantau di menu Perawatan.",
     },
   ],
   "Akun & Keamanan": [
     {
       q: "Bagaimana mengubah kata sandi?",
-      a: "Buka menu Ubah Kata Sandi, isi kata sandi saat ini, lalu masukkan kata sandi baru.",
+      a: "Buka menu Kata Sandi, isi kata sandi saat ini, lalu masukkan kata sandi baru.",
     },
     {
       q: "Bagaimana jika lupa akun masuk?",

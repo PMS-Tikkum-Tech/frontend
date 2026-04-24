@@ -465,13 +465,7 @@ export default function AdminTenantsPage() {
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}{" "}
-          <button
-            onClick={() => setRefreshKey((prev) => prev + 1)}
-            className="ml-2 inline-flex rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-medium"
-          >
-            Muat Ulang
-          </button>
+          {error}
         </div>
       )}
 

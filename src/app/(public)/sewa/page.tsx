@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  Calendar,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -108,6 +109,60 @@ const formatLabel = (value?: string | null) => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+};
+
+const normalizePropertyTypeQuery = (value?: string | null) => {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized || normalized === "all" || normalized === "semua") {
+    return "all";
+  }
+
+  if (normalized.includes("kost")) {
+    return "kost";
+  }
+
+  if (normalized.includes("studio")) {
+    return "studio_apartment";
+  }
+
+  if (normalized.includes("apartemen") || normalized.includes("apartment")) {
+    return "apartment";
+  }
+
+  if (normalized.includes("rumah deret") || normalized.includes("townhouse")) {
+    return "townhouse";
+  }
+
+  if (normalized.includes("rumah") || normalized.includes("house")) {
+    return "house";
+  }
+
+  if (normalized.includes("vila") || normalized.includes("villa")) {
+    return "villa";
+  }
+
+  return normalized
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .join("_");
+};
+
+const formatMoveInDate = (value: string) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 };
 
 const resolvePropertyImage = (path?: string | null) => {
@@ -346,6 +401,7 @@ const resolveAdminMedia = (property: AdminPropertyListItem) => {
 };
 
 export default function SewaPage() {
+  const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const isTenant = user?.role === "tenant";
   const isAdmin = user?.role === "admin";
@@ -353,6 +409,7 @@ export default function SewaPage() {
   const [items, setItems] = useState<TenantFavoriteProperty[]>([]);
   const [search, setSearch] = useState("");
   const [propertyType, setPropertyType] = useState("all");
+  const [moveInDate, setMoveInDate] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -367,6 +424,25 @@ export default function SewaPage() {
     Record<number, PropertyCoordinate>
   >({});
   const { showSuccessToast, showErrorToast } = useTransientToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const locationParam = params.get("location")?.trim() || "";
+    const typeParam = params.get("type")?.trim() || "";
+    const moveInParam = params.get("move_in")?.trim() || "";
+
+    if (locationParam) {
+      setSearch(locationParam);
+    }
+
+    if (typeParam) {
+      setPropertyType(normalizePropertyTypeQuery(typeParam));
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(moveInParam)) {
+      setMoveInDate(moveInParam);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isTenant) {
@@ -590,6 +666,13 @@ export default function SewaPage() {
 
     return Array.from(types.values());
   }, [items]);
+  const visiblePropertyTypeOptions = useMemo(() => {
+    if (propertyType === "all" || propertyTypeOptions.includes(propertyType)) {
+      return propertyTypeOptions;
+    }
+
+    return [propertyType, ...propertyTypeOptions];
+  }, [propertyType, propertyTypeOptions]);
 
   const filteredItems = useMemo(() => {
     let nextItems = items.filter((item) => {
@@ -724,6 +807,39 @@ export default function SewaPage() {
     !isAdmin &&
     isPublicPropertyLoginRequiredMessage(catalogNotice) &&
     filteredItems.length === 0;
+  const activeSearchSummary = [
+    search.trim() ? `Lokasi: ${search.trim()}` : "",
+    propertyType !== "all" ? `Tipe: ${formatLabel(propertyType)}` : "",
+    moveInDate ? `Tanggal masuk: ${formatMoveInDate(moveInDate)}` : "",
+  ].filter(Boolean);
+
+  const applySearchToUrl = () => {
+    const params = new URLSearchParams();
+
+    if (search.trim()) {
+      params.set("location", search.trim());
+    }
+
+    if (propertyType !== "all") {
+      params.set("type", propertyType);
+    }
+
+    if (moveInDate) {
+      params.set("move_in", moveInDate);
+    }
+
+    const query = params.toString();
+    router.push(query ? `/sewa?${query}` : "/sewa", { scroll: false });
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setPropertyType("all");
+    setMoveInDate("");
+    setSortBy("newest");
+    setFavoriteOnly(false);
+    router.push("/sewa", { scroll: false });
+  };
 
   const handleToggleFavorite = async (item: TenantFavoriteProperty) => {
     if (!isTenant) {
@@ -809,7 +925,7 @@ export default function SewaPage() {
               Cari lebih cepat berdasarkan area dan tipe kost
             </p>
           </div>
-          <div className="grid gap-4 lg:grid-cols-4">
+          <div className="grid gap-4 lg:grid-cols-5">
             <FilterField
               label="Cari Lokasi / Nama Kost"
               icon={<Search size={16} />}
@@ -840,12 +956,25 @@ export default function SewaPage() {
                   className="h-11 w-full rounded-xl border px-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500"
                 >
                   <option value="all">Semua Tipe</option>
-                  {propertyTypeOptions.map((type) => (
+                  {visiblePropertyTypeOptions.map((type) => (
                     <option key={type} value={type}>
                       {formatLabel(type)}
                     </option>
                   ))}
                 </select>
+              }
+            />
+
+            <FilterField
+              label="Tanggal Masuk"
+              icon={<Calendar size={16} />}
+              control={
+                <input
+                  type="date"
+                  value={moveInDate}
+                  onChange={(event) => setMoveInDate(event.target.value)}
+                  className="h-11 w-full rounded-xl border px-3 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500"
+                />
               }
             />
 
@@ -869,10 +998,10 @@ export default function SewaPage() {
             <div className="flex flex-col justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setReloadKey((value) => value + 1)}
-                className="h-11 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white transition hover:bg-green-700"
+                onClick={applySearchToUrl}
+                className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
               >
-                Muat Ulang Data
+                Terapkan Pencarian
               </button>
 
               {isTenant && (
@@ -888,6 +1017,20 @@ export default function SewaPage() {
               )}
             </div>
           </div>
+
+          {activeSearchSummary.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold text-slate-600">Pencarian aktif:</span>
+              {activeSearchSummary.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-sky-200 bg-white px-3 py-1 font-medium text-sky-700"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1084,10 +1227,7 @@ export default function SewaPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSearch("");
-                  setPropertyType("all");
-                  setSortBy("newest");
-                  setFavoriteOnly(false);
+                  resetFilters();
                 }}
                 className="mt-4 inline-flex h-10 items-center rounded-xl bg-green-600 px-4 text-sm font-medium text-white hover:bg-green-700"
               >
@@ -1223,9 +1363,9 @@ export default function SewaPage() {
                 <Image
                   src="/logo-header.png"
                   alt="KiKost"
-                  width={108}
-                  height={34}
-                  className="h-8 w-auto rounded object-contain"
+                  width={204}
+                  height={64}
+                  className="h-16 w-auto rounded object-contain"
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image

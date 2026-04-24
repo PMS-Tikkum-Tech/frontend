@@ -69,6 +69,25 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
+const isDueDateReached = (value?: string | null) => {
+  if (!value) {
+    return false;
+  }
+
+  const dueDate = new Date(value);
+  if (Number.isNaN(dueDate.getTime())) {
+    return false;
+  }
+
+  const dueDay = new Date(dueDate);
+  dueDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return dueDay.getTime() <= today.getTime();
+};
+
 const toInputDate = (value?: string | null) => {
   if (!value) {
     return "";
@@ -129,14 +148,14 @@ const resolveAssetUrl = (value?: string | null) => {
 const paymentStatusLabel: Record<string, string> = {
   waiting: "Menunggu",
   paid: "Lunas",
-  overdue: "Terlambat",
+  overdue: "Dibatalkan",
   cancelled: "Dibatalkan",
 };
 
 const paymentStatusStyle: Record<string, string> = {
   waiting: "bg-blue-100 text-blue-700",
   paid: "bg-green-100 text-green-700",
-  overdue: "bg-red-100 text-red-700",
+  overdue: "bg-slate-100 text-slate-700",
   cancelled: "bg-slate-100 text-slate-700",
 };
 
@@ -174,6 +193,25 @@ const getInitialForm = (): BillingFormState => ({
   paymentMethod: "",
   description: "",
 });
+
+const isPaymentAutoCancelledByDueDate = (
+  payment: Pick<AdminPayment, "status" | "due_date">
+) => {
+  return (
+    payment.status === "overdue" ||
+    (payment.status === "waiting" && isDueDateReached(payment.due_date))
+  );
+};
+
+const getPaymentDisplayStatus = (
+  payment: Pick<AdminPayment, "status" | "due_date">
+): AdminPayment["status"] => {
+  if (isPaymentAutoCancelledByDueDate(payment)) {
+    return "cancelled";
+  }
+
+  return payment.status;
+};
 
 const normalizeOptional = (value: string) => {
   const trimmed = value.trim();
@@ -370,7 +408,7 @@ export default function AdminBillingPage() {
     () =>
       uniqueFilterOptions(
         payments,
-        (payment) => payment.status,
+        (payment) => getPaymentDisplayStatus(payment),
         (value) => paymentStatusLabel[value]
       ),
     [payments]
@@ -393,10 +431,11 @@ export default function AdminBillingPage() {
       } ${payment.tenant.full_name || ""} ${payment.booking_status_label || ""} ${
         payment.transfer_sender_name || ""
       } ${payment.transfer_bank_name || ""}`.toLowerCase();
+      const displayStatus = getPaymentDisplayStatus(payment);
 
       return (
         searchable.includes(search.toLowerCase()) &&
-        (status ? payment.status === status : true) &&
+        (status ? displayStatus === status : true) &&
         (propertyFilter ? String(payment.property.id || "") === propertyFilter : true)
       );
     });
@@ -415,18 +454,24 @@ export default function AdminBillingPage() {
   }, [payments, search, status, propertyFilter, sortBy]);
 
   const stats = useMemo(() => {
-    const waiting = payments.filter((payment) => payment.status === "waiting").length;
-    const paid = payments.filter((payment) => payment.status === "paid").length;
-    const overdue = payments.filter((payment) => payment.status === "overdue").length;
+    const waiting = payments.filter(
+      (payment) => getPaymentDisplayStatus(payment) === "waiting"
+    ).length;
+    const paid = payments.filter(
+      (payment) => getPaymentDisplayStatus(payment) === "paid"
+    ).length;
+    const cancelled = payments.filter(
+      (payment) => getPaymentDisplayStatus(payment) === "cancelled"
+    ).length;
     const totalOutstanding = payments
-      .filter((payment) => payment.status === "waiting" || payment.status === "overdue")
+      .filter((payment) => getPaymentDisplayStatus(payment) === "waiting")
       .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
     return {
       total: payments.length,
       waiting,
       paid,
-      overdue,
+      cancelled,
       totalOutstanding,
     };
   }, [payments]);
@@ -675,6 +720,16 @@ export default function AdminBillingPage() {
   };
 
   const openApproveConfirmation = (payment: AdminPayment) => {
+    const displayStatus = getPaymentDisplayStatus(payment);
+
+    if (displayStatus === "cancelled") {
+      setNotice({
+        variant: "error",
+        message: "Tagihan sudah dibatalkan otomatis karena jatuh tempo.",
+      });
+      return;
+    }
+
     if (isManualBookingRecord(payment)) {
       if (payment.booking_status !== "pending_review") {
         setNotice({
@@ -691,7 +746,7 @@ export default function AdminBillingPage() {
       return;
     }
 
-    if (payment.status === "paid") {
+    if (displayStatus === "paid") {
       return;
     }
 
@@ -699,6 +754,17 @@ export default function AdminBillingPage() {
   };
 
   const handleApprovePayment = async (payment: AdminPayment) => {
+    const displayStatus = getPaymentDisplayStatus(payment);
+
+    if (displayStatus === "cancelled") {
+      setNotice({
+        variant: "error",
+        message: "Tagihan sudah dibatalkan otomatis karena jatuh tempo.",
+      });
+      setApproveConfirmationPayment(null);
+      return;
+    }
+
     if (isManualBookingRecord(payment)) {
       if (payment.booking_status !== "pending_review") {
         setNotice({
@@ -813,9 +879,9 @@ export default function AdminBillingPage() {
         <SummaryCard label="Total Tagihan" value={String(stats.total)} />
         <SummaryCard label="Menunggu" value={String(stats.waiting)} tone="default" />
         <SummaryCard label="Lunas" value={String(stats.paid)} tone="success" />
-        <SummaryCard label="Terlambat" value={String(stats.overdue)} tone="danger" />
+        <SummaryCard label="Dibatalkan" value={String(stats.cancelled)} tone="danger" />
         <SummaryCard
-          label="Tunggakan"
+          label="Nominal Menunggu"
           value={`Rp ${stats.totalOutstanding.toLocaleString("id-ID")}`}
         />
       </section>
@@ -894,16 +960,6 @@ export default function AdminBillingPage() {
             Atur Ulang
           </button>
 
-          {error && (
-            <button
-              type="button"
-              onClick={() => setRefreshKey((prev) => prev + 1)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 hover:bg-red-100"
-            >
-              <RotateCcw size={14} />
-              Muat Ulang
-            </button>
-          )}
         </div>
 
         <p className="mt-3 text-xs text-slate-500">
@@ -1055,7 +1111,12 @@ export default function AdminBillingPage() {
                     </td>
 
                     <td className="px-3 py-3">
-                      <StatusBadge status={payment.status} />
+                      <StatusBadge status={getPaymentDisplayStatus(payment)} />
+                      {isPaymentAutoCancelledByDueDate(payment) ? (
+                        <p className="mt-1 break-words text-xs font-medium text-red-600">
+                          Dibatalkan otomatis karena sudah melewati jatuh tempo.
+                        </p>
+                      ) : null}
                       {payment.booking_status_label ? (
                         <p
                           className="mt-1 break-words text-xs text-slate-500"
@@ -1101,13 +1162,16 @@ export default function AdminBillingPage() {
                             openApproveConfirmation(payment);
                           }}
                           disabled={
-                            payment.status === "paid" ||
+                            getPaymentDisplayStatus(payment) === "paid" ||
+                            getPaymentDisplayStatus(payment) === "cancelled" ||
                             isApprovingId === payment.id
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
-                            payment.status === "paid"
+                            getPaymentDisplayStatus(payment) === "paid"
                               ? "Pembayaran sudah lunas"
+                              : getPaymentDisplayStatus(payment) === "cancelled"
+                                ? "Tagihan sudah dibatalkan"
                               : "ACC pembayaran"
                           }
                         >
@@ -1289,8 +1353,17 @@ export default function AdminBillingPage() {
               />
               <DetailRow
                 label="Status"
-                value={paymentStatusLabel[viewPayment.status] || viewPayment.status}
+                value={
+                  paymentStatusLabel[getPaymentDisplayStatus(viewPayment)] ||
+                  getPaymentDisplayStatus(viewPayment)
+                }
               />
+              {isPaymentAutoCancelledByDueDate(viewPayment) ? (
+                <DetailRow
+                  label="Catatan Pembatalan"
+                  value="Dibatalkan otomatis karena pembayaran sudah melewati tanggal jatuh tempo."
+                />
+              ) : null}
               <DetailRow
                 label="Status Pemesanan Penyewa"
                 value={viewPayment.booking_status_label || "-"}
@@ -1490,7 +1563,7 @@ export default function AdminBillingPage() {
                   >
                     <option value="waiting">Menunggu</option>
                     <option value="paid">Lunas</option>
-                    <option value="overdue">Terlambat</option>
+                    <option value="overdue">Dibatalkan Otomatis</option>
                     <option value="cancelled">Dibatalkan</option>
                   </select>
                 </div>

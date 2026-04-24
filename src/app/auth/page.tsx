@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
 import VerifyEmailForm from "@/components/auth/VerifyEmailForm";
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -114,29 +115,33 @@ function AuthPageContent() {
 
         <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-2xl shadow-sky-200/60 backdrop-blur md:p-7">
           <div className="mb-6">
-            <div className="mb-4 inline-flex rounded-full border border-slate-200 p-1">
-              <button
-                type="button"
-                onClick={() => setModeWithQuery("login")}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                  mode === "login"
-                    ? "bg-sky-600 text-white"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Masuk
-              </button>
-              <button
-                type="button"
-                onClick={() => setModeWithQuery("register")}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                  mode === "register"
-                    ? "bg-sky-600 text-white"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Daftar
-              </button>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex rounded-full border border-slate-200 p-1">
+                <button
+                  type="button"
+                  onClick={() => setModeWithQuery("login")}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                    mode === "login"
+                      ? "bg-sky-600 text-white"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Masuk
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModeWithQuery("register")}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                    mode === "register"
+                      ? "bg-sky-600 text-white"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Daftar
+                </button>
+              </div>
+
+              <LanguageSwitcher compact />
             </div>
 
             <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>

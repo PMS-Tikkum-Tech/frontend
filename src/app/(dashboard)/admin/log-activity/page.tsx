@@ -7,7 +7,6 @@ import {
   Download,
   Eye,
   Filter,
-  RotateCcw,
   Search,
   X,
 } from "lucide-react";
@@ -143,7 +142,6 @@ export default function AdminLogActivityPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationState>({
     currentPage: 1,
@@ -219,7 +217,6 @@ export default function AdminLogActivityPage() {
     dateFrom,
     dateTo,
     moduleName,
-    refreshKey,
     search,
     sort,
   ]);
@@ -494,14 +491,6 @@ export default function AdminLogActivityPage() {
             Atur Ulang
           </button>
 
-          <button
-            type="button"
-            onClick={() => setRefreshKey((prev) => prev + 1)}
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <RotateCcw size={14} />
-            Muat Ulang
-          </button>
         </div>
       </section>
 

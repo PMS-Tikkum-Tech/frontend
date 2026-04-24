@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getTenantNotifications } from "@/lib/dashboard/tenant.api";
 import { hasUnreadTenantNotifications } from "@/lib/dashboard/tenant-notification-state";
 import ProfilePanel from "./ProfilePanel";
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { Bell, Menu, User, X } from "lucide-react";
 
 export default function PublicHeader() {
@@ -202,6 +203,7 @@ export default function PublicHeader() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <LanguageSwitcher compact className="hidden sm:inline-flex" />
               <Link
                 href="/auth?mode=login"
                 className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-700 sm:inline-flex"
@@ -236,6 +238,8 @@ export default function PublicHeader() {
           }`}
         >
           <div className="space-y-3 px-4 py-3">
+            <LanguageSwitcher className="w-full justify-between border-slate-200" />
+
             <nav className="grid gap-1.5">
               {nav.map((item) => (
                 <Link

@@ -81,7 +81,7 @@ export default function TenantBantuanPage() {
           <GuideCard
             icon={<ClipboardList size={16} />}
             title="Status Perawatan"
-            desc="Pantau progres teknisi di menu Perawatan dan Jadwal Kunjungan."
+            desc="Pantau progres teknisi di menu Perawatan."
           />
           <GuideCard
             icon={<CreditCard size={16} />}
@@ -91,7 +91,7 @@ export default function TenantBantuanPage() {
           <GuideCard
             icon={<ShieldCheck size={16} />}
             title="Akun & Keamanan"
-            desc="Perbarui kata sandi secara berkala dari menu Ubah Kata Sandi."
+            desc="Perbarui kata sandi secara berkala dari menu Kata Sandi."
           />
         </div>
       </section>

@@ -461,9 +461,9 @@ export default function TentangPage() {
                 <Image
                   src="/logo-header.png"
                   alt="KiKost"
-                  width={108}
-                  height={34}
-                  className="h-8 w-auto rounded object-contain"
+                  width={204}
+                  height={64}
+                  className="h-16 w-auto rounded object-contain"
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image

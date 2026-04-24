@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
@@ -19,10 +20,13 @@ import {
   getTenantCurrentStay,
   getTenantMaintenanceRequests,
   getTenantPayments,
+  getTenantStayDetail,
+  getTenantStays,
   type PublicPropertySummary,
   type PublicPropertyUnitSummary,
   type TenantCurrentStay,
   type TenantPayment,
+  type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
@@ -90,6 +94,39 @@ const getTimestamp = (value?: string | null) => {
   return date.getTime();
 };
 
+const isDueDateReached = (value?: string | null) => {
+  if (!value) {
+    return false;
+  }
+
+  const dueDate = new Date(value);
+  if (Number.isNaN(dueDate.getTime())) {
+    return false;
+  }
+
+  const dueDay = new Date(dueDate);
+  dueDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return dueDay.getTime() <= today.getTime();
+};
+
+const getPaymentDisplayStatus = (
+  payment: Pick<TenantPayment, "status" | "due_date">
+): TenantPayment["status"] => {
+  if (payment.status === "overdue") {
+    return "cancelled";
+  }
+
+  if (payment.status === "waiting" && isDueDateReached(payment.due_date)) {
+    return "cancelled";
+  }
+
+  return payment.status;
+};
+
 const resolveAssetUrl = (value?: string | null) => {
   const normalized = value?.trim();
   if (!normalized) {
@@ -105,6 +142,34 @@ const resolveAssetUrl = (value?: string | null) => {
     "http://127.0.0.1:3001";
 
   return `${baseUrl}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
+};
+
+const mapCurrentStayToSummary = (
+  stay: TenantCurrentStay | null
+): TenantStaySummary | null => {
+  if (!stay?.booking_id) {
+    return null;
+  }
+
+  return {
+    booking_id: stay.booking_id,
+    booking_code: stay.booking_code || null,
+    occupancy_status: stay.occupancy_status || null,
+    status_label: stay.status_label || null,
+    property_name: stay.property?.name || null,
+    unit_name: stay.unit?.name || null,
+    monthly_rent_amount:
+      stay.monthly_rent_amount ?? stay.unit?.monthly_rent_amount ?? null,
+    start_date: stay.start_date || null,
+    end_date: stay.end_date || null,
+    duration_months: stay.duration_months ?? null,
+    roomphoto_urls: (stay.unit?.roomphoto_urls || []).map((path) => {
+      return resolveAssetUrl(path);
+    }),
+    transfer_proof_url: stay.transfer_proof_url || null,
+    can_report_maintenance: true,
+    can_submit_payment: stay.lease?.payment_status !== "paid",
+  };
 };
 
 const mapCurrentStayProperty = (
@@ -152,7 +217,18 @@ const mapCurrentStayUnit = (
 };
 
 export default function TenantKostDetailPage() {
+  return (
+    <Suspense fallback={<DetailPageLoadingState />}>
+      <TenantKostDetailContent />
+    </Suspense>
+  );
+}
+
+function TenantKostDetailContent() {
+  const searchParams = useSearchParams();
+  const bookingIdParam = searchParams.get("booking_id");
   const [payments, setPayments] = useState<TenantPayment[]>([]);
+  const [stays, setStays] = useState<TenantStaySummary[]>([]);
   const [currentStay, setCurrentStay] = useState<TenantCurrentStay | null>(null);
   const [property, setProperty] = useState<PublicPropertySummary | null>(null);
   const [unit, setUnit] = useState<PublicPropertyUnitSummary | null>(null);
@@ -169,37 +245,63 @@ export default function TenantKostDetailPage() {
       setError(null);
 
       try {
-        const [currentStayResponse, paymentsResponse, maintenanceResponse] = await Promise.all([
+        const [staysResponse, currentStayResponse, paymentsResponse, maintenanceResponse] =
+          await Promise.all([
+            getTenantStays({ page: 1, per_page: 100, tab: "active" }),
           getTenantCurrentStay(),
           getTenantPayments({ page: 1, per_page: 100, sort: "due_date" }),
           getTenantMaintenanceRequests({ page: 1, per_page: 100 }),
-        ]);
+          ]);
 
         if (!active) {
           return;
         }
+
+        const fallbackStaySummary = mapCurrentStayToSummary(currentStayResponse.data);
+        const activeStays =
+          staysResponse.data.length > 0
+            ? staysResponse.data
+            : fallbackStaySummary
+              ? [fallbackStaySummary]
+              : [];
+        const parsedBookingId = bookingIdParam ? Number(bookingIdParam) : NaN;
+        const selectedBookingId = Number.isFinite(parsedBookingId)
+          ? parsedBookingId
+          : activeStays[0]?.booking_id || currentStayResponse.data?.booking_id || null;
+
+        const selectedStayResponse =
+          selectedBookingId != null
+            ? await getTenantStayDetail(selectedBookingId).catch(() => {
+                return currentStayResponse;
+              })
+            : currentStayResponse;
 
         const sortedPayments = [...paymentsResponse.data].sort((a, b) => {
           const aDate = getTimestamp(a.due_date || a.created_at);
           const bDate = getTimestamp(b.due_date || b.created_at);
           return bDate - aDate;
         });
-        const resolvedCurrentStay = currentStayResponse.data?.booking_id
-          ? currentStayResponse.data
+        const resolvedCurrentStay = selectedStayResponse.data?.booking_id
+          ? selectedStayResponse.data
           : null;
 
+        setStays(activeStays);
         setPayments(sortedPayments);
         setCurrentStay(resolvedCurrentStay);
         setProperty(mapCurrentStayProperty(resolvedCurrentStay?.property || null));
         setUnit(mapCurrentStayUnit(resolvedCurrentStay?.unit || null));
 
         const maintenanceActive = maintenanceResponse.data.filter((item) => {
-          return item.status !== "completed" && item.status !== "cancelled";
+          return (
+            item.status !== "completed" &&
+            item.status !== "cancelled" &&
+            item.property.id === resolvedCurrentStay?.property?.id &&
+            item.unit.id === resolvedCurrentStay?.unit?.id
+          );
         }).length;
         setActiveMaintenanceCount(maintenanceActive);
 
-        const latestPayment = sortedPayments[0];
-        if (!resolvedCurrentStay && !latestPayment) {
+        if (!resolvedCurrentStay && sortedPayments.length === 0) {
           return;
         }
       } catch (loadError) {
@@ -225,15 +327,30 @@ export default function TenantKostDetailPage() {
     return () => {
       active = false;
     };
-  }, [refreshKey]);
+  }, [bookingIdParam, refreshKey]);
 
-  const latestPayment = payments[0] || null;
+  const stayPayments = useMemo(() => {
+    if (!currentStay?.booking_id) {
+      return [] as TenantPayment[];
+    }
+
+    return payments.filter((payment) => payment.id === currentStay.booking_id);
+  }, [currentStay?.booking_id, payments]);
+
+  const latestPayment = stayPayments.sort((a, b) => {
+    const aDate = getTimestamp(a.due_date || a.created_at);
+    const bDate = getTimestamp(b.due_date || b.created_at);
+    return bDate - aDate;
+  })[0] || null;
   const displayedPropertyName =
     property?.name || currentStay?.property?.name || latestPayment?.property.name || "-";
   const displayedUnitName =
     unit?.name || currentStay?.unit?.name || latestPayment?.unit.name || "-";
+  const displayStatus = latestPayment
+    ? getPaymentDisplayStatus(latestPayment)
+    : "paid";
   const statusBadge = latestPayment
-    ? paymentStatusMap[latestPayment.status]
+    ? paymentStatusMap[displayStatus]
     : currentStay?.status_label
       ? {
           label: currentStay.status_label,
@@ -310,6 +427,44 @@ export default function TenantKostDetailPage() {
         </div>
       ) : (
         <>
+          {stays.length > 1 ? (
+            <section className="rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-800">
+                    Pilih Hunian
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Tenant ini memiliki beberapa unit aktif. Pilih unit yang ingin dilihat.
+                  </p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                  {stays.length} unit aktif
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {stays.map((stay) => {
+                  const isActive = stay.booking_id === currentStay?.booking_id;
+
+                  return (
+                    <Link
+                      key={stay.booking_id}
+                      href={`/tenant/kost-saya/detail?booking_id=${stay.booking_id}`}
+                      className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                        isActive
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
+                      }`}
+                    >
+                      {stay.property_name || "-"} • {stay.unit_name || "-"}
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-900 p-6 text-white shadow-sm">
             <Image
               src={heroImage}
@@ -353,7 +508,7 @@ export default function TenantKostDetailPage() {
               value={formatDate(latestPayment?.due_date || currentStay?.end_date)}
               helper={
                 latestPayment
-                  ? latestPayment.status === "paid"
+                  ? getPaymentDisplayStatus(latestPayment) === "paid"
                     ? "Sudah dibayar"
                     : "Perhatikan tanggal bayar"
                   : currentStay?.end_date
@@ -370,18 +525,18 @@ export default function TenantKostDetailPage() {
             <SummaryCard
               icon={<CheckCircle2 size={16} />}
               label="Status"
-              value={latestPayment ? paymentStatusMap[latestPayment.status].label : currentStay?.status_label || "-"}
+              value={latestPayment ? paymentStatusMap[displayStatus].label : currentStay?.status_label || "-"}
               helper={`Diperbarui ${formatDate(currentStay?.updated_at || latestPayment?.updated_at)}`}
             />
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-800">Informasi Properti</h3>
+              <h3 className="text-base font-semibold text-slate-800">Informasi Kost</h3>
               <div className="mt-4 space-y-3 text-sm text-slate-700">
                 <DetailRow
                   icon={<Building2 size={14} />}
-                  label="Nama Properti"
+                  label="Nama Kost"
                   value={displayedPropertyName}
                 />
                 <DetailRow
@@ -391,7 +546,7 @@ export default function TenantKostDetailPage() {
                 />
                 <DetailRow
                   icon={<Home size={14} />}
-                  label="Tipe Properti"
+                  label="Tipe Kost"
                   value={property?.property_type || currentStay?.property?.property_type || "-"}
                 />
                 <DetailRow
@@ -482,6 +637,25 @@ export default function TenantKostDetailPage() {
           ) : null}
         </>
       )}
+    </div>
+  );
+}
+
+function DetailPageLoadingState() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold text-green-600">Detail Kost</h1>
+          <p className="mt-1 text-slate-600">
+            Informasi lengkap hunian kamu saat ini.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
+        Memuat detail kost...
+      </div>
     </div>
   );
 }

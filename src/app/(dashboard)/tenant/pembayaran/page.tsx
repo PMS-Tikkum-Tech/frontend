@@ -8,7 +8,6 @@ import {
   CircleAlert,
   Clock3,
   CreditCard,
-  RefreshCw,
   WalletCards,
   XCircle,
 } from "lucide-react";
@@ -103,11 +102,18 @@ const isDueDateReached = (value?: string | null) => {
 };
 
 const getPaymentDisplayStatus = (payment: TenantPayment): TenantPayment["status"] => {
-  if (payment.status === "waiting" && isDueDateReached(payment.due_date)) {
-    return "overdue";
+  if (isAutoCancelledByDueDate(payment)) {
+    return "cancelled";
   }
 
   return payment.status;
+};
+
+const isAutoCancelledByDueDate = (payment: TenantPayment) => {
+  return (
+    payment.status === "overdue" ||
+    (payment.status === "waiting" && isDueDateReached(payment.due_date))
+  );
 };
 
 export default function TenantPaymentsPage() {
@@ -208,9 +214,6 @@ export default function TenantPaymentsPage() {
       waitingCount: sortedHistory.filter(
         (item) => getPaymentDisplayStatus(item) === "waiting"
       ).length,
-      overdueCount: sortedHistory.filter(
-        (item) => getPaymentDisplayStatus(item) === "overdue"
-      ).length,
       cancelledCount: sortedHistory.filter(
         (item) => getPaymentDisplayStatus(item) === "cancelled"
       ).length,
@@ -287,24 +290,12 @@ export default function TenantPaymentsPage() {
               onClick={() => setFilter("paid")}
             />
             <FilterChip
-              active={filter === "overdue"}
-              label={`Jatuh Tempo (${stats.overdueCount})`}
-              onClick={() => setFilter("overdue")}
-            />
-            <FilterChip
               active={filter === "cancelled"}
               label={`Dibatalkan (${stats.cancelledCount})`}
               onClick={() => setFilter("cancelled")}
             />
           </div>
 
-          <button
-            onClick={() => setRefreshKey((value) => value + 1)}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700"
-          >
-            <RefreshCw size={14} />
-            Muat Ulang
-          </button>
         </div>
       </section>
 
@@ -484,6 +475,7 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
 function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
   const displayStatus = getPaymentDisplayStatus(payment);
   const isDue = displayStatus === "overdue";
+  const isAutoCancelled = isAutoCancelledByDueDate(payment);
 
   return (
     <article
@@ -509,6 +501,17 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
           {statusLabelMap[displayStatus]}
         </span>
       </div>
+
+      {isAutoCancelled ? (
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <p className="inline-flex items-start gap-1.5">
+            <CircleAlert size={13} className="mt-0.5 shrink-0" />
+            <span>
+              Dibatalkan otomatis karena pembayaran sudah melewati tanggal jatuh tempo.
+            </span>
+          </p>
+        </div>
+      ) : null}
 
       <p className="mt-3 text-lg font-semibold text-slate-900">
         {formatCurrency(payment.amount)}

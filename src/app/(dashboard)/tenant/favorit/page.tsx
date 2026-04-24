@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, MapPin, RefreshCw, Search, Sparkles } from "lucide-react";
+import { Heart, MapPin, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   addTenantFavorite,
@@ -278,13 +278,6 @@ export default function FavoritPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setReloadKey((value) => value + 1)}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700"
-          >
-            <RefreshCw size={15} />
-            Muat Ulang
-          </button>
         </div>
       </section>
 

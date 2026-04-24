@@ -1256,12 +1256,8 @@ const mapManualBookingStatusToPaymentStatus = (
     return "paid";
   }
 
-  if (status === "cancelled") {
+  if (status === "cancelled" || status === "denied" || status === "expired") {
     return "cancelled";
-  }
-
-  if (status === "denied" || status === "expired") {
-    return "overdue";
   }
 
   return "waiting";

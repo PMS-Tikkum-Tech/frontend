@@ -516,9 +516,9 @@ export default function KerjasamaPage() {
                 <Image
                   src="/logo-header.png"
                   alt="KiKost"
-                  width={108}
-                  height={34}
-                  className="h-8 w-auto rounded object-contain"
+                  width={204}
+                  height={64}
+                  className="h-16 w-auto rounded object-contain"
                 />
                 <span className="text-sm text-green-100">dikelola oleh</span>
                 <Image

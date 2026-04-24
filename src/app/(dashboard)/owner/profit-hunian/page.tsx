@@ -5,7 +5,6 @@ import {
   ArrowDown,
   CalendarClock,
   Home,
-  RotateCcw,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -19,7 +18,7 @@ const formatCurrency = (value: number) =>
 
 export default function OwnerProfitHunianPage() {
   const [period, setPeriod] = useState("year");
-  const { data, isLoading, error, refresh } = useOwnerDashboard(period);
+  const { data, isLoading, error } = useOwnerDashboard(period);
 
   const safeRevenueData =
     data.revenueData.length > 0
@@ -45,17 +44,7 @@ export default function OwnerProfitHunianPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <GlobalFilter value={period} onChange={setPeriod} />
-            <button
-              type="button"
-              onClick={refresh}
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-sm font-semibold text-[#1E2746] hover:bg-slate-100"
-            >
-              <RotateCcw size={14} />
-              Muat Ulang
-            </button>
-          </div>
+          <GlobalFilter value={period} onChange={setPeriod} />
         </div>
       </section>
 

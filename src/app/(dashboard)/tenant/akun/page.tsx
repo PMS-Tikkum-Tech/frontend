@@ -8,7 +8,6 @@ import {
   IdCard,
   Mail,
   Phone,
-  RefreshCw,
   Save,
   ShieldCheck,
   Upload,
@@ -78,7 +77,6 @@ export default function TenantAccountPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
     null
@@ -147,37 +145,34 @@ export default function TenantAccountPage() {
     return () => {
       active = false;
     };
-  }, [refreshKey]);
+  }, []);
 
-  const completeness = useMemo(() => {
-    const source: BackendUser = profile
-      ? {
-          ...profile,
-          full_name: form.fullName,
-          phone_number: form.phoneNumber,
-          nik: form.nik,
-          emergency_contact_name: form.emergencyContactName,
-          emergency_contact_number: form.emergencyContactNumber,
-          relationship: form.relationship,
-        }
-      : {
-          id: 0,
-          full_name: form.fullName,
-          email: user?.email || "",
-          role: "tenant",
-          phone_number: form.phoneNumber,
-          nik: form.nik,
-          emergency_contact_name: form.emergencyContactName,
-          emergency_contact_number: form.emergencyContactNumber,
-          relationship: form.relationship,
-        };
+  const savedProfile = useMemo<BackendUser>(() => {
+    if (profile) {
+      return profile;
+    }
 
-    const missingFields = getIncompleteTenantProfileFields(source);
+    return {
+      id: user?.id || 0,
+      full_name: user?.name || "",
+      email: user?.email || "",
+      role: "tenant",
+      phone_number: "",
+      nik: "",
+      emergency_contact_name: "",
+      emergency_contact_number: "",
+      relationship: "",
+    };
+  }, [profile, user?.email, user?.id, user?.name]);
+
+  const savedCompleteness = useMemo(() => {
+    const missingFields = getIncompleteTenantProfileFields(savedProfile);
+
     return {
       isComplete: missingFields.length === 0,
       missingFields,
     };
-  }, [form, profile, user?.email]);
+  }, [savedProfile]);
 
   const avatarUrl =
     profilePicturePreview ||
@@ -276,6 +271,14 @@ export default function TenantAccountPage() {
       });
 
       setProfile(response.data);
+      setForm({
+        fullName: toFormValue(response.data.full_name),
+        phoneNumber: toFormValue(response.data.phone_number),
+        nik: toFormValue(response.data.nik),
+        emergencyContactName: toFormValue(response.data.emergency_contact_name),
+        emergencyContactNumber: toFormValue(response.data.emergency_contact_number),
+        relationship: toFormValue(response.data.relationship),
+      });
       setProfilePicture(null);
       setProfilePicturePreview((previous) => {
         if (previous?.startsWith("blob:")) {
@@ -303,26 +306,19 @@ export default function TenantAccountPage() {
 
         <div className="relative flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-semibold">Ubah Profil</h1>
+            <h1 className="text-3xl font-semibold">Profil</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/90">
               Lengkapi data diri untuk bisa mengajukan jadwal kunjungan properti.
             </p>
           </div>
 
-          <button
-            onClick={() => setRefreshKey((value) => value + 1)}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-          >
-            <RefreshCw size={14} />
-            Muat Ulang
-          </button>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <StatChip
             icon={<UserRound size={15} />}
             label="Nama Akun"
-            value={toDisplayValue(form.fullName)}
+            value={toDisplayValue(savedProfile.full_name)}
           />
           <StatChip
             icon={<Mail size={15} />}
@@ -330,9 +326,9 @@ export default function TenantAccountPage() {
             value={toDisplayValue(profile?.email || user?.email)}
           />
           <StatChip
-            icon={completeness.isComplete ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+            icon={savedCompleteness.isComplete ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
             label="Status Profil"
-            value={completeness.isComplete ? "Lengkap" : "Belum Lengkap"}
+            value={savedCompleteness.isComplete ? "Lengkap" : "Belum Lengkap"}
           />
         </div>
       </section>
@@ -353,7 +349,7 @@ export default function TenantAccountPage() {
               className="mx-auto rounded-full border object-cover"
             />
             <p className="mt-4 text-base font-semibold text-slate-800">
-              {toDisplayValue(form.fullName)}
+              {toDisplayValue(savedProfile.full_name)}
             </p>
             <p className="mt-1 text-sm text-slate-500">
               {toDisplayValue(profile?.email || user?.email)}
@@ -397,18 +393,18 @@ export default function TenantAccountPage() {
 
             <div
               className={`mt-5 rounded-xl border p-3 text-left text-xs ${
-                completeness.isComplete
+                savedCompleteness.isComplete
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-amber-200 bg-amber-50 text-amber-700"
               }`}
             >
-              {completeness.isComplete ? (
+              {savedCompleteness.isComplete ? (
                 <p>Profil sudah lengkap. Kamu bisa mengajukan jadwal kunjungan.</p>
               ) : (
                 <p>
                   Profil belum lengkap.
                   <br />
-                  Lengkapi: {completeness.missingFields.join(", ")}.
+                  Lengkapi: {savedCompleteness.missingFields.join(", ")}.
                 </p>
               )}
             </div>

@@ -596,19 +596,6 @@ export default function DetailPropertiPage() {
 
             <button
               type="button"
-              onClick={() => {
-                setError(null);
-                setNotice(null);
-                setRefreshKey((prev) => prev + 1);
-              }}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100"
-            >
-              <RotateCcw size={15} />
-              Muat Ulang
-            </button>
-
-            <button
-              type="button"
               onClick={() => setShowEditModal(true)}
               disabled={isLoading || !propertyDetail || isUpdating || isDeleting}
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"

@@ -225,7 +225,7 @@ export default function ProfilePanel({
                 <MenuItem
                   icon={<CalendarCheck size={20} />}
                   title="Jadwal Kunjungan"
-                  subtitle="Daftar kunjungan yang sudah dijadwalkan"
+                  subtitle="Daftar survei kost yang sudah dijadwalkan"
                   href="/tenant/jadwal-visit"
                   onClose={onClose}
                 />
@@ -298,7 +298,7 @@ export default function ProfilePanel({
               <Section title="Pengaturan Akun">
                 <MenuItem
                   icon={<User size={20} />}
-                  title="Ubah Profil"
+                  title="Profil"
                   subtitle="Perbarui data akun dan kontak darurat"
                   href="/tenant/akun"
                   onClose={onClose}
@@ -306,7 +306,7 @@ export default function ProfilePanel({
 
                 <MenuItem
                   icon={<Lock size={20} />}
-                  title="Ubah Kata Sandi"
+                  title="Kata Sandi"
                   subtitle="Jaga keamanan akun kamu"
                   href="/tenant/sandi"
                   onClose={onClose}

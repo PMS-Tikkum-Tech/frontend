@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Building2,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -23,7 +24,9 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import VisitRequestModal from "@/components/sewa/VisitRequestModal";
 import {
+  createTenantVisitRequest,
   getApiErrorMessage,
   getPublicProperties,
   getPublicPropertyUnits,
@@ -279,6 +282,17 @@ type AvailableUnitCard = {
   facilities: string[];
 };
 
+type VisitRequestFormPayload = {
+  preferredDate: string;
+  preferredTime: string;
+  note: string;
+};
+
+type VisitNotice = {
+  variant: "success" | "error";
+  message: string;
+} | null;
+
 const toUnitStatusLabel = (status?: string | null) => {
   if (status === "vacant") {
     return "Tersedia";
@@ -357,6 +371,9 @@ export default function SewaPropertyDetailPage() {
   const [heroTouchEndX, setHeroTouchEndX] = useState<number | null>(null);
   const [geocodedCoordinate, setGeocodedCoordinate] =
     useState<PropertyCoordinate | null>(null);
+  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+  const [isSubmittingVisit, setIsSubmittingVisit] = useState(false);
+  const [visitNotice, setVisitNotice] = useState<VisitNotice>(null);
 
   useEffect(() => {
     if (!property) {
@@ -585,6 +602,40 @@ export default function SewaPropertyDetailPage() {
       },
     ];
   }, [geocodedCoordinate, property]);
+
+  const handleSubmitVisitRequest = async (payload: VisitRequestFormPayload) => {
+    if (!property) {
+      throw new Error("Kost belum tersedia.");
+    }
+
+    setIsSubmittingVisit(true);
+    setVisitNotice(null);
+
+    try {
+      await createTenantVisitRequest({
+        property_id: property.id,
+        preferred_date: payload.preferredDate,
+        preferred_time: payload.preferredTime,
+        note: payload.note,
+      });
+
+      setVisitNotice({
+        variant: "success",
+        message:
+          "Permintaan jadwal survei berhasil dikirim. Kamu bisa memantaunya di Jadwal Kunjungan.",
+      });
+      setIsVisitModalOpen(false);
+    } catch (submitError) {
+      const message = getApiErrorMessage(
+        submitError,
+        "Gagal mengirim permintaan survei. Silakan coba lagi."
+      );
+      setVisitNotice({ variant: "error", message });
+      throw new Error(message);
+    } finally {
+      setIsSubmittingVisit(false);
+    }
+  };
 
   useEffect(() => {
     if (!isMediaViewerOpen) {
@@ -888,7 +939,49 @@ export default function SewaPropertyDetailPage() {
                 Lihat Unit Tersedia
                 <ArrowRight size={14} />
               </Link>
+
+              {isTenant ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVisitNotice(null);
+                    setIsVisitModalOpen(true);
+                  }}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                >
+                  Ajukan Survei Kost
+                  <CalendarDays size={14} />
+                </button>
+              ) : !user ? (
+                <Link
+                  href={`/auth?next=${encodeURIComponent(`/sewa/${property.id}`)}`}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                >
+                  Masuk untuk Ajukan Survei
+                  <CalendarDays size={14} />
+                </Link>
+              ) : null}
             </div>
+
+            {visitNotice ? (
+              <div
+                className={`rounded-xl border px-3 py-2 text-xs ${
+                  visitNotice.variant === "success"
+                    ? "border-white/30 bg-white/15 text-white"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }`}
+              >
+                <p>{visitNotice.message}</p>
+                {visitNotice.variant === "success" ? (
+                  <Link
+                    href="/tenant/jadwal-visit"
+                    className="mt-1 inline-flex font-semibold underline underline-offset-2"
+                  >
+                    Lihat Jadwal Kunjungan
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
           </aside>
         </div>
       </section>
@@ -1116,6 +1209,18 @@ export default function SewaPropertyDetailPage() {
           </article>
         </aside>
       </section>
+
+      <VisitRequestModal
+        isOpen={isVisitModalOpen}
+        propertyName={property.name}
+        isSubmitting={isSubmittingVisit}
+        onClose={() => {
+          if (!isSubmittingVisit) {
+            setIsVisitModalOpen(false);
+          }
+        }}
+        onSubmit={handleSubmitVisitRequest}
+      />
     </div>
   );
 }

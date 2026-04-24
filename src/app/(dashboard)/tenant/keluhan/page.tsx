@@ -11,7 +11,6 @@ import {
 import {
   ClipboardList,
   Home,
-  RefreshCw,
   SendHorizonal,
   ShieldAlert,
 } from "lucide-react";
@@ -243,14 +242,6 @@ export default function ComplaintPage() {
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => void loadUnitOptions()}
-                  className="inline-flex items-center rounded-xl border border-slate-200 px-3 py-3 text-slate-600 transition hover:border-orange-300 hover:text-orange-700"
-                  aria-label="Muat ulang unit"
-                >
-                  <RefreshCw size={16} />
-                </button>
               </div>
             </Field>
           </div>

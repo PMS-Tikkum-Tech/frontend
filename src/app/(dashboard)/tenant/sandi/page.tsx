@@ -115,7 +115,7 @@ export default function TenantSandiPage() {
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Ubah Kata Sandi</h1>
+          <h1 className="text-3xl font-semibold">Kata Sandi</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Lindungi akunmu dengan kata sandi yang kuat dan tidak mudah ditebak.
           </p>

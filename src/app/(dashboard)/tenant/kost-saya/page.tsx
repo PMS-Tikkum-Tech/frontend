@@ -1,11 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  ArrowRight,
+  Building2,
   CircleAlert,
   CircleCheckBig,
   Clock3,
+  Home,
   ReceiptText,
   Wrench,
 } from "lucide-react";
@@ -13,8 +17,10 @@ import {
   getApiErrorMessage,
   getTenantMaintenanceRequests,
   getTenantPayments,
+  getTenantStays,
   type TenantMaintenanceRequest,
   type TenantPayment,
+  type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
@@ -72,7 +78,40 @@ const getTimestamp = (value?: string | null) => {
   return date.getTime();
 };
 
-type ActivityTone = "emerald" | "amber" | "blue" | "slate";
+const isDueDateReached = (value?: string | null) => {
+  if (!value) {
+    return false;
+  }
+
+  const dueDate = new Date(value);
+  if (Number.isNaN(dueDate.getTime())) {
+    return false;
+  }
+
+  const dueDay = new Date(dueDate);
+  dueDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return dueDay.getTime() <= today.getTime();
+};
+
+const getPaymentDisplayStatus = (
+  payment: Pick<TenantPayment, "status" | "due_date">
+): TenantPayment["status"] => {
+  if (payment.status === "overdue") {
+    return "cancelled";
+  }
+
+  if (payment.status === "waiting" && isDueDateReached(payment.due_date)) {
+    return "cancelled";
+  }
+
+  return payment.status;
+};
+
+type ActivityTone = "emerald" | "amber" | "orange" | "rose" | "blue" | "slate";
 
 type TenantActivityItem = {
   id: string;
@@ -88,6 +127,7 @@ type TenantActivityItem = {
 };
 
 export default function KostSayaPage() {
+  const [stays, setStays] = useState<TenantStaySummary[]>([]);
   const [payments, setPayments] = useState<TenantPayment[]>([]);
   const [maintenance, setMaintenance] = useState<TenantMaintenanceRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,7 +142,8 @@ export default function KostSayaPage() {
       setError(null);
 
       try {
-        const [paymentsResponse, maintenanceResponse] = await Promise.all([
+        const [staysResponse, paymentsResponse, maintenanceResponse] = await Promise.all([
+          getTenantStays({ page: 1, per_page: 100, tab: "active" }),
           getTenantPayments({ page: 1, per_page: 100, sort: "due_date" }),
           getTenantMaintenanceRequests({ page: 1, per_page: 100 }),
         ]);
@@ -111,6 +152,7 @@ export default function KostSayaPage() {
           return;
         }
 
+        setStays(staysResponse.data);
         setPayments(paymentsResponse.data);
         setMaintenance(maintenanceResponse.data);
       } catch (loadError) {
@@ -151,12 +193,33 @@ export default function KostSayaPage() {
   }, [payments]);
 
   const activeBills = payments.filter((payment) => {
-    return payment.status === "waiting" || payment.status === "overdue";
+    return getPaymentDisplayStatus(payment) === "waiting";
   });
 
   const activeMaintenanceCount = maintenance.filter((item) => {
     return item.status !== "completed" && item.status !== "cancelled";
   }).length;
+
+  const primaryStay = stays[0] || null;
+  const uniquePropertyCount = useMemo(() => {
+    return new Set(
+      stays
+        .map((stay) => stay.property_name?.trim())
+        .filter((value): value is string => Boolean(value))
+    ).size;
+  }, [stays]);
+
+  const nextDuePayment = useMemo(() => {
+    return [...activeBills].sort((a, b) => {
+      const aDate = getTimestamp(a.due_date || a.created_at);
+      const bDate = getTimestamp(b.due_date || b.created_at);
+      return aDate - bDate;
+    })[0] || null;
+  }, [activeBills]);
+
+  const detailHref = primaryStay
+    ? `/tenant/kost-saya/detail?booking_id=${primaryStay.booking_id}`
+    : "/tenant/kost-saya/detail";
 
   const recentActivities = useMemo<TenantActivityItem[]>(() => {
     const paymentActivities = payments.map((payment) => {
@@ -166,12 +229,12 @@ export default function KostSayaPage() {
       > = {
         waiting: {
           label: "Menunggu Bayar",
-          tone: "amber",
+          tone: "orange",
           title: "Tagihan baru diterbitkan",
         },
         overdue: {
           label: "Lewat Jatuh Tempo",
-          tone: "amber",
+          tone: "rose",
           title: "Tagihan melewati jatuh tempo",
         },
         paid: {
@@ -186,7 +249,8 @@ export default function KostSayaPage() {
         },
       };
 
-      const status = statusMap[payment.status];
+      const displayStatus = getPaymentDisplayStatus(payment);
+      const status = statusMap[displayStatus];
       const referenceTime = payment.paid_at || payment.due_date || payment.created_at;
 
       return {
@@ -264,13 +328,6 @@ export default function KostSayaPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold text-green-600">Kost Saya</h1>
-        <p className="mt-1 text-slate-600">
-          Ringkasan status hunian, tagihan, dan perawatan unit kamu.
-        </p>
-      </div>
-
       {isLoading ? (
         <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
           Memuat data hunian...
@@ -285,7 +342,7 @@ export default function KostSayaPage() {
             Coba Lagi
           </button>
         </div>
-      ) : !latestPayment ? (
+      ) : stays.length === 0 && !latestPayment ? (
         <div className="rounded-2xl border bg-white p-10 text-center">
           <h2 className="text-xl font-semibold text-green-600">
             Kamu Belum Memiliki Hunian Aktif
@@ -302,12 +359,75 @@ export default function KostSayaPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-800">
-              {latestPayment.property.name || "-"}
-            </h2>
-            <p className="mt-1 text-slate-600">{latestPayment.unit.name || "-"}</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-6 shadow-sm">
+            <div className="pointer-events-none absolute -left-12 -top-12 h-36 w-36 rounded-full bg-emerald-200/50 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-14 right-0 h-44 w-44 rounded-full bg-cyan-200/50 blur-3xl" />
+
+            <div className="relative flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-900">Kost Saya</h1>
+                <p className="mt-1 text-sm text-slate-600">
+                  Ringkasan status hunian, tagihan, dan perawatan unit kamu.
+                </p>
+                <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                  <Building2 size={13} />
+                  {stays.length > 0 ? `${stays.length} Hunian Aktif` : "Hunian Aktif"}
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+                  {stays.length > 1
+                    ? `${stays.length} unit aktif di ${Math.max(uniquePropertyCount, 1)} kost`
+                    : primaryStay?.property_name || latestPayment?.property.name || "-"}
+                </h2>
+                {stays.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {stays.slice(0, 4).map((stay) => (
+                      <span
+                        key={stay.booking_id}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700"
+                      >
+                        <Home size={14} className="text-emerald-700" />
+                        {stay.unit_name || "-"}
+                      </span>
+                    ))}
+                  </div>
+                ) : latestPayment ? (
+                  <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700">
+                    <Home size={14} className="text-emerald-700" />
+                    {latestPayment.unit.name || "-"}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-sm text-slate-600">
+                  Kelola semua unit aktif, tagihan, dan perawatan tenant dalam satu halaman.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-white/85 px-4 py-3 text-right shadow-sm">
+                <p className="text-xs font-medium text-slate-500">Total tagihan terbuka</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {formatCurrency(
+                    activeBills.reduce((sum, item) => sum + item.amount, 0)
+                  )}
+                </p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  {activeBills.length > 0
+                    ? `${activeBills.length} tagihan perlu ditindaklanjuti`
+                    : "Semua tagihan dalam kondisi aman"}
+                </p>
+              </div>
+            </div>
+
+            <div className="relative mt-5 grid gap-3 md:grid-cols-3">
+              <InfoCard
+                label="Hunian Aktif"
+                value={`${stays.length} Unit`}
+                helper={
+                  stays.length > 0
+                    ? `${Math.max(uniquePropertyCount, 1)} kost sedang berjalan`
+                    : "Belum ada hunian aktif"
+                }
+                tone="emerald"
+                icon={<Building2 size={16} />}
+              />
               <InfoCard
                 label="Tagihan Aktif"
                 value={`${activeBills.length} Tagihan`}
@@ -316,6 +436,8 @@ export default function KostSayaPage() {
                     ? formatCurrency(activeBills.reduce((sum, item) => sum + item.amount, 0))
                     : "Tidak ada tunggakan"
                 }
+                tone="amber"
+                icon={<ReceiptText size={16} />}
               />
               <InfoCard
                 label="Perawatan Aktif"
@@ -325,51 +447,98 @@ export default function KostSayaPage() {
                     ? "Sedang diproses"
                     : "Tidak ada laporan aktif"
                 }
+                tone="sky"
+                icon={<Wrench size={16} />}
               />
               <InfoCard
                 label="Jatuh Tempo Terdekat"
-                value={formatDate(latestPayment.due_date)}
-                helper={formatCurrency(latestPayment.amount)}
+                value={formatDate(nextDuePayment?.due_date)}
+                helper={nextDuePayment ? formatCurrency(nextDuePayment.amount) : "Tidak ada tagihan aktif"}
+                tone="indigo"
+                icon={<Clock3 size={16} />}
               />
             </div>
           </div>
 
+          {stays.length > 0 ? (
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-800">
+                    Hunian Aktif
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Setiap unit memiliki tagihan dan status perawatan masing-masing.
+                  </p>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+                  {stays.length} unit terdaftar
+                </span>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {stays.map((stay) => {
+                  const stayPayments = payments
+                    .filter((payment) => payment.id === stay.booking_id)
+                    .sort((a, b) => {
+                      const aDate = getTimestamp(a.due_date || a.created_at);
+                      const bDate = getTimestamp(b.due_date || b.created_at);
+                      return aDate - bDate;
+                    });
+                  const openStayPayments = stayPayments.filter((payment) => {
+                    return getPaymentDisplayStatus(payment) === "waiting";
+                  });
+                  const stayMaintenance = maintenance.filter((item) => {
+                    return (
+                      item.property.name === stay.property_name &&
+                      item.unit.name === stay.unit_name &&
+                      item.status !== "completed" &&
+                      item.status !== "cancelled"
+                    );
+                  });
+
+                  return (
+                    <ActiveStayCard
+                      key={stay.booking_id}
+                      stay={stay}
+                      latestPayment={stayPayments[0] || null}
+                      openBillCount={openStayPayments.length}
+                      openBillAmount={openStayPayments.reduce(
+                        (sum, item) => sum + item.amount,
+                        0
+                      )}
+                      activeMaintenanceCount={stayMaintenance.length}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Link
+            <QuickActionCard
               href="/tenant/pembayaran"
-              className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-green-300"
-            >
-              <h3 className="text-base font-semibold text-slate-800">
-                Lihat Tagihan & Pembayaran
-              </h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Cek status pembayaran dan riwayat transaksi sewa kamu.
-              </p>
-            </Link>
+              title="Lihat Tagihan & Pembayaran"
+              description="Cek status pembayaran dan riwayat transaksi sewa kamu."
+              icon={<ReceiptText size={20} />}
+              tone="emerald"
+            />
 
-            <Link
+            <QuickActionCard
               href="/tenant/perawatan"
-              className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-blue-300"
-            >
-              <h3 className="text-base font-semibold text-slate-800">
-                Lihat Status Perawatan
-              </h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Pantau laporan perbaikan dan progres penyelesaiannya.
-              </p>
-            </Link>
+              title="Lihat Status Perawatan"
+              description="Pantau laporan perbaikan dan progres penyelesaiannya."
+              icon={<Wrench size={20} />}
+              tone="sky"
+            />
 
-            <Link
-              href="/tenant/kost-saya/detail"
-              className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-indigo-300"
-            >
-              <h3 className="text-base font-semibold text-slate-800">
-                Detail Kost
-              </h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Lihat informasi lengkap properti dan unit yang sedang kamu tempati.
-              </p>
-            </Link>
+            <QuickActionCard
+              href={detailHref}
+              title="Detail Kost"
+              description="Lihat informasi lengkap properti dan unit yang sedang kamu tempati."
+              icon={<Home size={20} />}
+              tone="indigo"
+            />
           </div>
 
           <section className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -409,20 +578,278 @@ export default function KostSayaPage() {
   );
 }
 
+type QuickActionTone = "emerald" | "sky" | "indigo";
+
+function QuickActionCard({
+  href,
+  title,
+  description,
+  icon,
+  tone,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: ReactNode;
+  tone: QuickActionTone;
+}) {
+  const toneClass: Record<
+    QuickActionTone,
+    {
+      card: string;
+      icon: string;
+      badge: string;
+      arrow: string;
+    }
+  > = {
+    emerald: {
+      card: "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 hover:border-emerald-300 hover:shadow-emerald-100",
+      icon: "bg-emerald-600 text-white shadow-emerald-200",
+      badge: "bg-emerald-100 text-emerald-700",
+      arrow: "text-emerald-700",
+    },
+    sky: {
+      card: "border-sky-200 bg-gradient-to-br from-sky-50 via-white to-cyan-50 hover:border-sky-300 hover:shadow-sky-100",
+      icon: "bg-sky-600 text-white shadow-sky-200",
+      badge: "bg-sky-100 text-sky-700",
+      arrow: "text-sky-700",
+    },
+    indigo: {
+      card: "border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 hover:border-indigo-300 hover:shadow-indigo-100",
+      icon: "bg-indigo-600 text-white shadow-indigo-200",
+      badge: "bg-indigo-100 text-indigo-700",
+      arrow: "text-indigo-700",
+    },
+  };
+  const classes = toneClass[tone];
+
+  return (
+    <Link
+      href={href}
+      className={`group relative overflow-hidden rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${classes.card}`}
+    >
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/70 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-lg ${classes.icon}`}>
+          {icon}
+        </div>
+        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${classes.badge}`}>
+          Buka
+        </span>
+      </div>
+
+      <div className="relative mt-5">
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <p className="mt-2 min-h-[42px] text-sm leading-6 text-slate-600">
+          {description}
+        </p>
+      </div>
+
+      <div className={`relative mt-4 inline-flex items-center gap-2 text-sm font-semibold ${classes.arrow}`}>
+        Lihat detail
+        <ArrowRight
+          size={15}
+          className="transition group-hover:translate-x-1"
+        />
+      </div>
+    </Link>
+  );
+}
+
 function InfoCard({
   label,
   value,
   helper,
+  icon,
+  tone,
 }: {
   label: string;
   value: string;
   helper: string;
+  icon: ReactNode;
+  tone: "emerald" | "amber" | "sky" | "indigo";
+}) {
+  const toneClass: Record<
+    "emerald" | "amber" | "sky" | "indigo",
+    { card: string; icon: string; helper: string }
+  > = {
+    emerald: {
+      card: "border-emerald-200 bg-emerald-50/90",
+      icon: "bg-emerald-500 text-white",
+      helper: "text-emerald-700",
+    },
+    amber: {
+      card: "border-amber-200 bg-amber-50/90",
+      icon: "bg-amber-500 text-white",
+      helper: "text-amber-700",
+    },
+    sky: {
+      card: "border-sky-200 bg-sky-50/90",
+      icon: "bg-sky-500 text-white",
+      helper: "text-sky-700",
+    },
+    indigo: {
+      card: "border-indigo-200 bg-indigo-50/90",
+      icon: "bg-indigo-500 text-white",
+      helper: "text-indigo-700",
+    },
+  };
+  const classes = toneClass[tone];
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm backdrop-blur-sm ${classes.card}`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+          {label}
+        </p>
+        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${classes.icon}`}>
+          {icon}
+        </span>
+      </div>
+      <p className="mt-3 text-lg font-semibold text-slate-900">{value}</p>
+      <p className={`mt-1 text-xs font-medium ${classes.helper}`}>{helper}</p>
+    </div>
+  );
+}
+
+function ActiveStayCard({
+  stay,
+  latestPayment,
+  openBillCount,
+  openBillAmount,
+  activeMaintenanceCount,
+}: {
+  stay: TenantStaySummary;
+  latestPayment: TenantPayment | null;
+  openBillCount: number;
+  openBillAmount: number;
+  activeMaintenanceCount: number;
+}) {
+  const displayStatus = latestPayment
+    ? getPaymentDisplayStatus(latestPayment)
+    : stay.can_submit_payment
+      ? "waiting"
+      : "paid";
+
+  const statusMap: Record<
+    TenantPayment["status"],
+    { label: string; className: string }
+  > = {
+    waiting: {
+      label: stay.status_label || "Menunggu Pembayaran",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    },
+    paid: {
+      label: stay.status_label || "Aktif",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    },
+    overdue: {
+      label: "Lewat Jatuh Tempo",
+      className: "border-red-200 bg-red-50 text-red-700",
+    },
+    cancelled: {
+      label: latestPayment ? "Dibatalkan" : stay.status_label || "Dibatalkan",
+      className: "border-slate-200 bg-slate-100 text-slate-700",
+    },
+  };
+  const heroImage = stay.roomphoto_urls?.[0] || "/bg.jpg";
+
+  return (
+    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg">
+      <div className="relative h-40 overflow-hidden">
+        <Image
+          src={heroImage}
+          alt={stay.property_name || "Hunian aktif"}
+          fill
+          unoptimized
+          className="object-cover"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/15 to-transparent" />
+        <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
+          <span
+            className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${statusMap[displayStatus].className}`}
+          >
+            {statusMap[displayStatus].label}
+          </span>
+          <span className="rounded-full border border-white/30 bg-black/35 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+            #{stay.booking_code || stay.booking_id}
+          </span>
+        </div>
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <p className="text-lg font-semibold">{stay.property_name || "-"}</p>
+          <p className="mt-1 text-sm text-white/85">{stay.unit_name || "-"}</p>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <StayMetric
+            label="Periode Tinggal"
+            value={`${formatDate(stay.start_date)} - ${formatDate(stay.end_date)}`}
+          />
+          <StayMetric
+            label="Harga Sewa"
+            value={formatCurrency(stay.monthly_rent_amount)}
+          />
+          <StayMetric
+            label="Tagihan Aktif"
+            value={
+              openBillCount > 0
+                ? `${openBillCount} tagihan • ${formatCurrency(openBillAmount)}`
+                : "Tidak ada tagihan aktif"
+            }
+          />
+          <StayMetric
+            label="Perawatan Aktif"
+            value={
+              activeMaintenanceCount > 0
+                ? `${activeMaintenanceCount} laporan`
+                : "Tidak ada perawatan aktif"
+            }
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-slate-500">
+            {stay.end_date
+              ? `Akhir masa sewa: ${formatDate(stay.end_date)}`
+              : "Tanggal akhir sewa belum tersedia"}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/tenant/pembayaran"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+            >
+              Tagihan
+            </Link>
+            <Link
+              href={`/tenant/kost-saya/detail?booking_id=${stay.booking_id}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+            >
+              Detail Kost
+              <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function StayMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-slate-800">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{helper}</p>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
     </div>
   );
 }
@@ -431,6 +858,8 @@ function ActivityCard({ item }: { item: TenantActivityItem }) {
   const toneClass: Record<ActivityTone, string> = {
     emerald: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     amber: "bg-amber-50 text-amber-700 border border-amber-200",
+    orange: "bg-orange-50 text-orange-700 border border-orange-200",
+    rose: "bg-rose-50 text-rose-700 border border-rose-200",
     blue: "bg-blue-50 text-blue-700 border border-blue-200",
     slate: "bg-slate-100 text-slate-700 border border-slate-200",
   };
