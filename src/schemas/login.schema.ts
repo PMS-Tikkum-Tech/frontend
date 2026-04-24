@@ -1,10 +1,15 @@
 import { z } from "zod";
+import { EMAIL_MAX_LENGTH } from "@/lib/form-validation";
 
 export const loginSchema = z.object({
   email: z
     .string()
+    .trim()
     .email("Format email tidak valid")
-    .max(100, "Email terlalu panjang"),
+    .max(EMAIL_MAX_LENGTH, "Email terlalu panjang"),
 
-  password: z.string().min(8, "Kata sandi minimal 8 karakter").max(100),
+  password: z
+    .string()
+    .min(1, "Kata sandi wajib diisi.")
+    .max(100, "Kata sandi terlalu panjang."),
 });

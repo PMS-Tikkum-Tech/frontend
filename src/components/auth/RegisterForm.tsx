@@ -8,6 +8,12 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { requestTenantRegistrationOtp } from "@/lib/auth";
+import {
+  PASSWORD_MIN_LENGTH,
+  normalizeTextInput,
+  sanitizeEmailInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
 import { normalizePhoneNumber } from "@/lib/phone";
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -48,7 +54,22 @@ export default function RegisterForm() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    mode: "onBlur",
   });
+
+  const fullNameRegistration = register("fullName");
+  const emailRegistration = register("email", {
+    onChange: (event) => {
+      event.target.value = sanitizeEmailInput(event.target.value);
+    },
+  });
+  const phoneRegistration = register("phoneNumber", {
+    onChange: (event) => {
+      event.target.value = sanitizePhoneInput(event.target.value);
+    },
+  });
+  const passwordRegistration = register("password");
+  const confirmPasswordRegistration = register("confirmPassword");
 
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
@@ -61,7 +82,7 @@ export default function RegisterForm() {
         window.sessionStorage.setItem(
           PENDING_TENANT_REGISTRATION_STORAGE_KEY,
           JSON.stringify({
-            fullName: data.fullName.trim(),
+            fullName: normalizeTextInput(data.fullName),
             email: data.email.trim().toLowerCase(),
             password: data.password,
             phoneNumber: otpResult.phoneNumber,
@@ -95,7 +116,7 @@ export default function RegisterForm() {
         <label className="block text-sm font-medium mb-1">Nama Lengkap</label>
 
         <input
-          {...register("fullName")}
+          {...fullNameRegistration}
           type="text"
           autoComplete="name"
           placeholder="Masukkan nama lengkap Anda"
@@ -118,9 +139,11 @@ export default function RegisterForm() {
         <label className="block text-sm font-medium mb-1">Alamat Email</label>
 
         <input
-          {...register("email")}
+          {...emailRegistration}
           type="email"
           autoComplete="email"
+          inputMode="email"
+          maxLength={100}
           placeholder="Masukkan alamat email Anda"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
@@ -141,9 +164,11 @@ export default function RegisterForm() {
         <label className="block text-sm font-medium mb-1">Nomor HP</label>
 
         <input
-          {...register("phoneNumber")}
+          {...phoneRegistration}
           type="tel"
           autoComplete="tel"
+          inputMode="numeric"
+          maxLength={16}
           placeholder="Contoh: 081234567890"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
@@ -164,16 +189,18 @@ export default function RegisterForm() {
         <label className="block text-sm font-medium mb-1">Kata Sandi</label>
 
         <input
-          {...register("password")}
+          {...passwordRegistration}
           type="password"
           autoComplete="new-password"
+          minLength={PASSWORD_MIN_LENGTH}
+          maxLength={100}
           placeholder="Buat kata sandi yang kuat"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
 
         {!errors.password && (
           <p className="mt-1 text-[11px] text-gray-400 leading-relaxed">
-            Gunakan minimal 8 karakter.
+            Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.
           </p>
         )}
 
@@ -189,9 +216,11 @@ export default function RegisterForm() {
         </label>
 
         <input
-          {...register("confirmPassword")}
+          {...confirmPasswordRegistration}
           type="password"
           autoComplete="new-password"
+          minLength={PASSWORD_MIN_LENGTH}
+          maxLength={100}
           placeholder="Ulangi kata sandi Anda"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />

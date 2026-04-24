@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import RoleGuard from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
-import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import { updateSelfProfilePicture } from "@/lib/profile.api";
 import AdminCursor from "@/components/ui/AdminCursor";
@@ -242,8 +241,6 @@ export default function AdminDashboardLayout({
                 >
                   Beranda KIKOST
                 </Link>
-
-                <LanguageSwitcher compact className="hidden sm:flex" />
 
                 <div className="flex items-center gap-2 sm:gap-3">
                   <input

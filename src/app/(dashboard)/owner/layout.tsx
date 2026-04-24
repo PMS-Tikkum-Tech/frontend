@@ -19,7 +19,6 @@ import {
   SELF_PROFILE_PICTURE_UNAVAILABLE_MESSAGE,
   updateSelfProfilePicture,
 } from "@/lib/profile.api";
-import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 
 const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -229,8 +228,6 @@ export default function OwnerDashboardLayout({
                 >
                   Beranda Kyra Stay
                 </Link>
-
-                <LanguageSwitcher compact className="hidden sm:flex" />
 
                 <div className="flex items-center gap-2 sm:gap-3">
                   {!OWNER_AVATAR_MANAGED_BY_BACKEND ? (

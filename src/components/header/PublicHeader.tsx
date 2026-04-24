@@ -90,6 +90,7 @@ export default function PublicHeader() {
     user?.role === "tenant" &&
     pathname !== "/tenant/notifikasi" &&
     hasUnreadNotifications;
+  const showTenantLanguageSwitcher = user?.role === "tenant";
 
   const avatarUrl = (() => {
     if (!user?.avatar || failedAvatarKey === user.avatar) {
@@ -153,6 +154,9 @@ export default function PublicHeader() {
                   Masuk Dasbor
                 </Link>
               ) : null}
+              {showTenantLanguageSwitcher ? (
+                <LanguageSwitcher compact className="hidden sm:inline-flex" />
+              ) : null}
               {user.role === "tenant" ? (
                 <Link
                   href="/tenant/notifikasi"
@@ -203,7 +207,6 @@ export default function PublicHeader() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <LanguageSwitcher compact className="hidden sm:inline-flex" />
               <Link
                 href="/auth?mode=login"
                 className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-700 sm:inline-flex"
@@ -238,7 +241,9 @@ export default function PublicHeader() {
           }`}
         >
           <div className="space-y-3 px-4 py-3">
-            <LanguageSwitcher className="w-full justify-between border-slate-200" />
+            {showTenantLanguageSwitcher ? (
+              <LanguageSwitcher className="w-full justify-between border-slate-200" />
+            ) : null}
 
             <nav className="grid gap-1.5">
               {nav.map((item) => (

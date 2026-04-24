@@ -7,8 +7,11 @@ import {
   CHANGE_PASSWORD_UNAVAILABLE_MESSAGE,
   changePassword,
 } from "@/lib/auth";
-
-const MIN_PASSWORD_LENGTH = 8;
+import {
+  PASSWORD_MIN_LENGTH,
+  getPasswordValidationMessage,
+  isStrongPassword,
+} from "@/lib/form-validation";
 const TENANT_PASSWORD_MANAGED_BY_BACKEND = true;
 
 const getErrorMessage = (error: unknown) => {
@@ -42,12 +45,16 @@ export default function TenantSandiPage() {
   const rules = useMemo(
     () => [
       {
-        label: `Minimal ${MIN_PASSWORD_LENGTH} karakter`,
-        passed: newPassword.length >= MIN_PASSWORD_LENGTH,
+        label: `Minimal ${PASSWORD_MIN_LENGTH} karakter`,
+        passed: newPassword.length >= PASSWORD_MIN_LENGTH,
       },
       {
         label: "Berbeda dari kata sandi saat ini",
         passed: Boolean(newPassword) && newPassword !== currentPassword,
+      },
+      {
+        label: "Mengandung huruf besar, huruf kecil, dan angka",
+        passed: isStrongPassword(newPassword),
       },
       {
         label: "Konfirmasi kata sandi cocok",
@@ -73,8 +80,12 @@ export default function TenantSandiPage() {
       return;
     }
 
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError("Kata sandi baru minimal 8 karakter.");
+    const newPasswordError = getPasswordValidationMessage(newPassword, {
+      label: "Kata sandi baru",
+      required: true,
+    });
+    if (newPasswordError) {
+      setError(newPasswordError);
       return;
     }
 
@@ -124,12 +135,12 @@ export default function TenantSandiPage() {
             <StatCard
               icon={<KeyRound size={15} />}
               label="Panjang Minimum"
-              value={`${MIN_PASSWORD_LENGTH} Karakter`}
+              value={`${PASSWORD_MIN_LENGTH} Karakter`}
             />
             <StatCard
               icon={<Shield size={15} />}
               label="Validasi Otomatis"
-              value="3 Poin Keamanan"
+              value="4 Poin Keamanan"
             />
             <StatCard
               icon={<LockKeyhole size={15} />}
@@ -164,7 +175,8 @@ export default function TenantSandiPage() {
               label="Kata Sandi Baru"
               value={newPassword}
               onChange={setNewPassword}
-              placeholder={`Minimal ${MIN_PASSWORD_LENGTH} karakter`}
+              placeholder={`Minimal ${PASSWORD_MIN_LENGTH} karakter`}
+              maxLength={100}
               autoComplete="new-password"
               disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
@@ -251,6 +263,7 @@ function InputField({
   placeholder,
   autoComplete,
   disabled = false,
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -258,6 +271,7 @@ function InputField({
   placeholder: string;
   autoComplete: string;
   disabled?: boolean;
+  maxLength?: number;
 }) {
   return (
     <label className="block space-y-1.5">
@@ -269,6 +283,7 @@ function InputField({
         className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500"
         placeholder={placeholder}
         autoComplete={autoComplete}
+        maxLength={maxLength}
         disabled={disabled}
       />
     </label>

@@ -1,6 +1,12 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type InputHTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Image from "next/image";
 import {
   ChevronLeft,
@@ -27,6 +33,20 @@ import {
   updateAdminUser,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import {
+  EMAIL_MAX_LENGTH,
+  NIK_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  getEmailValidationMessage,
+  getNikValidationMessage,
+  getPasswordValidationMessage,
+  getPhoneValidationMessage,
+  getTextValidationMessage,
+  normalizeTextInput,
+  sanitizeEmailInput,
+  sanitizeNikInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const formatDate = (value?: string | null) => {
@@ -59,6 +79,8 @@ type Notice = {
   message: string;
 } | null;
 
+type TenantFormErrors = Partial<Record<keyof TenantFormState, string>>;
+
 const PAGE_SIZE = 10;
 
 const statusLabelMap: Record<string, string> = {
@@ -78,6 +100,86 @@ const getInitialTenantForm = (): TenantFormState => ({
   relationship: "",
 });
 
+const getTenantFormErrors = (
+  form: TenantFormState,
+  formMode: "create" | "edit"
+): TenantFormErrors => {
+  const errors: TenantFormErrors = {};
+
+  const fullNameError = getTextValidationMessage(form.fullName, {
+    label: "Nama lengkap",
+    required: true,
+  });
+  if (fullNameError) {
+    errors.fullName = fullNameError;
+  }
+
+  const emailError = getEmailValidationMessage(form.email, {
+    label: "Email",
+    required: true,
+  });
+  if (emailError) {
+    errors.email = emailError;
+  }
+
+  const phoneError = getPhoneValidationMessage(form.phoneNumber, {
+    label: "Nomor telepon",
+  });
+  if (phoneError) {
+    errors.phoneNumber = phoneError;
+  }
+
+  const nikError = getNikValidationMessage(form.nik, {
+    label: "NIK",
+  });
+  if (nikError) {
+    errors.nik = nikError;
+  }
+
+  const emergencyName = normalizeTextInput(form.emergencyContactName);
+  const emergencyPhone = sanitizePhoneInput(form.emergencyContactNumber);
+  const relationship = normalizeTextInput(form.relationship);
+  const hasEmergencySection =
+    Boolean(emergencyName) || Boolean(emergencyPhone) || Boolean(relationship);
+
+  if (hasEmergencySection) {
+    const emergencyNameError = getTextValidationMessage(emergencyName, {
+      label: "Nama kontak darurat",
+      required: true,
+    });
+    if (emergencyNameError) {
+      errors.emergencyContactName = emergencyNameError;
+    }
+
+    const emergencyPhoneError = getPhoneValidationMessage(emergencyPhone, {
+      label: "Nomor kontak darurat",
+      required: true,
+    });
+    if (emergencyPhoneError) {
+      errors.emergencyContactNumber = emergencyPhoneError;
+    }
+
+    const relationshipError = getTextValidationMessage(relationship, {
+      label: "Hubungan kontak darurat",
+      required: true,
+    });
+    if (relationshipError) {
+      errors.relationship = relationshipError;
+    }
+  }
+
+  const passwordRequired = formMode === "create";
+  const passwordError = getPasswordValidationMessage(form.password, {
+    label: formMode === "create" ? "Kata sandi" : "Kata sandi baru",
+    required: passwordRequired,
+  });
+  if (passwordError && (passwordRequired || form.password)) {
+    errors.password = passwordError;
+  }
+
+  return errors;
+};
+
 const normalizeOptional = (value: string) => {
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
@@ -96,6 +198,7 @@ export default function AdminTenantsPage() {
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
   const [form, setForm] = useState<TenantFormState>(getInitialTenantForm());
+  const [fieldErrors, setFieldErrors] = useState<TenantFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
@@ -209,6 +312,7 @@ export default function AdminTenantsPage() {
     setEditingTenantId(null);
     setForm(getInitialTenantForm());
     setFormError(null);
+    setFieldErrors({});
     setIsFormOpen(true);
   };
 
@@ -228,6 +332,7 @@ export default function AdminTenantsPage() {
       relationship: tenant.relationship || "",
     });
     setFormError(null);
+    setFieldErrors({});
     setIsFormOpen(true);
   };
 
@@ -237,20 +342,19 @@ export default function AdminTenantsPage() {
     }
 
     setIsFormOpen(false);
+    setFieldErrors({});
   };
 
   const handleSubmitForm = async () => {
-    const fullName = form.fullName.trim();
-    const email = form.email.trim();
+    const fullName = normalizeTextInput(form.fullName);
+    const email = sanitizeEmailInput(form.email);
     const password = form.password.trim();
+    const nextFieldErrors = getTenantFormErrors(form, formMode);
+    const firstFieldError = Object.values(nextFieldErrors)[0];
 
-    if (!fullName || !email) {
-      setFormError("Nama dan email wajib diisi.");
-      return;
-    }
-
-    if (formMode === "create" && password.length < 8) {
-      setFormError("Kata sandi minimal 8 karakter.");
+    setFieldErrors(nextFieldErrors);
+    if (firstFieldError) {
+      setFormError(firstFieldError);
       return;
     }
 
@@ -264,11 +368,15 @@ export default function AdminTenantsPage() {
           full_name: fullName,
           email,
           password,
-          phone_number: normalizeOptional(form.phoneNumber),
-          nik: normalizeOptional(form.nik),
-          emergency_contact_name: normalizeOptional(form.emergencyContactName),
-          emergency_contact_number: normalizeOptional(form.emergencyContactNumber),
-          relationship: normalizeOptional(form.relationship),
+          phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
+          nik: normalizeOptional(sanitizeNikInput(form.nik)),
+          emergency_contact_name: normalizeOptional(
+            normalizeTextInput(form.emergencyContactName)
+          ),
+          emergency_contact_number: normalizeOptional(
+            sanitizePhoneInput(form.emergencyContactNumber)
+          ),
+          relationship: normalizeOptional(normalizeTextInput(form.relationship)),
           role: "tenant",
           account_status: form.accountStatus,
         });
@@ -285,11 +393,15 @@ export default function AdminTenantsPage() {
         await updateAdminUser(editingTenantId, {
           full_name: fullName,
           email,
-          phone_number: normalizeOptional(form.phoneNumber),
-          nik: normalizeOptional(form.nik),
-          emergency_contact_name: normalizeOptional(form.emergencyContactName),
-          emergency_contact_number: normalizeOptional(form.emergencyContactNumber),
-          relationship: normalizeOptional(form.relationship),
+          phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
+          nik: normalizeOptional(sanitizeNikInput(form.nik)),
+          emergency_contact_name: normalizeOptional(
+            normalizeTextInput(form.emergencyContactName)
+          ),
+          emergency_contact_number: normalizeOptional(
+            sanitizePhoneInput(form.emergencyContactNumber)
+          ),
+          relationship: normalizeOptional(normalizeTextInput(form.relationship)),
           role: "tenant",
           account_status: form.accountStatus,
           ...(password ? { password } : {}),
@@ -302,6 +414,7 @@ export default function AdminTenantsPage() {
       }
 
       setIsFormOpen(false);
+      setFieldErrors({});
       setRefreshKey((prev) => prev + 1);
     } catch (saveError) {
       setFormError(
@@ -639,6 +752,7 @@ export default function AdminTenantsPage() {
                     setForm((prev) => ({ ...prev, fullName: value }))
                   }
                   placeholder="Masukkan nama penyewa"
+                  error={fieldErrors.fullName}
                 />
 
                 <FormField
@@ -646,9 +760,12 @@ export default function AdminTenantsPage() {
                   type="email"
                   value={form.email}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, email: value }))
+                    setForm((prev) => ({ ...prev, email: sanitizeEmailInput(value) }))
                   }
                   placeholder="Masukkan email penyewa"
+                  inputMode="email"
+                  maxLength={EMAIL_MAX_LENGTH}
+                  error={fieldErrors.email}
                 />
               </div>
 
@@ -657,16 +774,28 @@ export default function AdminTenantsPage() {
                   label="Nomor Telepon"
                   value={form.phoneNumber}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, phoneNumber: value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      phoneNumber: sanitizePhoneInput(value),
+                    }))
                   }
                   placeholder="Contoh: 081234567890"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={16}
+                  error={fieldErrors.phoneNumber}
                 />
 
                 <FormField
                   label="NIK (Opsional)"
                   value={form.nik}
-                  onChange={(value) => setForm((prev) => ({ ...prev, nik: value }))}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, nik: sanitizeNikInput(value) }))
+                  }
                   placeholder="Masukkan NIK penyewa"
+                  inputMode="numeric"
+                  maxLength={NIK_LENGTH}
+                  error={fieldErrors.nik}
                 />
               </div>
 
@@ -678,15 +807,23 @@ export default function AdminTenantsPage() {
                     setForm((prev) => ({ ...prev, emergencyContactName: value }))
                   }
                   placeholder="Masukkan nama kontak darurat"
+                  error={fieldErrors.emergencyContactName}
                 />
 
                 <FormField
                   label="Nomor Kontak Darurat (Opsional)"
                   value={form.emergencyContactNumber}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, emergencyContactNumber: value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      emergencyContactNumber: sanitizePhoneInput(value),
+                    }))
                   }
                   placeholder="Masukkan nomor kontak darurat"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={16}
+                  error={fieldErrors.emergencyContactNumber}
                 />
               </div>
 
@@ -698,6 +835,7 @@ export default function AdminTenantsPage() {
                     setForm((prev) => ({ ...prev, relationship: value }))
                   }
                   placeholder="Contoh: Orang Tua"
+                  error={fieldErrors.relationship}
                 />
 
                 <div>
@@ -734,9 +872,12 @@ export default function AdminTenantsPage() {
                 }
                 placeholder={
                   formMode === "create"
-                    ? "Minimal 8 karakter"
+                    ? "Minimal 8 karakter, huruf besar, huruf kecil, dan angka"
                     : "Kosongkan jika tidak diubah"
                 }
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={100}
+                error={fieldErrors.password}
               />
 
               {formError && (
@@ -940,12 +1081,20 @@ function FormField({
   onChange,
   placeholder,
   type = "text",
+  error,
+  inputMode,
+  maxLength,
+  minLength,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
+  error?: string;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  maxLength?: number;
+  minLength?: number;
 }) {
   return (
     <div>
@@ -957,8 +1106,17 @@ function FormField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+        inputMode={inputMode}
+        maxLength={maxLength}
+        minLength={minLength}
+        aria-invalid={Boolean(error)}
+        className={`h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 ${
+          error
+            ? "border-red-300 focus:ring-red-500"
+            : "border-slate-200 focus:ring-[#1E2746]"
+        }`}
       />
+      {error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null}
     </div>
   );
 }

@@ -11,6 +11,14 @@ import {
   resendTenantRegistrationOtp,
   verifyTenantRegistrationOtp,
 } from "@/lib/auth";
+import {
+  OTP_CODE_LENGTH,
+  PHONE_INPUT_MAX_LENGTH,
+  getPhoneValidationMessage,
+  normalizePhoneNumber,
+  sanitizeOtpInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
 
 const PENDING_TENANT_REGISTRATION_STORAGE_KEY =
   "kyra.pending.tenant.registration";
@@ -18,12 +26,19 @@ const PENDING_TENANT_REGISTRATION_STORAGE_KEY =
 const verifyOtpSchema = z.object({
   phoneNumber: z
     .string()
-    .min(10, "Nomor HP minimal 10 digit")
-    .max(20, "Nomor HP terlalu panjang"),
+    .trim()
+    .refine(
+      (value) => !getPhoneValidationMessage(value, { required: true }),
+      {
+        message:
+          "Nomor HP harus berupa nomor ponsel Indonesia yang valid, misalnya 081234567890.",
+      }
+    ),
   code: z
     .string()
-    .min(6, "Kode verifikasi harus 6 digit")
-    .max(6, "Kode verifikasi harus 6 digit"),
+    .trim()
+    .length(OTP_CODE_LENGTH, "Kode verifikasi harus 6 digit")
+    .regex(/^\d+$/, "Kode verifikasi hanya boleh berisi angka"),
 });
 
 type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>;
@@ -92,6 +107,7 @@ export default function VerifyEmailForm({ initialEmail }: { initialEmail?: strin
     formState: { errors, isSubmitting },
   } = useForm<VerifyOtpFormData>({
     resolver: zodResolver(verifyOtpSchema),
+    mode: "onBlur",
     defaultValues: {
       phoneNumber: defaultPhone,
       code: "",
@@ -109,8 +125,8 @@ export default function VerifyEmailForm({ initialEmail }: { initialEmail?: strin
       return;
     }
 
-    const normalizedPhone = data.phoneNumber.trim();
-    if (pendingRegistration.phoneNumber !== normalizedPhone) {
+    const normalizedPhone = normalizePhoneNumber(data.phoneNumber);
+    if (normalizePhoneNumber(pendingRegistration.phoneNumber) !== normalizedPhone) {
       setServerError(
         "Nomor HP tidak sesuai dengan data pendaftaran. Silakan daftar ulang."
       );
@@ -151,11 +167,16 @@ export default function VerifyEmailForm({ initialEmail }: { initialEmail?: strin
   };
 
   const handleResendCode = async () => {
-    const phone = getValues("phoneNumber")?.trim();
-    if (!phone) {
-      setServerError("Masukkan nomor HP terlebih dahulu.");
+    const rawPhone = getValues("phoneNumber")?.trim() || "";
+    const phoneError = getPhoneValidationMessage(rawPhone, {
+      label: "Nomor HP",
+      required: true,
+    });
+    if (phoneError) {
+      setServerError(phoneError);
       return;
     }
+    const phone = normalizePhoneNumber(rawPhone);
 
     setIsResending(true);
     setServerError(null);
@@ -180,9 +201,15 @@ export default function VerifyEmailForm({ initialEmail }: { initialEmail?: strin
         <label className="block text-sm font-medium mb-1">Nomor HP</label>
 
         <input
-          {...register("phoneNumber")}
+          {...register("phoneNumber", {
+            onChange: (event) => {
+              event.target.value = sanitizePhoneInput(event.target.value);
+            },
+          })}
           type="tel"
           autoComplete="tel"
+          inputMode="numeric"
+          maxLength={PHONE_INPUT_MAX_LENGTH}
           placeholder="Contoh: +6281234567890"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
@@ -196,10 +223,15 @@ export default function VerifyEmailForm({ initialEmail }: { initialEmail?: strin
         <label className="block text-sm font-medium mb-1">Kode OTP</label>
 
         <input
-          {...register("code")}
+          {...register("code", {
+            onChange: (event) => {
+              event.target.value = sanitizeOtpInput(event.target.value);
+            },
+          })}
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
+          maxLength={OTP_CODE_LENGTH}
           placeholder="Contoh: 123456"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />

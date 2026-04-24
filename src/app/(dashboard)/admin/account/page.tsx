@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import Image from "next/image";
 import {
   ChevronLeft,
@@ -22,6 +22,17 @@ import {
   updateAdminUser,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import {
+  EMAIL_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  getEmailValidationMessage,
+  getPasswordValidationMessage,
+  getPhoneValidationMessage,
+  getTextValidationMessage,
+  normalizeTextInput,
+  sanitizeEmailInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const PAGE_SIZE = 10;
@@ -89,6 +100,8 @@ type UserFormState = {
   password: string;
 };
 
+type UserFormErrors = Partial<Record<keyof UserFormState, string>>;
+
 const getInitialForm = (): UserFormState => ({
   fullName: "",
   email: "",
@@ -97,6 +110,53 @@ const getInitialForm = (): UserFormState => ({
   accountStatus: "active",
   password: "",
 });
+
+const getUserFormErrors = (
+  form: UserFormState,
+  formMode: FormMode
+): UserFormErrors => {
+  const errors: UserFormErrors = {};
+  const operationalRole = isOperationalRole(form.role);
+
+  const fullNameError = getTextValidationMessage(form.fullName, {
+    label: "Nama",
+    required: true,
+  });
+  if (fullNameError) {
+    errors.fullName = fullNameError;
+  }
+
+  if (!operationalRole) {
+    const emailError = getEmailValidationMessage(form.email, {
+      label: "Email",
+      required: true,
+    });
+    if (emailError) {
+      errors.email = emailError;
+    }
+  }
+
+  const phoneError = getPhoneValidationMessage(form.phoneNumber, {
+    label: "Nomor telepon",
+  });
+  if (phoneError) {
+    errors.phoneNumber = phoneError;
+  }
+
+  if (!operationalRole) {
+    const passwordRequired = formMode === "create";
+    const passwordError = getPasswordValidationMessage(form.password, {
+      label: formMode === "create" ? "Kata sandi" : "Kata sandi baru",
+      required: passwordRequired,
+    });
+
+    if (passwordError && (passwordRequired || form.password)) {
+      errors.password = passwordError;
+    }
+  }
+
+  return errors;
+};
 
 const normalizeOptional = (value: string) => {
   const trimmed = value.trim();
@@ -134,6 +194,7 @@ export default function AdminAccountPage() {
   const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [form, setForm] = useState<UserFormState>(getInitialForm());
+  const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
@@ -185,6 +246,7 @@ export default function AdminAccountPage() {
     setEditingUserId(null);
     setForm(getInitialForm());
     setFormError(null);
+    setFieldErrors({});
     setIsFormOpen(true);
   };
 
@@ -201,6 +263,7 @@ export default function AdminAccountPage() {
       password: "",
     });
     setFormError(null);
+    setFieldErrors({});
     setIsFormOpen(true);
   };
 
@@ -211,31 +274,20 @@ export default function AdminAccountPage() {
 
     setIsFormOpen(false);
     setFormError(null);
+    setFieldErrors({});
   };
 
   const handleSubmitForm = async () => {
-    const fullName = form.fullName.trim();
-    const email = form.email.trim();
+    const fullName = normalizeTextInput(form.fullName);
+    const email = sanitizeEmailInput(form.email);
     const password = form.password.trim();
     const operationalRole = isOperationalRole(form.role);
+    const nextFieldErrors = getUserFormErrors(form, formMode);
+    const firstFieldError = Object.values(nextFieldErrors)[0];
 
-    if (!fullName) {
-      setFormError("Nama wajib diisi.");
-      return;
-    }
-
-    if (!operationalRole && !email) {
-      setFormError("Nama dan email wajib diisi.");
-      return;
-    }
-
-    if (formMode === "create" && !operationalRole && password.length < 8) {
-      setFormError("Kata sandi minimal 8 karakter.");
-      return;
-    }
-
-    if (formMode === "edit" && !operationalRole && password && password.length < 8) {
-      setFormError("Kata sandi baru minimal 8 karakter.");
+    setFieldErrors(nextFieldErrors);
+    if (firstFieldError) {
+      setFormError(firstFieldError);
       return;
     }
 
@@ -247,7 +299,7 @@ export default function AdminAccountPage() {
       if (formMode === "create") {
         await createAdminUser({
           full_name: fullName,
-          phone_number: normalizeOptional(form.phoneNumber),
+          phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
           role: form.role,
           account_status: form.accountStatus,
           ...(operationalRole ? {} : { email, password }),
@@ -266,7 +318,7 @@ export default function AdminAccountPage() {
 
         await updateAdminUser(editingUserId, {
           full_name: fullName,
-          phone_number: normalizeOptional(form.phoneNumber),
+          phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
           role: form.role,
           account_status: form.accountStatus,
           ...(operationalRole ? {} : { email }),
@@ -282,6 +334,7 @@ export default function AdminAccountPage() {
       }
 
       setIsFormOpen(false);
+      setFieldErrors({});
       setRefreshKey((prev) => prev + 1);
     } catch (saveError) {
       setFormError(getApiErrorMessage(saveError, "Gagal menyimpan data akun."));
@@ -729,14 +782,15 @@ export default function AdminAccountPage() {
             </div>
 
             <div className="space-y-4 overflow-y-auto px-6 py-5">
-              <FormField
-                label="Nama Lengkap"
-                value={form.fullName}
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, fullName: value }))
-                }
-                placeholder="Masukkan nama pengguna"
-              />
+                <FormField
+                  label="Nama Lengkap"
+                  value={form.fullName}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, fullName: value }))
+                  }
+                  placeholder="Masukkan nama pengguna"
+                  error={fieldErrors.fullName}
+                />
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -771,9 +825,12 @@ export default function AdminAccountPage() {
                   type="email"
                   value={form.email}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, email: value }))
+                    setForm((prev) => ({ ...prev, email: sanitizeEmailInput(value) }))
                   }
                   placeholder="Masukkan email pengguna"
+                  maxLength={EMAIL_MAX_LENGTH}
+                  inputMode="email"
+                  error={fieldErrors.email}
                 />
               )}
 
@@ -781,9 +838,16 @@ export default function AdminAccountPage() {
                 label="Nomor Telepon"
                 value={form.phoneNumber}
                 onChange={(value) =>
-                  setForm((prev) => ({ ...prev, phoneNumber: value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    phoneNumber: sanitizePhoneInput(value),
+                  }))
                 }
                 placeholder="Contoh: 081234567890"
+                type="tel"
+                inputMode="numeric"
+                maxLength={16}
+                error={fieldErrors.phoneNumber}
               />
 
               <div>
@@ -819,9 +883,12 @@ export default function AdminAccountPage() {
                   }
                   placeholder={
                     formMode === "create"
-                      ? "Minimal 8 karakter"
+                      ? "Minimal 8 karakter, huruf besar, huruf kecil, dan angka"
                       : "Kosongkan jika tidak diubah"
                   }
+                  minLength={PASSWORD_MIN_LENGTH}
+                  maxLength={100}
+                  error={fieldErrors.password}
                 />
               )}
 
@@ -981,12 +1048,20 @@ function FormField({
   onChange,
   placeholder,
   type = "text",
+  error,
+  inputMode,
+  maxLength,
+  minLength,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
+  error?: string;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  maxLength?: number;
+  minLength?: number;
 }) {
   return (
     <div>
@@ -996,8 +1071,17 @@ function FormField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+        inputMode={inputMode}
+        maxLength={maxLength}
+        minLength={minLength}
+        aria-invalid={Boolean(error)}
+        className={`h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 ${
+          error
+            ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+            : "border-slate-200 focus:border-[#1E2746] focus:ring-[#1E2746]/20"
+        }`}
       />
+      {error ? <p className="mt-1 text-xs text-red-500">{error}</p> : null}
     </div>
   );
 }

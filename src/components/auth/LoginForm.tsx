@@ -16,7 +16,14 @@ import {
   resolveRoleRoute,
   verifyTenantRegistrationOtp,
 } from "@/lib/auth";
-import { normalizePhoneNumber } from "@/lib/phone";
+import { getPhoneValidationMessage, normalizePhoneNumber } from "@/lib/phone";
+import {
+  OTP_CODE_LENGTH,
+  PHONE_INPUT_MAX_LENGTH,
+  sanitizeEmailInput,
+  sanitizeOtpInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
 import { useAuth } from "@/context/AuthContext";
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -84,8 +91,6 @@ type PendingGoogleVerification = {
   otpRequested: boolean;
   debugCode: string | null;
 };
-
-const PHONE_INPUT_PATTERN = /^[0-9+\-\s]+$/;
 
 const GoogleLogo = () => (
   <svg
@@ -259,7 +264,15 @@ export default function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: "onBlur",
   });
+
+  const emailRegistration = register("email", {
+    onChange: (event) => {
+      event.target.value = sanitizeEmailInput(event.target.value);
+    },
+  });
+  const passwordRegistration = register("password");
 
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
@@ -320,18 +333,14 @@ export default function LoginForm() {
   );
 
   const validateGooglePhoneNumber = () => {
-    const rawPhone = pendingGoogleVerification?.phoneNumber?.trim() ?? "";
-    if (!rawPhone) {
-      throw new Error("Masukkan nomor HP terlebih dahulu.");
-    }
+    const rawPhone = pendingGoogleVerification?.phoneNumber ?? "";
+    const phoneError = getPhoneValidationMessage(rawPhone, {
+      label: "Nomor HP",
+      required: true,
+    });
 
-    if (!PHONE_INPUT_PATTERN.test(rawPhone)) {
-      throw new Error("Nomor HP hanya boleh berisi angka, spasi, atau tanda +.");
-    }
-
-    const digitLength = rawPhone.replace(/\D/g, "").length;
-    if (digitLength < 10 || digitLength > 20) {
-      throw new Error("Nomor HP harus berisi 10 sampai 20 digit.");
+    if (phoneError) {
+      throw new Error(phoneError);
     }
 
     return normalizePhoneNumber(rawPhone);
@@ -341,7 +350,7 @@ export default function LoginForm() {
     setGoogleError(null);
     setGoogleInfoMessage(null);
     updatePendingGoogleVerification({
-      phoneNumber: value,
+      phoneNumber: sanitizePhoneInput(value),
       otpCode: "",
       otpRequested: false,
       debugCode: null,
@@ -351,7 +360,7 @@ export default function LoginForm() {
   const handleGoogleOtpChange = (value: string) => {
     setGoogleError(null);
     updatePendingGoogleVerification({
-      otpCode: value.replace(/\D/g, "").slice(0, 6),
+      otpCode: sanitizeOtpInput(value),
     });
   };
 
@@ -543,9 +552,11 @@ export default function LoginForm() {
         <label className="block text-sm font-medium mb-1">Alamat Email</label>
 
         <input
-          {...register("email")}
+          {...emailRegistration}
           type="email"
           autoComplete="email"
+          inputMode="email"
+          maxLength={100}
           placeholder="Masukkan alamat email Anda"
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
@@ -566,9 +577,10 @@ export default function LoginForm() {
 
         <div className="relative">
           <input
-            {...register("password")}
+            {...passwordRegistration}
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
+            maxLength={100}
             placeholder="Masukkan kata sandi Anda"
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
@@ -661,6 +673,8 @@ export default function LoginForm() {
             <input
               type="tel"
               autoComplete="tel"
+              inputMode="numeric"
+              maxLength={PHONE_INPUT_MAX_LENGTH}
               value={pendingGoogleVerification.phoneNumber}
               onChange={(event) => handleGooglePhoneChange(event.target.value)}
               disabled={pendingGoogleVerification.otpRequested || isGoogleOtpBusy}
@@ -679,6 +693,7 @@ export default function LoginForm() {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                maxLength={OTP_CODE_LENGTH}
                 value={pendingGoogleVerification.otpCode}
                 onChange={(event) => handleGoogleOtpChange(event.target.value)}
                 disabled={isGoogleOtpBusy}

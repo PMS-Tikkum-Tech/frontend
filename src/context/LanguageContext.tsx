@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { translateText, type LanguageCode } from "@/lib/i18n";
 
 type LanguageContextValue = {
@@ -200,8 +201,11 @@ const translateSubtree = (rootNode: Node, language: LanguageCode) => {
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [language, setLanguageState] = useState<LanguageCode>("id");
   const [isReady, setIsReady] = useState(false);
+  const activeLanguage: LanguageCode =
+    pathname?.startsWith("/tenant") ? language : "id";
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -223,29 +227,29 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
 
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-    document.documentElement.lang = language;
-    document.documentElement.dataset.language = language;
+    document.documentElement.lang = activeLanguage;
+    document.documentElement.dataset.language = activeLanguage;
 
     if (document.body) {
-      translateSubtree(document.body, language);
+      translateSubtree(document.body, activeLanguage);
     }
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === "childList") {
           mutation.addedNodes.forEach((node) => {
-            translateSubtree(node, language);
+            translateSubtree(node, activeLanguage);
           });
           continue;
         }
 
         if (mutation.type === "characterData") {
-          translateTextNode(mutation.target as Text, language);
+          translateTextNode(mutation.target as Text, activeLanguage);
           continue;
         }
 
         if (mutation.type === "attributes" && mutation.target instanceof Element) {
-          translateElementAttributes(mutation.target, language);
+          translateElementAttributes(mutation.target, activeLanguage);
         }
       }
     });
@@ -259,7 +263,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     });
 
     return () => observer.disconnect();
-  }, [isReady, language]);
+  }, [activeLanguage, isReady, language]);
 
   const value = useMemo<LanguageContextValue>(
     () => ({

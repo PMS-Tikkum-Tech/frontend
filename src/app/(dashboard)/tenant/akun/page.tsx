@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -21,6 +27,15 @@ import {
   getTenantProfile,
   updateTenantProfile,
 } from "@/lib/dashboard/tenant.api";
+import {
+  NIK_LENGTH,
+  getNikValidationMessage,
+  getPhoneValidationMessage,
+  getTextValidationMessage,
+  normalizeTextInput,
+  sanitizeNikInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
 import type { BackendUser } from "@/types/auth";
 
 const resolveAvatarUrl = (path?: string | null) => {
@@ -60,6 +75,8 @@ type ProfileFormState = {
   relationship: string;
 };
 
+type ProfileFormErrors = Partial<Record<keyof ProfileFormState, string>>;
+
 const getInitialFormState = (): ProfileFormState => ({
   fullName: "",
   phoneNumber: "",
@@ -69,6 +86,76 @@ const getInitialFormState = (): ProfileFormState => ({
   relationship: "",
 });
 
+const getProfileFormErrors = (
+  form: ProfileFormState
+): ProfileFormErrors => {
+  const errors: ProfileFormErrors = {};
+
+  const fullNameError = getTextValidationMessage(form.fullName, {
+    label: "Nama lengkap",
+    required: true,
+  });
+  if (fullNameError) {
+    errors.fullName = fullNameError;
+  }
+
+  const phoneError = getPhoneValidationMessage(form.phoneNumber, {
+    label: "Nomor HP",
+  });
+  if (phoneError) {
+    errors.phoneNumber = phoneError;
+  }
+
+  const nikError = getNikValidationMessage(form.nik, {
+    label: "NIK",
+  });
+  if (nikError) {
+    errors.nik = nikError;
+  }
+
+  const emergencyContactName = normalizeTextInput(form.emergencyContactName);
+  const emergencyContactNumber = sanitizePhoneInput(form.emergencyContactNumber);
+  const relationship = normalizeTextInput(form.relationship);
+  const hasEmergencySection =
+    Boolean(emergencyContactName) ||
+    Boolean(emergencyContactNumber) ||
+    Boolean(relationship);
+
+  if (hasEmergencySection) {
+    const emergencyNameError = getTextValidationMessage(
+      emergencyContactName,
+      {
+        label: "Nama kontak darurat",
+        required: true,
+      }
+    );
+    if (emergencyNameError) {
+      errors.emergencyContactName = emergencyNameError;
+    }
+
+    const emergencyPhoneError = getPhoneValidationMessage(
+      emergencyContactNumber,
+      {
+        label: "Nomor kontak darurat",
+        required: true,
+      }
+    );
+    if (emergencyPhoneError) {
+      errors.emergencyContactNumber = emergencyPhoneError;
+    }
+
+    const relationshipError = getTextValidationMessage(relationship, {
+      label: "Hubungan kontak darurat",
+      required: true,
+    });
+    if (relationshipError) {
+      errors.relationship = relationshipError;
+    }
+  }
+
+  return errors;
+};
+
 export default function TenantAccountPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<BackendUser | null>(null);
@@ -76,6 +163,7 @@ export default function TenantAccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<ProfileFormErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
@@ -122,6 +210,7 @@ export default function TenantAccountPage() {
           return null;
         });
         setProfilePictureInputKey((prev) => prev + 1);
+        setFieldErrors({});
       } catch (loadError) {
         if (!active) {
           return;
@@ -245,9 +334,12 @@ export default function TenantAccountPage() {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    const nextFieldErrors = getProfileFormErrors(form);
+    setFieldErrors(nextFieldErrors);
 
-    if (!form.fullName.trim()) {
-      setError("Nama lengkap wajib diisi.");
+    const firstFieldError = Object.values(nextFieldErrors)[0];
+    if (firstFieldError) {
+      setError(firstFieldError);
       return;
     }
 
@@ -261,12 +353,12 @@ export default function TenantAccountPage() {
     try {
       const response = await updateTenantProfile({
         user_id: userId,
-        full_name: form.fullName.trim(),
-        phone_number: form.phoneNumber.trim(),
-        nik: form.nik.trim(),
-        emergency_contact_name: form.emergencyContactName.trim(),
-        emergency_contact_number: form.emergencyContactNumber.trim(),
-        relationship: form.relationship.trim(),
+        full_name: normalizeTextInput(form.fullName),
+        phone_number: sanitizePhoneInput(form.phoneNumber),
+        nik: sanitizeNikInput(form.nik),
+        emergency_contact_name: normalizeTextInput(form.emergencyContactName),
+        emergency_contact_number: sanitizePhoneInput(form.emergencyContactNumber),
+        relationship: normalizeTextInput(form.relationship),
         profile_picture: profilePicture,
       });
 
@@ -288,6 +380,7 @@ export default function TenantAccountPage() {
         return null;
       });
       setProfilePictureInputKey((prev) => prev + 1);
+      setFieldErrors({});
       setSuccessMessage(response.message || "Profil berhasil diperbarui.");
     } catch (saveError) {
       setError(
@@ -425,6 +518,7 @@ export default function TenantAccountPage() {
                     setForm((prev) => ({ ...prev, fullName: value }))
                   }
                   placeholder="Masukkan nama lengkap"
+                  error={fieldErrors.fullName}
                 />
                 <InputField
                   label="Email"
@@ -438,16 +532,31 @@ export default function TenantAccountPage() {
                   icon={<Phone size={14} />}
                   value={form.phoneNumber}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, phoneNumber: value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      phoneNumber: sanitizePhoneInput(value),
+                    }))
                   }
                   placeholder="Contoh: 081234567890"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={16}
+                  error={fieldErrors.phoneNumber}
                 />
                 <InputField
                   label="NIK"
                   icon={<IdCard size={14} />}
                   value={form.nik}
-                  onChange={(value) => setForm((prev) => ({ ...prev, nik: value }))}
-                  placeholder="16 digit NIK"
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      nik: sanitizeNikInput(value),
+                    }))
+                  }
+                  placeholder={`${NIK_LENGTH} digit NIK`}
+                  inputMode="numeric"
+                  maxLength={NIK_LENGTH}
+                  error={fieldErrors.nik}
                 />
                 <InputField
                   label="Nama Kontak Darurat"
@@ -457,15 +566,23 @@ export default function TenantAccountPage() {
                     setForm((prev) => ({ ...prev, emergencyContactName: value }))
                   }
                   placeholder="Nama keluarga terdekat"
+                  error={fieldErrors.emergencyContactName}
                 />
                 <InputField
                   label="No. Kontak Darurat"
                   icon={<Phone size={14} />}
                   value={form.emergencyContactNumber}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, emergencyContactNumber: value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      emergencyContactNumber: sanitizePhoneInput(value),
+                    }))
                   }
                   placeholder="Nomor yang bisa dihubungi"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={16}
+                  error={fieldErrors.emergencyContactNumber}
                 />
               </div>
 
@@ -477,6 +594,7 @@ export default function TenantAccountPage() {
                   setForm((prev) => ({ ...prev, relationship: value }))
                 }
                 placeholder="Contoh: Orang Tua, Kakak, Wali"
+                error={fieldErrors.relationship}
               />
 
               {error ? (
@@ -537,6 +655,10 @@ function InputField({
   readOnly = false,
   disabled = false,
   onChange,
+  error,
+  type = "text",
+  inputMode,
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -545,6 +667,10 @@ function InputField({
   readOnly?: boolean;
   disabled?: boolean;
   onChange?: (value: string) => void;
+  error?: string;
+  type?: string;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  maxLength?: number;
 }) {
   const isLocked = readOnly || disabled;
 
@@ -555,18 +681,24 @@ function InputField({
         {label}
       </span>
       <input
-        type="text"
+        type={type}
         value={value}
         readOnly={readOnly}
         disabled={disabled}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        aria-invalid={Boolean(error)}
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         className={`h-11 w-full rounded-xl border px-3 text-sm outline-none transition ${
           isLocked
             ? "cursor-not-allowed bg-slate-50 text-slate-500"
-            : "bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            : error
+              ? "border-red-300 bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500"
+              : "bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
         }`}
       />
+      {error ? <p className="text-xs text-red-500">{error}</p> : null}
     </label>
   );
 }

@@ -853,6 +853,13 @@ export const getApiErrorMessage = (
     }
 
     if (
+      normalized.includes("cannot delete record because of dependent rental_bookings") ||
+      normalized.includes("cannot delete record because of dependent rental bookings")
+    ) {
+      return "Data tidak bisa dihapus karena masih memiliki pemesanan sewa terkait.";
+    }
+
+    if (
       normalized.includes("cannot delete record because dependent") &&
       normalized.includes("exist")
     ) {
