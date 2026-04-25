@@ -8,7 +8,6 @@ import { useAuth } from "@/context/AuthContext";
 import { getTenantNotifications } from "@/lib/dashboard/tenant.api";
 import { hasUnreadTenantNotifications } from "@/lib/dashboard/tenant-notification-state";
 import ProfilePanel from "./ProfilePanel";
-import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { Bell, Menu, User, X } from "lucide-react";
 
 export default function PublicHeader() {
@@ -90,7 +89,6 @@ export default function PublicHeader() {
     user?.role === "tenant" &&
     pathname !== "/tenant/notifikasi" &&
     hasUnreadNotifications;
-  const showTenantLanguageSwitcher = user?.role === "tenant";
 
   const avatarUrl = (() => {
     if (!user?.avatar || failedAvatarKey === user.avatar) {
@@ -153,9 +151,6 @@ export default function PublicHeader() {
                 >
                   Masuk Dasbor
                 </Link>
-              ) : null}
-              {showTenantLanguageSwitcher ? (
-                <LanguageSwitcher compact className="hidden sm:inline-flex" />
               ) : null}
               {user.role === "tenant" ? (
                 <Link
@@ -241,10 +236,6 @@ export default function PublicHeader() {
           }`}
         >
           <div className="space-y-3 px-4 py-3">
-            {showTenantLanguageSwitcher ? (
-              <LanguageSwitcher className="w-full justify-between border-slate-200" />
-            ) : null}
-
             <nav className="grid gap-1.5">
               {nav.map((item) => (
                 <Link
