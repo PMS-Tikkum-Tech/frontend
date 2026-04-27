@@ -1,8 +1,10 @@
 import axios, { AxiosHeaders } from "axios";
+import {
+  clearClientAuthCookies,
+  isSessionExpired,
+} from "@/lib/auth-cookies";
 
 export const AUTH_SESSION_STORAGE_KEY = "kyra.auth.session";
-export const AUTH_COOKIE_KEY = "kyra_auth";
-export const AUTH_ROLE_COOKIE_KEY = "kyra_role";
 
 const SESSION_EXPIRED_MESSAGE = "Sesi login berakhir. Silakan masuk kembali.";
 
@@ -23,31 +25,9 @@ const clearStoredSession = () => {
   }
 };
 
-const clearAuthCookies = () => {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.cookie = `${AUTH_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
-  document.cookie = `${AUTH_ROLE_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
-};
-
 const clearClientSession = () => {
   clearStoredSession();
-  clearAuthCookies();
-};
-
-const isSessionExpired = (expiresAt?: string | null) => {
-  if (!expiresAt) {
-    return false;
-  }
-
-  const expiresAtMs = new Date(expiresAt).getTime();
-  if (Number.isNaN(expiresAtMs)) {
-    return false;
-  }
-
-  return Date.now() >= expiresAtMs;
+  clearClientAuthCookies();
 };
 
 const isProtectedPath = (pathname: string) =>

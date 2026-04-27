@@ -23,10 +23,9 @@ import RoleGuard from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import { updateSelfProfilePicture } from "@/lib/profile.api";
+import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
 import AdminCursor from "@/components/ui/AdminCursor";
-
-const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
-const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+import { getProfilePictureValidationError } from "@/lib/profile-picture";
 
 export default function AdminDashboardLayout({
   children,
@@ -42,6 +41,8 @@ export default function AdminDashboardLayout({
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [failedAvatarKey, setFailedAvatarKey] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [isAvatarCropOpen, setIsAvatarCropOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -67,24 +68,8 @@ export default function AdminDashboardLayout({
     return `${baseUrl}${user.avatar.startsWith("/") ? user.avatar : `/${user.avatar}`}`;
   })();
 
-  const handleAvatarFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = "";
+  const uploadAvatarFile = async (file: File) => {
     if (!file || !user?.id) {
-      return;
-    }
-
-    if (!PROFILE_PICTURE_ALLOWED_TYPES.includes(file.type)) {
-      setAvatarError("Format foto harus PNG, JPG, atau JPEG.");
-      setAvatarNotice(null);
-      return;
-    }
-
-    if (file.size > PROFILE_PICTURE_MAX_SIZE_BYTES) {
-      setAvatarError("Ukuran foto maksimal 5 MB.");
-      setAvatarNotice(null);
       return;
     }
 
@@ -106,6 +91,43 @@ export default function AdminDashboardLayout({
     } finally {
       setIsUploadingAvatar(false);
     }
+  };
+
+  const handleAvatarFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) {
+      return;
+    }
+
+    const validationError = getProfilePictureValidationError(file);
+    if (validationError) {
+      setAvatarError(validationError);
+      setAvatarNotice(null);
+      return;
+    }
+
+    setAvatarError(null);
+    setAvatarNotice(null);
+    setPendingAvatarFile(file);
+    setIsAvatarCropOpen(true);
+  };
+
+  const handleCloseAvatarCrop = () => {
+    setPendingAvatarFile(null);
+    setIsAvatarCropOpen(false);
+  };
+
+  const handleApplyAvatarCrop = (result: {
+    file: File;
+    previewUrl: string;
+  }) => {
+    URL.revokeObjectURL(result.previewUrl);
+    setPendingAvatarFile(null);
+    setIsAvatarCropOpen(false);
+    void uploadAvatarFile(result.file);
   };
 
   const menuItems = [
@@ -296,6 +318,15 @@ export default function AdminDashboardLayout({
             {children}
           </main>
         </div>
+
+        <ProfileImageCropDialog
+          open={isAvatarCropOpen}
+          file={pendingAvatarFile}
+          title="Crop Foto Profil Administrator"
+          confirmLabel="Simpan Foto Profil"
+          onClose={handleCloseAvatarCrop}
+          onApply={handleApplyAvatarCrop}
+        />
       </div>
     </RoleGuard>
   );

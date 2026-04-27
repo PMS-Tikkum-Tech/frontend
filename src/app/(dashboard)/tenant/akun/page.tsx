@@ -21,6 +21,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
 import {
   getApiErrorMessage,
   getIncompleteTenantProfileFields,
@@ -36,6 +37,10 @@ import {
   sanitizeNikInput,
   sanitizePhoneInput,
 } from "@/lib/form-validation";
+import {
+  PROFILE_PICTURE_ACCEPT,
+  getProfilePictureValidationError,
+} from "@/lib/profile-picture";
 import type { BackendUser } from "@/types/auth";
 
 const resolveAvatarUrl = (path?: string | null) => {
@@ -62,9 +67,6 @@ const toDisplayValue = (value?: string | number | null) => {
   const trimmed = value?.toString().trim();
   return trimmed ? trimmed : "-";
 };
-
-const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
-const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 type ProfileFormState = {
   fullName: string;
@@ -170,6 +172,10 @@ export default function TenantAccountPage() {
     null
   );
   const [profilePictureInputKey, setProfilePictureInputKey] = useState(0);
+  const [pendingProfilePictureFile, setPendingProfilePictureFile] =
+    useState<File | null>(null);
+  const [isProfilePictureCropOpen, setIsProfilePictureCropOpen] =
+    useState(false);
 
   useEffect(() => {
     return () => {
@@ -210,6 +216,8 @@ export default function TenantAccountPage() {
           return null;
         });
         setProfilePictureInputKey((prev) => prev + 1);
+        setPendingProfilePictureFile(null);
+        setIsProfilePictureCropOpen(false);
         setFieldErrors({});
       } catch (loadError) {
         if (!active) {
@@ -271,12 +279,14 @@ export default function TenantAccountPage() {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
+    event.currentTarget.value = "";
     if (!file) {
       return;
     }
 
-    if (!PROFILE_PICTURE_ALLOWED_TYPES.includes(file.type)) {
-      setError("Format foto profil harus PNG, JPG, atau JPEG.");
+    const validationError = getProfilePictureValidationError(file);
+    if (validationError) {
+      setError(validationError);
       setSuccessMessage(null);
       setProfilePicture(null);
       setProfilePicturePreview((previous) => {
@@ -290,32 +300,10 @@ export default function TenantAccountPage() {
       return;
     }
 
-    if (file.size > PROFILE_PICTURE_MAX_SIZE_BYTES) {
-      setError("Ukuran foto profil maksimal 5 MB.");
-      setSuccessMessage(null);
-      setProfilePicture(null);
-      setProfilePicturePreview((previous) => {
-        if (previous?.startsWith("blob:")) {
-          URL.revokeObjectURL(previous);
-        }
-
-        return null;
-      });
-      setProfilePictureInputKey((prev) => prev + 1);
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-    setProfilePicture(file);
-    setProfilePicturePreview((previous) => {
-      if (previous?.startsWith("blob:")) {
-        URL.revokeObjectURL(previous);
-      }
-
-      return previewUrl;
-    });
     setError(null);
     setSuccessMessage(null);
+    setPendingProfilePictureFile(file);
+    setIsProfilePictureCropOpen(true);
   };
 
   const handleClearSelectedProfilePicture = () => {
@@ -328,6 +316,31 @@ export default function TenantAccountPage() {
       return null;
     });
     setProfilePictureInputKey((prev) => prev + 1);
+  };
+
+  const handleCloseProfilePictureCrop = () => {
+    setPendingProfilePictureFile(null);
+    setIsProfilePictureCropOpen(false);
+    setProfilePictureInputKey((prev) => prev + 1);
+  };
+
+  const handleApplyProfilePictureCrop = (result: {
+    file: File;
+    previewUrl: string;
+  }) => {
+    setProfilePicture(result.file);
+    setProfilePicturePreview((previous) => {
+      if (previous?.startsWith("blob:")) {
+        URL.revokeObjectURL(previous);
+      }
+
+      return result.previewUrl;
+    });
+    setPendingProfilePictureFile(null);
+    setIsProfilePictureCropOpen(false);
+    setProfilePictureInputKey((prev) => prev + 1);
+    setError(null);
+    setSuccessMessage(null);
   };
 
   const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -380,6 +393,8 @@ export default function TenantAccountPage() {
         return null;
       });
       setProfilePictureInputKey((prev) => prev + 1);
+      setPendingProfilePictureFile(null);
+      setIsProfilePictureCropOpen(false);
       setFieldErrors({});
       setSuccessMessage(response.message || "Profil berhasil diperbarui.");
     } catch (saveError) {
@@ -457,7 +472,7 @@ export default function TenantAccountPage() {
                 <input
                   key={profilePictureInputKey}
                   type="file"
-                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                  accept={PROFILE_PICTURE_ACCEPT}
                   className="hidden"
                   onChange={handleProfilePictureChange}
                 />
@@ -623,6 +638,15 @@ export default function TenantAccountPage() {
           </section>
         </div>
       )}
+
+      <ProfileImageCropDialog
+        open={isProfilePictureCropOpen}
+        file={pendingProfilePictureFile}
+        title="Crop Foto Profil Penyewa"
+        confirmLabel="Gunakan untuk Profil"
+        onClose={handleCloseProfilePictureCrop}
+        onApply={handleApplyProfilePictureCrop}
+      />
     </div>
   );
 }

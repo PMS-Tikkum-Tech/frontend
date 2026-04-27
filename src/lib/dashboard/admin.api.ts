@@ -129,18 +129,37 @@ export interface AdminPropertyUpdatePayload {
 
 export interface AdminPropertyTenantRow {
   lease_id: number;
+  tenant_id: number;
   tenant_name: string;
+  tenant_email?: string | null;
   unit_id: number;
   unit_name: string;
   mobile_phone?: string | null;
+  lease_start?: string | null;
   lease_end?: string | null;
   payment_status?: string | null;
+}
+
+export interface AdminPropertyTenantCreatePayload {
+  tenant_id: number;
+  unit_id: number;
+  start_date: string;
+  end_date: string;
+  payment_status: "paid" | "unpaid";
+}
+
+export interface AdminPropertyTenantUpdatePayload {
+  unit_id?: number;
+  start_date?: string;
+  end_date?: string;
+  payment_status?: "paid" | "unpaid";
 }
 
 export interface AdminPropertyUnitRow {
   unit_id: number;
   unit_name: string;
   unit_type: string;
+  people_allowed: number;
   tenant_name?: string | null;
   price: number;
   lease_end?: string | null;
@@ -154,6 +173,14 @@ export interface AdminUnitCreatePayload {
   status: "vacant" | "occupied" | "maintenance";
   people_allowed: number;
   price: number;
+}
+
+export interface AdminUnitUpdatePayload {
+  name?: string;
+  unit_type?: string;
+  status?: "vacant" | "occupied" | "maintenance";
+  people_allowed?: number;
+  price?: number;
 }
 
 export interface AdminPropertyMaintenanceRow {
@@ -1042,6 +1069,54 @@ export const getAdminPropertyTenants = (
   params?: QueryParams
 ) => getList<AdminPropertyTenantRow>(`/api/v1/properties/${id}/tenants`, params);
 
+export const createAdminPropertyTenant = async (
+  propertyId: number | string,
+  payload: AdminPropertyTenantCreatePayload
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminPropertyTenantRow>>(
+    `/api/v1/properties/${propertyId}/tenants`,
+    {
+      tenant_assignment: payload,
+    }
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const updateAdminPropertyTenant = async (
+  propertyId: number | string,
+  leaseId: number | string,
+  payload: AdminPropertyTenantUpdatePayload
+) => {
+  const response = await axiosInstance.patch<ApiResponse<AdminPropertyTenantRow>>(
+    `/api/v1/properties/${propertyId}/tenants/${leaseId}`,
+    {
+      tenant_assignment: payload,
+    }
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const deleteAdminPropertyTenant = async (
+  propertyId: number | string,
+  leaseId: number | string
+) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/properties/${propertyId}/tenants/${leaseId}`
+  );
+
+  return {
+    message: response.data.message,
+  };
+};
+
 export const getAdminPropertyUnits = (id: number | string, params?: QueryParams) =>
   getList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
 
@@ -1055,6 +1130,31 @@ export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
 
   return {
     data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const updateAdminUnit = async (
+  id: number | string,
+  payload: AdminUnitUpdatePayload
+) => {
+  const response = await axiosInstance.patch<ApiResponse<unknown>>(
+    `/api/v1/units/${id}`,
+    {
+      unit: payload,
+    }
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const deleteAdminUnit = async (id: number | string) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(`/api/v1/units/${id}`);
+
+  return {
     message: response.data.message,
   };
 };

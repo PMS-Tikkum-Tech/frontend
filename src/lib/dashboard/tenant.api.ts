@@ -1224,15 +1224,207 @@ const mapManualBookingToTenantPayment = (
 };
 
 const TENANT_FAVORITES_STORAGE_KEY = "kyra.tenant.favorite.property.ids";
-const TENANT_VISIT_REQUESTS_STORAGE_KEY = "kikost.tenant.visit.requests";
 export const PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE =
   "Katalog properti tersedia setelah login.";
 export const PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE =
   "Unit properti tersedia setelah login.";
-export const TENANT_VISIT_REQUEST_UNAVAILABLE_MESSAGE =
-  "Endpoint pengajuan jadwal survei kost belum tersedia pada backend.";
 export const TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE =
   "Notifikasi tenant belum tersedia pada backend terbaru.";
+
+const VISIT_REQUEST_SUBJECT_PREFIX = "Permintaan jadwal kunjungan";
+const VISIT_REQUEST_CANCELLED_VALUE = "dibatalkan";
+const INDONESIAN_MONTH_MAP: Record<string, string> = {
+  jan: "01",
+  januari: "01",
+  feb: "02",
+  februari: "02",
+  mar: "03",
+  maret: "03",
+  apr: "04",
+  april: "04",
+  mei: "05",
+  jun: "06",
+  juni: "06",
+  jul: "07",
+  juli: "07",
+  agu: "08",
+  agt: "08",
+  agustus: "08",
+  aug: "08",
+  sep: "09",
+  september: "09",
+  okt: "10",
+  oktober: "10",
+  oct: "10",
+  nov: "11",
+  november: "11",
+  des: "12",
+  desember: "12",
+  dec: "12",
+};
+
+const getVisitMessageValue = (message: string, label: string) => {
+  const prefix = `${label.toLowerCase()}:`;
+  const line = message
+    .split("\n")
+    .map((item) => item.trim())
+    .find((item) => item.toLowerCase().startsWith(prefix));
+
+  if (!line) {
+    return "-";
+  }
+
+  return line.slice(prefix.length).trim() || "-";
+};
+
+const normalizeVisitDateValue = (value?: string | null) => {
+  const normalized = value?.trim();
+  if (!normalized || normalized === "-") {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+
+  const slashMatch = normalized.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  const monthMatch = normalized.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (monthMatch) {
+    const [, day, rawMonth, year] = monthMatch;
+    const month = INDONESIAN_MONTH_MAP[rawMonth.toLowerCase()];
+    if (month) {
+      return `${year}-${month}-${day.padStart(2, "0")}`;
+    }
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+};
+
+const normalizeVisitTimeValue = (value?: string | null) => {
+  const normalized = value?.trim();
+  if (!normalized || normalized === "-") {
+    return null;
+  }
+
+  const match = normalized.match(/(\d{1,2}):(\d{2})/);
+  if (!match) {
+    return normalized;
+  }
+
+  const [, hour, minute] = match;
+  return `${hour.padStart(2, "0")}:${minute}`;
+};
+
+const isVisitDatePast = (value?: string | null) => {
+  const normalized = normalizeVisitDateValue(value);
+  if (!normalized) {
+    return false;
+  }
+
+  const visitDate = new Date(`${normalized}T00:00:00`);
+  if (Number.isNaN(visitDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return visitDate.getTime() < today.getTime();
+};
+
+const buildTenantVisitRequestSubject = (propertyName: string) =>
+  `${VISIT_REQUEST_SUBJECT_PREFIX} - ${propertyName}`;
+
+const buildTenantVisitRequestMessage = ({
+  tenantName,
+  tenantEmail,
+  tenantPhone,
+  propertyName,
+  propertyAddress,
+  preferredDate,
+  preferredTime,
+  note,
+}: {
+  tenantName: string;
+  tenantEmail: string;
+  tenantPhone: string;
+  propertyName: string;
+  propertyAddress?: string | null;
+  preferredDate: string;
+  preferredTime: string;
+  note?: string | null;
+}) => {
+  return [
+    `Nama penyewa: ${tenantName}`,
+    `Email penyewa: ${tenantEmail}`,
+    `Nomor HP penyewa: ${tenantPhone}`,
+    `Properti: ${propertyName}`,
+    `Alamat properti: ${propertyAddress || "-"}`,
+    `Tanggal preferensi: ${preferredDate}`,
+    `Jam preferensi: ${preferredTime}`,
+    `Catatan: ${note?.trim() || "-"}`,
+  ].join("\n");
+};
+
+const mapCommunicationToTenantVisitRequest = (
+  communication: TenantCommunication
+): TenantVisitRequest => {
+  const message = communication.message || "";
+  const propertyId = Number(communication.property.id || 0);
+  const propertyNameValue = getVisitMessageValue(message, "Properti");
+  const propertyAddressValue = getVisitMessageValue(message, "Alamat properti");
+  const propertyAddress =
+    propertyAddressValue && propertyAddressValue !== "-" ? propertyAddressValue : null;
+  const requestedDate = normalizeVisitDateValue(
+    getVisitMessageValue(message, "Tanggal preferensi")
+  );
+  const requestedTime = normalizeVisitTimeValue(
+    getVisitMessageValue(message, "Jam preferensi")
+  );
+  const approvedDate = normalizeVisitDateValue(
+    getVisitMessageValue(message, "Tanggal kunjungan disetujui")
+  );
+  const approvedTime = normalizeVisitTimeValue(
+    getVisitMessageValue(message, "Jam kunjungan disetujui")
+  );
+  const noteValue = getVisitMessageValue(message, "Catatan");
+  const statusValue = getVisitMessageValue(message, "Status pengajuan").toLowerCase();
+
+  let status: TenantVisitRequestStatus = "pending";
+  if (statusValue === VISIT_REQUEST_CANCELLED_VALUE) {
+    status = "cancelled";
+  } else if (approvedDate || approvedTime) {
+    status = isVisitDatePast(approvedDate || requestedDate) ? "completed" : "confirmed";
+  }
+
+  return {
+    id: communication.id,
+    property: {
+      id: propertyId,
+      name:
+        propertyNameValue && propertyNameValue !== "-"
+          ? propertyNameValue
+          : communication.property.name || `Kost #${propertyId}`,
+      address:
+        propertyAddress && propertyAddress !== "-" ? propertyAddress : null,
+    },
+    preferred_date: approvedDate || requestedDate,
+    preferred_time: approvedTime || requestedTime,
+    note: noteValue && noteValue !== "-" ? noteValue : null,
+    status,
+    created_at: communication.created_at || communication.scheduled_at || null,
+    updated_at: communication.updated_at || null,
+  };
+};
 
 const getFavoritePropertyIds = () => {
   if (typeof window === "undefined") {
@@ -1268,92 +1460,6 @@ const saveFavoritePropertyIds = (ids: Set<number>) => {
     );
   } catch {
     // ignore storage errors
-  }
-};
-
-const tenantVisitRequestStatuses: TenantVisitRequestStatus[] = [
-  "pending",
-  "confirmed",
-  "completed",
-  "cancelled",
-];
-
-const normalizeStoredTenantVisitRequest = (
-  value: unknown
-): TenantVisitRequest | null => {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const item = value as Partial<TenantVisitRequest>;
-  const id = typeof item.id === "number" ? item.id : Number(item.id);
-  const propertyId =
-    typeof item.property?.id === "number"
-      ? item.property.id
-      : Number(item.property?.id);
-
-  if (!Number.isFinite(id) || !Number.isFinite(propertyId)) {
-    return null;
-  }
-
-  const status = tenantVisitRequestStatuses.includes(
-    item.status as TenantVisitRequestStatus
-  )
-    ? (item.status as TenantVisitRequestStatus)
-    : "pending";
-
-  return {
-    id,
-    property: {
-      id: propertyId,
-      name: item.property?.name || `Kost #${propertyId}`,
-      address: item.property?.address || null,
-    },
-    preferred_date: item.preferred_date || null,
-    preferred_time: item.preferred_time || null,
-    note: item.note || null,
-    status,
-    created_at: item.created_at || null,
-    updated_at: item.updated_at || null,
-  };
-};
-
-const getStoredTenantVisitRequests = () => {
-  if (typeof window === "undefined") {
-    return [] as TenantVisitRequest[];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(TENANT_VISIT_REQUESTS_STORAGE_KEY);
-    if (!raw) {
-      return [] as TenantVisitRequest[];
-    }
-
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [] as TenantVisitRequest[];
-    }
-
-    return parsed
-      .map(normalizeStoredTenantVisitRequest)
-      .filter((item): item is TenantVisitRequest => Boolean(item));
-  } catch {
-    return [] as TenantVisitRequest[];
-  }
-};
-
-const saveStoredTenantVisitRequests = (requests: TenantVisitRequest[]) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      TENANT_VISIT_REQUESTS_STORAGE_KEY,
-      JSON.stringify(requests)
-    );
-  } catch {
-    // Abaikan error penyimpanan lokal agar alur pengguna tidak terhenti.
   }
 };
 
@@ -1755,50 +1861,15 @@ export const getPublicPropertyUnits = (
 export const getTenantVisitRequests = async (
   params?: QueryParams
 ): Promise<ListResult<TenantVisitRequest>> => {
-  let requests = getStoredTenantVisitRequests();
-  const statusFilter = params?.status?.toString();
-  const searchFilter = params?.search?.toString().trim().toLowerCase();
-
-  if (statusFilter && tenantVisitRequestStatuses.includes(statusFilter as TenantVisitRequestStatus)) {
-    requests = requests.filter((item) => item.status === statusFilter);
-  }
-
-  if (searchFilter) {
-    requests = requests.filter((item) => {
-      const searchableText = [
-        item.property.name,
-        item.property.address,
-        item.preferred_date,
-        item.preferred_time,
-        item.note,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchableText.includes(searchFilter);
-    });
-  }
-
-  requests = [...requests].sort((first, second) => {
-    const firstDate = new Date(
-      first.preferred_date || first.created_at || 0
-    ).getTime();
-    const secondDate = new Date(
-      second.preferred_date || second.created_at || 0
-    ).getTime();
-
-    return firstDate - secondDate;
-  });
-
-  const page = getNumberParam(params?.page, 1);
-  const perPage = getNumberParam(params?.per_page, 20);
-  const paginated = paginateArray(requests, page, perPage);
+  const response = await getList<TenantCommunication>(
+    "/api/v1/communications/visit_requests",
+    params
+  );
 
   return {
-    data: paginated.data,
-    meta: paginated.meta,
-    message: "Jadwal kunjungan kost berhasil dimuat.",
+    data: response.data.map(mapCommunicationToTenantVisitRequest),
+    meta: response.meta,
+    message: response.message,
   };
 };
 
@@ -1846,6 +1917,18 @@ export const createTenantVisitRequest = async (
     throw new Error("Tanggal dan jam survei wajib diisi.");
   }
 
+  const profileResponse = await getTenantProfile();
+  const profile = profileResponse.data;
+  const tenantName = profile.full_name?.trim() || "Penyewa KIKOST";
+  const tenantEmail = profile.email?.trim();
+  const tenantPhone = profile.phone_number?.toString().trim();
+
+  if (!tenantEmail || !tenantPhone) {
+    throw new Error(
+      "Lengkapi email dan nomor HP pada profil sebelum mengajukan jadwal kunjungan."
+    );
+  }
+
   let propertyName = `Kost #${propertyId}`;
   let propertyAddress: string | null = null;
 
@@ -1866,28 +1949,29 @@ export const createTenantVisitRequest = async (
     // Data kost tetap disimpan memakai ID jika katalog sedang tidak dapat diakses.
   }
 
-  const now = new Date().toISOString();
-  const request: TenantVisitRequest = {
-    id: Date.now(),
-    property: {
-      id: propertyId,
-      name: propertyName,
-      address: propertyAddress,
-    },
-    preferred_date: preferredDate,
-    preferred_time: preferredTime,
-    note: payload.note?.trim() || null,
-    status: "pending",
-    created_at: now,
-    updated_at: now,
-  };
-
-  const existingRequests = getStoredTenantVisitRequests();
-  saveStoredTenantVisitRequests([request, ...existingRequests]);
+  const response = await axiosInstance.post<ApiResponse<TenantCommunication>>(
+    "/api/v1/communications/visit_requests",
+    {
+      communication: {
+        property_id: propertyId,
+        subject: buildTenantVisitRequestSubject(propertyName),
+        message: buildTenantVisitRequestMessage({
+          tenantName,
+          tenantEmail,
+          tenantPhone,
+          propertyName,
+          propertyAddress,
+          preferredDate,
+          preferredTime,
+          note: payload.note,
+        }),
+      },
+    }
+  );
 
   return {
-    data: request,
-    message: "Permintaan jadwal survei berhasil dikirim.",
+    data: mapCommunicationToTenantVisitRequest(response.data.data),
+    message: response.data.message,
   };
 };
 
@@ -1898,32 +1982,13 @@ export const cancelTenantVisitRequest = async (requestId: number | string) => {
     throw new Error("Jadwal survei tidak valid.");
   }
 
-  const requests = getStoredTenantVisitRequests();
-  const targetRequest = requests.find((request) => request.id === numericId);
-
-  if (!targetRequest) {
-    throw new Error("Jadwal survei tidak ditemukan.");
-  }
-
-  if (targetRequest.status === "completed") {
-    throw new Error("Jadwal survei yang sudah selesai tidak bisa dibatalkan.");
-  }
-
-  const updatedRequest: TenantVisitRequest = {
-    ...targetRequest,
-    status: "cancelled",
-    updated_at: new Date().toISOString(),
-  };
-
-  saveStoredTenantVisitRequests(
-    requests.map((request) =>
-      request.id === numericId ? updatedRequest : request
-    )
+  const response = await axiosInstance.post<ApiResponse<TenantCommunication>>(
+    `/api/v1/communications/${numericId}/cancel_visit_request`
   );
 
   return {
-    data: updatedRequest,
-    message: "Jadwal survei berhasil dibatalkan.",
+    data: mapCommunicationToTenantVisitRequest(response.data.data),
+    message: response.data.message,
   };
 };
 

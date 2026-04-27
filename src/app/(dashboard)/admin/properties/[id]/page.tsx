@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   Building2,
   CircleX,
@@ -12,19 +14,24 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Trash2,
   Users,
   Video,
   Wrench,
 } from "lucide-react";
 import AddPropertyModal from "@/components/dashboard/admin/properties/AddPropertyModal";
 import {
+  createAdminPropertyTenant,
   createAdminUnit,
   deleteAdminProperty,
+  deleteAdminPropertyTenant,
+  deleteAdminUnit,
   getAdminOwners,
   getAdminPropertyDetail,
   getAdminPropertyMaintenance,
   getAdminPropertyTenants,
   getAdminPropertyUnits,
+  getAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
   type AdminPropertyDetailPayload,
@@ -32,7 +39,11 @@ import {
   type AdminPropertyTenantRow,
   type AdminPropertyUnitRow,
   type AdminPropertyUpsertPayload,
+  type AdminPropertyTenantUpdatePayload,
+  type AdminUnitUpdatePayload,
   type AdminUser,
+  updateAdminPropertyTenant,
+  updateAdminUnit,
   updateAdminProperty,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
@@ -52,6 +63,30 @@ const formatDate = (value?: string | null) => {
     month: "short",
     year: "numeric",
   });
+};
+
+const toInputDate = (value?: string | null) => {
+  if (!value) {
+    return "";
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
+};
+
+const getTodayInputDate = () => {
+  const date = new Date();
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
 };
 
 const paymentLabelMap: Record<string, string> = {
@@ -191,6 +226,38 @@ type Notice = {
   message: string;
 } | null;
 
+type UnitFormState = {
+  name: string;
+  unit_type: string;
+  status: "vacant" | "occupied" | "maintenance";
+  people_allowed: string;
+  price: string;
+};
+
+type TenantAssignmentFormState = {
+  tenantId: string;
+  unitId: string;
+  startDate: string;
+  endDate: string;
+  paymentStatus: "paid" | "unpaid";
+};
+
+const getInitialUnitForm = (): UnitFormState => ({
+  name: "",
+  unit_type: "standard",
+  status: "vacant",
+  people_allowed: "1",
+  price: "",
+});
+
+const getInitialTenantAssignmentForm = (): TenantAssignmentFormState => ({
+  tenantId: "",
+  unitId: "",
+  startDate: getTodayInputDate(),
+  endDate: "",
+  paymentStatus: "unpaid",
+});
+
 export default function DetailPropertiPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -199,6 +266,7 @@ export default function DetailPropertiPage() {
   const [propertyDetail, setPropertyDetail] =
     useState<AdminPropertyDetailPayload | null>(null);
   const [owners, setOwners] = useState<AdminUser[]>([]);
+  const [availableTenants, setAvailableTenants] = useState<AdminUser[]>([]);
   const [tenantRows, setTenantRows] = useState<AdminPropertyTenantRow[]>([]);
   const [unitRows, setUnitRows] = useState<AdminPropertyUnitRow[]>([]);
   const [maintenanceRows, setMaintenanceRows] = useState<
@@ -210,20 +278,30 @@ export default function DetailPropertiPage() {
   const [unitSearch, setUnitSearch] = useState("");
   const [unitStatus, setUnitStatus] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showTenantForm, setShowTenantForm] = useState(false);
   const [showAddUnitForm, setShowAddUnitForm] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [newUnitForm, setNewUnitForm] = useState({
-    name: "",
-    unit_type: "standard",
-    status: "vacant" as "vacant" | "occupied" | "maintenance",
-    people_allowed: "1",
-    price: "",
-  });
+  const [deleteTenantTarget, setDeleteTenantTarget] =
+    useState<AdminPropertyTenantRow | null>(null);
+  const [deleteUnitTarget, setDeleteUnitTarget] =
+    useState<AdminPropertyUnitRow | null>(null);
+  const [editingTenantRow, setEditingTenantRow] =
+    useState<AdminPropertyTenantRow | null>(null);
+  const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
+  const [tenantForm, setTenantForm] = useState<TenantAssignmentFormState>(
+    getInitialTenantAssignmentForm()
+  );
+  const [unitForm, setUnitForm] = useState<UnitFormState>(getInitialUnitForm());
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingTenant, setIsSavingTenant] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isAddingUnit, setIsAddingUnit] = useState(false);
+  const [isSavingUnit, setIsSavingUnit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletingTenantLeaseId, setIsDeletingTenantLeaseId] = useState<number | null>(
+    null
+  );
+  const [isDeletingUnitId, setIsDeletingUnitId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -246,12 +324,14 @@ export default function DetailPropertiPage() {
           unitResponse,
           maintenanceResponse,
           ownersResponse,
+          tenantsResponse,
         ] = await Promise.all([
           getAdminPropertyDetail(propertyId),
           getAdminPropertyTenants(propertyId, { page: 1, per_page: 100 }),
           getAdminPropertyUnits(propertyId, { page: 1, per_page: 100 }),
           getAdminPropertyMaintenance(propertyId, { page: 1, per_page: 100 }),
           getAdminOwners({ page: 1, per_page: 100 }),
+          getAdminTenants({ page: 1, per_page: 100 }),
         ]);
 
         if (!active) {
@@ -260,6 +340,7 @@ export default function DetailPropertiPage() {
 
         setPropertyDetail(detailResponse.data);
         setOwners(ownersResponse.data);
+        setAvailableTenants(tenantsResponse.data);
         setTenantRows(tenantResponse.data);
         setUnitRows(unitResponse.data);
         setMaintenanceRows(maintenanceResponse.data);
@@ -430,6 +511,24 @@ export default function DetailPropertiPage() {
     };
   }, [propertyDetail]);
 
+  const activeTenantOptions = useMemo(() => {
+    return [...availableTenants]
+      .filter((tenant) => tenant.role === "tenant")
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+  }, [availableTenants]);
+
+  const availableUnitOptions = useMemo(() => {
+    return [...unitRows]
+      .filter((unit) => {
+        if (editingTenantRow && unit.unit_id === editingTenantRow.unit_id) {
+          return true;
+        }
+
+        return !unit.tenant_name && unit.status !== "maintenance";
+      })
+      .sort((a, b) => a.unit_name.localeCompare(b.unit_name));
+  }, [editingTenantRow, unitRows]);
+
   const handleDeleteProperty = async () => {
     if (!propertyId || isDeleting) {
       return;
@@ -505,20 +604,167 @@ export default function DetailPropertiPage() {
     }
   };
 
-  const handleAddUnit = async (event: FormEvent<HTMLFormElement>) => {
+  const openCreateTenantForm = () => {
+    setNotice(null);
+    setError(null);
+    setEditingTenantRow(null);
+    setTenantForm(getInitialTenantAssignmentForm());
+    setShowTenantForm((prev) => !prev);
+  };
+
+  const openEditTenantForm = (tenant: AdminPropertyTenantRow) => {
+    setNotice(null);
+    setError(null);
+    setEditingTenantRow(tenant);
+    setTenantForm({
+      tenantId: String(tenant.tenant_id),
+      unitId: String(tenant.unit_id),
+      startDate: toInputDate(tenant.lease_start) || getTodayInputDate(),
+      endDate: toInputDate(tenant.lease_end),
+      paymentStatus: tenant.payment_status === "paid" ? "paid" : "unpaid",
+    });
+    setShowTenantForm(true);
+  };
+
+  const closeTenantForm = () => {
+    if (isSavingTenant) {
+      return;
+    }
+
+    setShowTenantForm(false);
+    setEditingTenantRow(null);
+    setTenantForm(getInitialTenantAssignmentForm());
+  };
+
+  const handleSubmitTenantForm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!propertyId || isAddingUnit) {
+    if (!propertyId || isSavingTenant) {
       return;
     }
 
     const parsedPropertyId = Number(propertyId);
-    const parsedPeopleAllowed = Number(newUnitForm.people_allowed);
-    const parsedPrice = Number(newUnitForm.price);
+    const parsedTenantId = Number(tenantForm.tenantId);
+    const parsedUnitId = Number(tenantForm.unitId);
+    const isEditing = Boolean(editingTenantRow);
+
+    if (!Number.isFinite(parsedPropertyId) || parsedPropertyId <= 0) {
+      setError("Data properti tidak valid.");
+      return;
+    }
+
+    if (!isEditing && (!Number.isFinite(parsedTenantId) || parsedTenantId <= 0)) {
+      setError("Pilih akun penyewa terlebih dahulu.");
+      return;
+    }
+
+    if (!Number.isFinite(parsedUnitId) || parsedUnitId <= 0) {
+      setError("Pilih unit yang akan ditempati.");
+      return;
+    }
+
+    if (!tenantForm.startDate || !tenantForm.endDate) {
+      setError("Tanggal mulai dan tanggal akhir sewa wajib diisi.");
+      return;
+    }
+
+    if (tenantForm.endDate < tenantForm.startDate) {
+      setError("Tanggal akhir sewa tidak boleh lebih awal dari tanggal mulai.");
+      return;
+    }
+
+    setIsSavingTenant(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      if (isEditing && editingTenantRow) {
+        const payload: AdminPropertyTenantUpdatePayload = {
+          unit_id: parsedUnitId,
+          start_date: tenantForm.startDate,
+          end_date: tenantForm.endDate,
+          payment_status: tenantForm.paymentStatus,
+        };
+
+        await updateAdminPropertyTenant(
+          parsedPropertyId,
+          editingTenantRow.lease_id,
+          payload
+        );
+      } else {
+        await createAdminPropertyTenant(parsedPropertyId, {
+          tenant_id: parsedTenantId,
+          unit_id: parsedUnitId,
+          start_date: tenantForm.startDate,
+          end_date: tenantForm.endDate,
+          payment_status: tenantForm.paymentStatus,
+        });
+      }
+
+      setShowTenantForm(false);
+      setEditingTenantRow(null);
+      setTenantForm(getInitialTenantAssignmentForm());
+      setNotice({
+        variant: "success",
+        message: isEditing
+          ? "Data penghuni berhasil diperbarui."
+          : "Penghuni berhasil ditambahkan ke properti.",
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (saveError) {
+      setError(
+        getApiErrorMessage(
+          saveError,
+          isEditing
+            ? "Gagal memperbarui penghuni."
+            : "Gagal menambahkan penghuni."
+        )
+      );
+    } finally {
+      setIsSavingTenant(false);
+    }
+  };
+
+  const handleDeleteTenant = async () => {
+    if (!propertyId || !deleteTenantTarget || isDeletingTenantLeaseId === deleteTenantTarget.lease_id) {
+      return;
+    }
+
+    setIsDeletingTenantLeaseId(deleteTenantTarget.lease_id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await deleteAdminPropertyTenant(propertyId, deleteTenantTarget.lease_id);
+      setDeleteTenantTarget(null);
+      setNotice({
+        variant: "success",
+        message: `Penghuni ${deleteTenantTarget.tenant_name} berhasil dihapus dari properti.`,
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (deleteError) {
+      setError(
+        getApiErrorMessage(deleteError, "Gagal menghapus penghuni dari properti.")
+      );
+    } finally {
+      setIsDeletingTenantLeaseId(null);
+    }
+  };
+
+  const handleAddUnit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!propertyId || isSavingUnit) {
+      return;
+    }
+
+    const parsedPropertyId = Number(propertyId);
+    const parsedPeopleAllowed = Number(unitForm.people_allowed);
+    const parsedPrice = Number(unitForm.price);
+    const isEditing = Boolean(editingUnitId);
 
     if (
       !Number.isFinite(parsedPropertyId) ||
       parsedPropertyId <= 0 ||
-      newUnitForm.name.trim() === "" ||
+      unitForm.name.trim() === "" ||
       !Number.isFinite(parsedPeopleAllowed) ||
       parsedPeopleAllowed <= 0 ||
       !Number.isFinite(parsedPrice) ||
@@ -528,47 +774,149 @@ export default function DetailPropertiPage() {
       return;
     }
 
-    setIsAddingUnit(true);
+    setIsSavingUnit(true);
     setError(null);
     setNotice(null);
 
     try {
-      await createAdminUnit({
-        property_id: parsedPropertyId,
-        name: newUnitForm.name.trim(),
-        unit_type: newUnitForm.unit_type,
-        status: newUnitForm.status,
-        people_allowed: parsedPeopleAllowed,
-        price: parsedPrice,
-      });
+      if (isEditing) {
+        const payload: AdminUnitUpdatePayload = {
+          name: unitForm.name.trim(),
+          unit_type: unitForm.unit_type,
+          status: unitForm.status,
+          people_allowed: parsedPeopleAllowed,
+          price: parsedPrice,
+        };
 
-      setNewUnitForm({
-        name: "",
-        unit_type: "standard",
-        status: "vacant",
-        people_allowed: "1",
-        price: "",
-      });
+        await updateAdminUnit(editingUnitId as number, payload);
+      } else {
+        await createAdminUnit({
+          property_id: parsedPropertyId,
+          name: unitForm.name.trim(),
+          unit_type: unitForm.unit_type,
+          status: unitForm.status,
+          people_allowed: parsedPeopleAllowed,
+          price: parsedPrice,
+        });
+      }
+
+      setUnitForm(getInitialUnitForm());
+      setEditingUnitId(null);
       setShowAddUnitForm(false);
       setNotice({
         variant: "success",
-        message: "Unit baru berhasil ditambahkan.",
+        message: isEditing
+          ? "Data unit berhasil diperbarui."
+          : "Unit baru berhasil ditambahkan.",
       });
       setRefreshKey((prev) => prev + 1);
     } catch (addError) {
       setError(
         getApiErrorMessage(
           addError,
-          "Gagal menambahkan unit. Coba lagi beberapa saat."
+          isEditing
+            ? "Gagal memperbarui unit. Coba lagi beberapa saat."
+            : "Gagal menambahkan unit. Coba lagi beberapa saat."
         )
       );
     } finally {
-      setIsAddingUnit(false);
+      setIsSavingUnit(false);
+    }
+  };
+
+  const openCreateUnitForm = () => {
+    setNotice(null);
+    setError(null);
+    setEditingUnitId(null);
+    setUnitForm(getInitialUnitForm());
+    setShowAddUnitForm((prev) => (prev && !editingUnitId ? false : true));
+  };
+
+  const openEditUnitForm = (unit: AdminPropertyUnitRow) => {
+    setNotice(null);
+    setError(null);
+    setEditingUnitId(unit.unit_id);
+    setUnitForm({
+      name: unit.unit_name,
+      unit_type: unit.unit_type,
+      status: unit.status as "vacant" | "occupied" | "maintenance",
+      people_allowed: String(unit.people_allowed || 1),
+      price: String(unit.price || ""),
+    });
+    setShowAddUnitForm(true);
+  };
+
+  const closeUnitForm = () => {
+    if (isSavingUnit) {
+      return;
+    }
+
+    setShowAddUnitForm(false);
+    setEditingUnitId(null);
+    setUnitForm(getInitialUnitForm());
+  };
+
+  const handleDeleteUnit = async () => {
+    if (!deleteUnitTarget || isDeletingUnitId === deleteUnitTarget.unit_id) {
+      return;
+    }
+
+    setIsDeletingUnitId(deleteUnitTarget.unit_id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await deleteAdminUnit(deleteUnitTarget.unit_id);
+      setDeleteUnitTarget(null);
+      setNotice({
+        variant: "success",
+        message: `Unit ${deleteUnitTarget.unit_name} berhasil dihapus.`,
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (deleteError) {
+      setError(
+        getApiErrorMessage(
+          deleteError,
+          "Gagal menghapus unit. Pastikan unit tidak memiliki data sewa atau pembayaran terkait."
+        )
+      );
+    } finally {
+      setIsDeletingUnitId(null);
     }
   };
 
   return (
     <div className="space-y-6">
+      {deleteTenantTarget ? (
+        <DeleteTenantDialog
+          tenant={deleteTenantTarget}
+          isSubmitting={isDeletingTenantLeaseId === deleteTenantTarget.lease_id}
+          onClose={() => {
+            if (isDeletingTenantLeaseId !== deleteTenantTarget.lease_id) {
+              setDeleteTenantTarget(null);
+            }
+          }}
+          onConfirm={() => {
+            void handleDeleteTenant();
+          }}
+        />
+      ) : null}
+
+      {deleteUnitTarget ? (
+        <DeleteUnitDialog
+          unit={deleteUnitTarget}
+          isSubmitting={isDeletingUnitId === deleteUnitTarget.unit_id}
+          onClose={() => {
+            if (isDeletingUnitId !== deleteUnitTarget.unit_id) {
+              setDeleteUnitTarget(null);
+            }
+          }}
+          onConfirm={() => {
+            void handleDeleteUnit();
+          }}
+        />
+      ) : null}
+
       <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-5 text-white shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
@@ -922,7 +1270,145 @@ export default function DetailPropertiPage() {
               <h2 className="text-lg font-semibold text-slate-800">
                 Daftar Penghuni ({tenantFiltered.length})
               </h2>
+              <button
+                type="button"
+                onClick={openCreateTenantForm}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700"
+              >
+                <Plus size={14} />
+                {showTenantForm && !editingTenantRow ? "Tutup Form Penghuni" : "Tambah Penghuni"}
+              </button>
             </div>
+
+            {showTenantForm ? (
+              activeTenantOptions.length === 0 ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Akun penyewa belum tersedia. Tambahkan akun penyewa dulu di{" "}
+                  <Link href="/admin/tenants" className="font-semibold underline">
+                    Manajemen Penyewa
+                  </Link>
+                  .
+                </div>
+              ) : availableUnitOptions.length === 0 ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Belum ada unit kosong yang bisa ditempati penghuni baru.
+                </div>
+              ) : (
+                <form
+                  onSubmit={(event) => {
+                    void handleSubmitTenantForm(event);
+                  }}
+                  className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2"
+                >
+                  {editingTenantRow ? (
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm md:col-span-2">
+                      <p className="font-medium text-slate-800">{editingTenantRow.tenant_name}</p>
+                      <p className="mt-1 text-slate-500">
+                        {editingTenantRow.tenant_email || editingTenantRow.mobile_phone || "-"}
+                      </p>
+                    </div>
+                  ) : (
+                    <select
+                      value={tenantForm.tenantId}
+                      onChange={(event) =>
+                        setTenantForm((prev) => ({
+                          ...prev,
+                          tenantId: event.target.value,
+                        }))
+                      }
+                      className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:col-span-2"
+                    >
+                      <option value="">Pilih akun penyewa</option>
+                      {activeTenantOptions.map((tenant) => (
+                        <option key={tenant.id} value={tenant.id}>
+                          {tenant.full_name} - {tenant.email}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  <select
+                    value={tenantForm.unitId}
+                    onChange={(event) =>
+                      setTenantForm((prev) => ({
+                        ...prev,
+                        unitId: event.target.value,
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  >
+                    <option value="">Pilih unit</option>
+                    {availableUnitOptions.map((unit) => (
+                      <option key={unit.unit_id} value={unit.unit_id}>
+                        {unit.unit_name} - {formatReadableText(unit.unit_type)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={tenantForm.paymentStatus}
+                    onChange={(event) =>
+                      setTenantForm((prev) => ({
+                        ...prev,
+                        paymentStatus: event.target.value as "paid" | "unpaid",
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  >
+                    <option value="unpaid">Belum Dibayar</option>
+                    <option value="paid">Lunas</option>
+                  </select>
+
+                  <input
+                    type="date"
+                    value={tenantForm.startDate}
+                    onChange={(event) =>
+                      setTenantForm((prev) => ({
+                        ...prev,
+                        startDate: event.target.value,
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  />
+
+                  <input
+                    type="date"
+                    value={tenantForm.endDate}
+                    onChange={(event) =>
+                      setTenantForm((prev) => ({
+                        ...prev,
+                        endDate: event.target.value,
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  />
+
+                  <div className="flex items-center justify-end md:col-span-2">
+                    <button
+                      type="button"
+                      onClick={closeTenantForm}
+                      disabled={isSavingTenant}
+                      className="mr-2 inline-flex h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingTenant}
+                      className="inline-flex h-11 items-center rounded-xl bg-[#1E2746] px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingTenant
+                        ? editingTenantRow
+                          ? "Menyimpan Perubahan..."
+                          : "Menyimpan Penghuni..."
+                        : editingTenantRow
+                          ? "Simpan Perubahan"
+                          : "Simpan Penghuni"}
+                    </button>
+                  </div>
+                </form>
+              )
+            ) : null}
 
             <div className="flex flex-wrap gap-3">
               <input
@@ -947,21 +1433,23 @@ export default function DetailPropertiPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-[760px] w-full text-sm">
+              <table className="min-w-[940px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
                     <th className="p-3 text-left font-semibold">Nama</th>
                     <th className="p-3 text-left font-semibold">Unit</th>
+                    <th className="p-3 text-left font-semibold">Mulai Sewa</th>
                     <th className="p-3 text-left font-semibold">Telepon</th>
                     <th className="p-3 text-left font-semibold">Akhir Sewa</th>
                     <th className="p-3 text-left font-semibold">Status Pembayaran</th>
+                    <th className="p-3 text-right font-semibold">Aksi</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {tenantFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-4 text-center text-slate-500">
+                      <td colSpan={7} className="p-4 text-center text-slate-500">
                         Tidak ada data penghuni.
                       </td>
                     </tr>
@@ -973,6 +1461,7 @@ export default function DetailPropertiPage() {
                       >
                         <td className="p-3 font-medium text-slate-800">{tenant.tenant_name}</td>
                         <td className="p-3 text-slate-700">{tenant.unit_name}</td>
+                        <td className="p-3 text-slate-700">{formatDate(tenant.lease_start)}</td>
                         <td className="p-3 text-slate-700">{tenant.mobile_phone || "-"}</td>
                         <td className="p-3 text-slate-700">{formatDate(tenant.lease_end)}</td>
                         <td className="p-3">
@@ -986,6 +1475,31 @@ export default function DetailPropertiPage() {
                               tenant.payment_status ||
                               "-"}
                           </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditTenantForm(tenant)}
+                              disabled={isDeletingTenantLeaseId === tenant.lease_id}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Ubah penghuni"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNotice(null);
+                                setDeleteTenantTarget(tenant);
+                              }}
+                              disabled={isDeletingTenantLeaseId === tenant.lease_id}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Hapus penghuni"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1002,11 +1516,11 @@ export default function DetailPropertiPage() {
               </h2>
               <button
                 type="button"
-                onClick={() => setShowAddUnitForm((prev) => !prev)}
+                onClick={openCreateUnitForm}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700"
               >
                 <Plus size={14} />
-                {showAddUnitForm ? "Tutup Form Unit" : "Tambah Unit"}
+                {showAddUnitForm && !editingUnitId ? "Tutup Form Unit" : "Tambah Unit"}
               </button>
             </div>
 
@@ -1019,9 +1533,9 @@ export default function DetailPropertiPage() {
               >
                 <input
                   placeholder="Nama / Nomor Unit"
-                  value={newUnitForm.name}
+                  value={unitForm.name}
                   onChange={(event) =>
-                    setNewUnitForm((prev) => ({
+                    setUnitForm((prev) => ({
                       ...prev,
                       name: event.target.value,
                     }))
@@ -1030,9 +1544,9 @@ export default function DetailPropertiPage() {
                 />
 
                 <select
-                  value={newUnitForm.unit_type}
+                  value={unitForm.unit_type}
                   onChange={(event) =>
-                    setNewUnitForm((prev) => ({
+                    setUnitForm((prev) => ({
                       ...prev,
                       unit_type: event.target.value,
                     }))
@@ -1051,9 +1565,9 @@ export default function DetailPropertiPage() {
                   type="number"
                   min={1}
                   placeholder="Kapasitas (orang)"
-                  value={newUnitForm.people_allowed}
+                  value={unitForm.people_allowed}
                   onChange={(event) =>
-                    setNewUnitForm((prev) => ({
+                    setUnitForm((prev) => ({
                       ...prev,
                       people_allowed: event.target.value,
                     }))
@@ -1065,9 +1579,9 @@ export default function DetailPropertiPage() {
                   type="number"
                   min={1}
                   placeholder="Harga per bulan"
-                  value={newUnitForm.price}
+                  value={unitForm.price}
                   onChange={(event) =>
-                    setNewUnitForm((prev) => ({
+                    setUnitForm((prev) => ({
                       ...prev,
                       price: event.target.value,
                     }))
@@ -1076,9 +1590,9 @@ export default function DetailPropertiPage() {
                 />
 
                 <select
-                  value={newUnitForm.status}
+                  value={unitForm.status}
                   onChange={(event) =>
-                    setNewUnitForm((prev) => ({
+                    setUnitForm((prev) => ({
                       ...prev,
                       status: event.target.value as
                         | "vacant"
@@ -1095,11 +1609,25 @@ export default function DetailPropertiPage() {
 
                 <div className="flex items-center justify-end md:col-span-2">
                   <button
+                    type="button"
+                    onClick={closeUnitForm}
+                    disabled={isSavingUnit}
+                    className="mr-2 inline-flex h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Batal
+                  </button>
+                  <button
                     type="submit"
-                    disabled={isAddingUnit}
+                    disabled={isSavingUnit}
                     className="inline-flex h-11 items-center rounded-xl bg-[#1E2746] px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isAddingUnit ? "Menyimpan Unit..." : "Simpan Unit"}
+                    {isSavingUnit
+                      ? editingUnitId
+                        ? "Menyimpan Perubahan..."
+                        : "Menyimpan Unit..."
+                      : editingUnitId
+                        ? "Simpan Perubahan"
+                        : "Simpan Unit"}
                   </button>
                 </div>
               </form>
@@ -1128,21 +1656,23 @@ export default function DetailPropertiPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-[820px] w-full text-sm">
+              <table className="min-w-[920px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
                     <th className="p-3 text-left font-semibold">Nomor Unit</th>
                     <th className="p-3 text-left font-semibold">Tipe</th>
+                    <th className="p-3 text-left font-semibold">Kapasitas</th>
                     <th className="p-3 text-left font-semibold">Harga / Bulan</th>
                     <th className="p-3 text-left font-semibold">Penyewa</th>
                     <th className="p-3 text-left font-semibold">Status</th>
+                    <th className="p-3 text-right font-semibold">Aksi</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {unitFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-4 text-center text-slate-500">
+                      <td colSpan={7} className="p-4 text-center text-slate-500">
                         Tidak ada data unit.
                       </td>
                     </tr>
@@ -1157,6 +1687,9 @@ export default function DetailPropertiPage() {
                           {formatReadableText(unit.unit_type)}
                         </td>
                         <td className="p-3 text-slate-700">
+                          {Number(unit.people_allowed || 0)} orang
+                        </td>
+                        <td className="p-3 text-slate-700">
                           Rp {Number(unit.price || 0).toLocaleString("id-ID")}
                         </td>
                         <td className="p-3 text-slate-700">{unit.tenant_name || "-"}</td>
@@ -1169,6 +1702,31 @@ export default function DetailPropertiPage() {
                           >
                             {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
                           </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditUnitForm(unit)}
+                              disabled={isDeletingUnitId === unit.unit_id}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Ubah unit"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNotice(null);
+                                setDeleteUnitTarget(unit);
+                              }}
+                              disabled={isDeletingUnitId === unit.unit_id}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Hapus unit"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1263,6 +1821,182 @@ export default function DetailPropertiPage() {
         submitLabel={isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
         initialValue={editInitialValue}
       />
+    </div>
+  );
+}
+
+function DeleteTenantDialog({
+  tenant,
+  isSubmitting,
+  onClose,
+  onConfirm,
+}: {
+  tenant: AdminPropertyTenantRow;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="px-6 pb-5 pt-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
+                Konfirmasi Hapus
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                Hapus penghuni ini?
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Penghuni akan dihapus dari daftar hunian aktif properti ini dan unit
+                akan kembali kosong jika tidak ada hunian aktif lain.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-slate-500">Nama</span>
+              <span className="text-right font-semibold text-slate-900">
+                {tenant.tenant_name}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Unit</span>
+              <span className="text-right font-medium text-slate-800">
+                {tenant.unit_name}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Mulai Sewa</span>
+              <span className="text-right font-medium text-slate-800">
+                {formatDate(tenant.lease_start)}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Akhir Sewa</span>
+              <span className="text-right font-medium text-slate-800">
+                {formatDate(tenant.lease_end)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Trash2 size={16} />
+              {isSubmitting ? "Menghapus Penghuni..." : "Hapus Penghuni"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteUnitDialog({
+  unit,
+  isSubmitting,
+  onClose,
+  onConfirm,
+}: {
+  unit: AdminPropertyUnitRow;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="px-6 pb-5 pt-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
+                Konfirmasi Hapus
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                Hapus unit ini?
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Unit yang sudah terhubung dengan data sewa, pembayaran, atau penghuni
+                aktif tidak akan bisa dihapus.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-slate-500">Unit</span>
+              <span className="text-right font-semibold text-slate-900">
+                {unit.unit_name}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Tipe</span>
+              <span className="text-right font-medium text-slate-800">
+                {formatReadableText(unit.unit_type)}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Harga</span>
+              <span className="text-right font-medium text-slate-800">
+                Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Status</span>
+              <span className="text-right font-medium text-slate-800">
+                {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <span className="text-slate-500">Penyewa</span>
+              <span className="text-right font-medium text-slate-800">
+                {unit.tenant_name || "-"}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Trash2 size={16} />
+              {isSubmitting ? "Menghapus Unit..." : "Hapus Unit"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

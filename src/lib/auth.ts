@@ -40,13 +40,11 @@ type OtpVerifyPayload = {
 };
 
 type ChangePasswordRequest = {
+  userId: number;
   current_password: string;
   new_password: string;
   new_password_confirmation: string;
 };
-
-export const CHANGE_PASSWORD_UNAVAILABLE_MESSAGE =
-  "Fitur ubah kata sandi tenant belum tersedia pada backend terbaru.";
 
 type AuthResult = {
   user: SessionUser;
@@ -58,6 +56,26 @@ type AuthResult = {
 type RegisterResult = {
   email: string;
   phoneNumber: string;
+};
+
+const isSafeNextPath = (nextPath: string) => {
+  return nextPath.startsWith("/") && !nextPath.startsWith("//");
+};
+
+const getRequiredRoleByPath = (path: string) => {
+  if (path.startsWith("/admin")) {
+    return "admin";
+  }
+
+  if (path.startsWith("/owner")) {
+    return "owner";
+  }
+
+  if (path.startsWith("/tenant")) {
+    return "tenant";
+  }
+
+  return null;
 };
 
 const mapUser = (user: BackendUser): SessionUser => ({
@@ -84,19 +102,22 @@ export const getDefaultRouteByRole = (role: UserRole) => {
     return "/owner";
   }
 
-  return "/";
+  return "/tenant";
 };
 
 export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
-  if (!nextPath || !nextPath.startsWith("/")) {
+  if (!nextPath || !isSafeNextPath(nextPath)) {
     return getDefaultRouteByRole(role);
   }
 
-  const allowedPathByRole =
-    (role === "admin" && nextPath.startsWith("/admin")) ||
-    (role === "owner" && nextPath.startsWith("/owner"));
+  const pathWithoutQuery = nextPath.split("?")[0]?.split("#")[0] || nextPath;
+  const requiredRole = getRequiredRoleByPath(pathWithoutQuery);
 
-  return allowedPathByRole ? nextPath : getDefaultRouteByRole(role);
+  if (!requiredRole || requiredRole === role) {
+    return nextPath;
+  }
+
+  return getDefaultRouteByRole(role);
 };
 
 export const login = async (data: LoginRequest): Promise<AuthResult> => {
@@ -192,6 +213,15 @@ export const logoutUser = async (): Promise<void> => {
 export const changePassword = async (
   payload: ChangePasswordRequest
 ): Promise<string> => {
-  void payload;
-  throw new Error(CHANGE_PASSWORD_UNAVAILABLE_MESSAGE);
+  const res = await axiosInstance.patch<ApiResponse<BackendUser>>(
+    `/api/v1/users/${payload.userId}`,
+    {
+      user: {
+        current_password: payload.current_password,
+        password: payload.new_password,
+      },
+    }
+  );
+
+  return res.data.message || "Kata sandi berhasil diperbarui.";
 };

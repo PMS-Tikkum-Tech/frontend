@@ -3,32 +3,13 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { getMe, logoutUser } from "@/lib/auth";
 import { AUTH_SESSION_STORAGE_KEY } from "@/lib/axios";
+import {
+  clearClientAuthCookies,
+  isSessionExpired,
+  syncClientAuthCookies,
+} from "@/lib/auth-cookies";
 import type { AuthSession, SessionUser } from "@/types/auth";
-
-const AUTH_COOKIE_KEY = "kyra_auth";
-const AUTH_ROLE_COOKIE_KEY = "kyra_role";
-const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_REFRESH_TIMEOUT_MS = 10_000;
-
-const syncAuthCookies = (role: string) => {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.cookie = `${AUTH_COOKIE_KEY}=1; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}; SameSite=Lax`;
-  document.cookie = `${AUTH_ROLE_COOKIE_KEY}=${encodeURIComponent(
-    role
-  )}; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}; SameSite=Lax`;
-};
-
-const clearAuthCookies = () => {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.cookie = `${AUTH_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
-  document.cookie = `${AUTH_ROLE_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
-};
 
 const getStoredSession = () => {
   if (typeof window === "undefined") {
@@ -67,19 +48,6 @@ const removeStoredSession = () => {
   } catch {
     // Ignore storage failure to avoid blocking logout/session cleanup.
   }
-};
-
-const isSessionExpired = (expiresAt?: string | null) => {
-  if (!expiresAt) {
-    return false;
-  }
-
-  const expiresAtMs = new Date(expiresAt).getTime();
-  if (Number.isNaN(expiresAtMs)) {
-    return false;
-  }
-
-  return Date.now() >= expiresAtMs;
 };
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number) => {
@@ -144,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const storedSession = getStoredSession();
         if (!storedSession) {
-          clearAuthCookies();
+          clearClientAuthCookies();
           if (active) {
             setSessionState(null);
           }
@@ -154,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsedSession = JSON.parse(storedSession) as AuthSession;
         if (isSessionExpired(parsedSession.expiresAt)) {
           removeStoredSession();
-          clearAuthCookies();
+          clearClientAuthCookies();
           if (active) {
             setSessionState(null);
           }
@@ -162,7 +130,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setSessionState(parsedSession);
-        syncAuthCookies(parsedSession.user.role);
+        syncClientAuthCookies({
+          role: parsedSession.user.role,
+          accessToken: parsedSession.accessToken,
+          expiresAt: parsedSession.expiresAt,
+        });
 
         try {
           const freshUser = await withTimeout(
@@ -179,18 +151,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           setStoredSession(refreshedSession);
           setSessionState(refreshedSession);
-          syncAuthCookies(freshUser.role);
+          syncClientAuthCookies({
+            role: freshUser.role,
+            accessToken: parsedSession.accessToken,
+            expiresAt: parsedSession.expiresAt,
+          });
         } catch {
           if (!active) {
             return;
           }
           removeStoredSession();
-          clearAuthCookies();
+          clearClientAuthCookies();
           setSessionState(null);
         }
       } catch {
         removeStoredSession();
-        clearAuthCookies();
+        clearClientAuthCookies();
         setSessionState(null);
       } finally {
         if (active) {
@@ -208,14 +184,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setSession = (nextSession: AuthSession) => {
     setStoredSession(nextSession);
-    syncAuthCookies(nextSession.user.role);
+    syncClientAuthCookies({
+      role: nextSession.user.role,
+      accessToken: nextSession.accessToken,
+      expiresAt: nextSession.expiresAt,
+    });
     setSessionState(nextSession);
     setIsLoading(false);
   };
 
   const clearSession = () => {
     removeStoredSession();
-    clearAuthCookies();
+    clearClientAuthCookies();
     setSessionState(null);
   };
 
@@ -242,7 +222,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setStoredSession(refreshedSession);
       setSessionState(refreshedSession);
-      syncAuthCookies(freshUser.role);
+      syncClientAuthCookies({
+        role: freshUser.role,
+        accessToken: session.accessToken,
+        expiresAt: session.expiresAt,
+      });
     } catch {
       // Keep existing user data if refresh fails.
     }

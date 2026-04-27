@@ -22,8 +22,12 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     }
 
     if (!isAuthenticated || !user) {
-      const redirectTarget = pathname
-        ? `/auth?next=${encodeURIComponent(pathname)}`
+      const currentPath =
+        pathname && typeof window !== "undefined"
+          ? `${pathname}${window.location.search}`
+          : pathname;
+      const redirectTarget = currentPath
+        ? `/auth?next=${encodeURIComponent(currentPath)}`
         : "/auth";
       router.replace(redirectTarget);
       return;

@@ -3,16 +3,13 @@
 import axios from "axios";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CheckCircle2, CircleAlert, KeyRound, LockKeyhole, Shield } from "lucide-react";
-import {
-  CHANGE_PASSWORD_UNAVAILABLE_MESSAGE,
-  changePassword,
-} from "@/lib/auth";
+import { changePassword } from "@/lib/auth";
 import {
   PASSWORD_MIN_LENGTH,
   getPasswordValidationMessage,
   isStrongPassword,
 } from "@/lib/form-validation";
-const TENANT_PASSWORD_MANAGED_BY_BACKEND = true;
+import { useAuth } from "@/context/AuthContext";
 
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
@@ -35,6 +32,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export default function TenantSandiPage() {
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState("");
@@ -70,11 +68,6 @@ export default function TenantSandiPage() {
     setError(null);
     setSuccessMessage(null);
 
-    if (TENANT_PASSWORD_MANAGED_BY_BACKEND) {
-      setError(CHANGE_PASSWORD_UNAVAILABLE_MESSAGE);
-      return;
-    }
-
     if (!currentPassword || !newPassword || !newPasswordConfirmation) {
       setError("Semua kolom kata sandi wajib diisi.");
       return;
@@ -99,10 +92,16 @@ export default function TenantSandiPage() {
       return;
     }
 
+    if (!user?.id) {
+      setError("Sesi pengguna tidak ditemukan. Silakan masuk kembali.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const message = await changePassword({
+      await changePassword({
+        userId: user.id,
         current_password: currentPassword,
         new_password: newPassword,
         new_password_confirmation: newPasswordConfirmation,
@@ -111,7 +110,7 @@ export default function TenantSandiPage() {
       setCurrentPassword("");
       setNewPassword("");
       setNewPasswordConfirmation("");
-      setSuccessMessage(message || "Kata sandi berhasil diperbarui.");
+      setSuccessMessage("Kata sandi berhasil diperbarui.");
     } catch (submitError) {
       setError(getErrorMessage(submitError));
     } finally {
@@ -156,19 +155,12 @@ export default function TenantSandiPage() {
           <h2 className="text-lg font-semibold text-slate-800">Form Perubahan</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {TENANT_PASSWORD_MANAGED_BY_BACKEND ? (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                {CHANGE_PASSWORD_UNAVAILABLE_MESSAGE}
-              </div>
-            ) : null}
-
             <InputField
               label="Kata Sandi Saat Ini"
               value={currentPassword}
               onChange={setCurrentPassword}
               placeholder="Masukkan kata sandi saat ini"
               autoComplete="current-password"
-              disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
 
             <InputField
@@ -178,7 +170,6 @@ export default function TenantSandiPage() {
               placeholder={`Minimal ${PASSWORD_MIN_LENGTH} karakter`}
               maxLength={100}
               autoComplete="new-password"
-              disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
 
             <InputField
@@ -187,7 +178,6 @@ export default function TenantSandiPage() {
               onChange={setNewPasswordConfirmation}
               placeholder="Ulangi kata sandi baru"
               autoComplete="new-password"
-              disabled={TENANT_PASSWORD_MANAGED_BY_BACKEND}
             />
 
             {error && (
@@ -205,13 +195,9 @@ export default function TenantSandiPage() {
             <button
               type="submit"
               className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting || TENANT_PASSWORD_MANAGED_BY_BACKEND}
+              disabled={isSubmitting}
             >
-              {TENANT_PASSWORD_MANAGED_BY_BACKEND
-                ? "Menunggu Dukungan Sistem"
-                : isSubmitting
-                  ? "Menyimpan..."
-                  : "Simpan Kata Sandi Baru"}
+              {isSubmitting ? "Menyimpan..." : "Simpan Kata Sandi Baru"}
             </button>
           </form>
         </article>

@@ -15,14 +15,9 @@ import {
 import RoleGuard from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
-import {
-  SELF_PROFILE_PICTURE_UNAVAILABLE_MESSAGE,
-  updateSelfProfilePicture,
-} from "@/lib/profile.api";
-
-const PROFILE_PICTURE_ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
-const PROFILE_PICTURE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
-const OWNER_AVATAR_MANAGED_BY_BACKEND = true;
+import { updateSelfProfilePicture } from "@/lib/profile.api";
+import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
+import { getProfilePictureValidationError } from "@/lib/profile-picture";
 
 export default function OwnerDashboardLayout({
   children,
@@ -38,6 +33,8 @@ export default function OwnerDashboardLayout({
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [failedAvatarKey, setFailedAvatarKey] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [isAvatarCropOpen, setIsAvatarCropOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -63,24 +60,8 @@ export default function OwnerDashboardLayout({
     return `${baseUrl}${user.avatar.startsWith("/") ? user.avatar : `/${user.avatar}`}`;
   })();
 
-  const handleAvatarFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = "";
+  const uploadAvatarFile = async (file: File) => {
     if (!file || !user?.id) {
-      return;
-    }
-
-    if (!PROFILE_PICTURE_ALLOWED_TYPES.includes(file.type)) {
-      setAvatarError("Format foto harus PNG, JPG, atau JPEG.");
-      setAvatarNotice(null);
-      return;
-    }
-
-    if (file.size > PROFILE_PICTURE_MAX_SIZE_BYTES) {
-      setAvatarError("Ukuran foto maksimal 5 MB.");
-      setAvatarNotice(null);
       return;
     }
 
@@ -102,6 +83,43 @@ export default function OwnerDashboardLayout({
     } finally {
       setIsUploadingAvatar(false);
     }
+  };
+
+  const handleAvatarFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) {
+      return;
+    }
+
+    const validationError = getProfilePictureValidationError(file);
+    if (validationError) {
+      setAvatarError(validationError);
+      setAvatarNotice(null);
+      return;
+    }
+
+    setAvatarError(null);
+    setAvatarNotice(null);
+    setPendingAvatarFile(file);
+    setIsAvatarCropOpen(true);
+  };
+
+  const handleCloseAvatarCrop = () => {
+    setPendingAvatarFile(null);
+    setIsAvatarCropOpen(false);
+  };
+
+  const handleApplyAvatarCrop = (result: {
+    file: File;
+    previewUrl: string;
+  }) => {
+    URL.revokeObjectURL(result.previewUrl);
+    setPendingAvatarFile(null);
+    setIsAvatarCropOpen(false);
+    void uploadAvatarFile(result.file);
   };
 
   // ⭐ MENU OWNER (beda dengan admin)
@@ -230,36 +248,22 @@ export default function OwnerDashboardLayout({
                 </Link>
 
                 <div className="flex items-center gap-2 sm:gap-3">
-                  {!OWNER_AVATAR_MANAGED_BY_BACKEND ? (
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg"
-                      onChange={(event) => {
-                        void handleAvatarFileChange(event);
-                      }}
-                      className="hidden"
-                    />
-                  ) : null}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    onChange={(event) => {
+                      void handleAvatarFileChange(event);
+                    }}
+                    className="hidden"
+                  />
 
                   <button
                     type="button"
-                    onClick={() => {
-                      if (OWNER_AVATAR_MANAGED_BY_BACKEND) {
-                        setAvatarNotice(null);
-                        setAvatarError(SELF_PROFILE_PICTURE_UNAVAILABLE_MESSAGE);
-                        return;
-                      }
-
-                      fileInputRef.current?.click();
-                    }}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingAvatar}
                     className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-slate-200 disabled:cursor-not-allowed disabled:opacity-70"
-                    title={
-                      OWNER_AVATAR_MANAGED_BY_BACKEND
-                        ? "Foto profil pemilik mengikuti konfigurasi sistem"
-                        : "Klik untuk ubah foto profil"
-                    }
+                    title="Klik untuk ubah foto profil"
                   >
                     {avatarUrl ? (
                       <img
@@ -280,11 +284,6 @@ export default function OwnerDashboardLayout({
                       {user?.name || "Pemilik"}
                     </p>
                     <p className="text-xs text-slate-500">Pemilik Properti</p>
-                    {OWNER_AVATAR_MANAGED_BY_BACKEND ? (
-                      <p className="text-[11px] text-slate-500">
-                        Foto profil pemilik belum dapat diubah mandiri dari sistem saat ini.
-                      </p>
-                    ) : null}
                     {avatarNotice ? (
                       <p className="text-[11px] text-emerald-600">{avatarNotice}</p>
                     ) : null}
@@ -302,6 +301,15 @@ export default function OwnerDashboardLayout({
             {children}
           </main>
         </div>
+
+        <ProfileImageCropDialog
+          open={isAvatarCropOpen}
+          file={pendingAvatarFile}
+          title="Crop Foto Profil Pemilik"
+          confirmLabel="Simpan Foto Profil"
+          onClose={handleCloseAvatarCrop}
+          onApply={handleApplyAvatarCrop}
+        />
       </div>
     </RoleGuard>
   );

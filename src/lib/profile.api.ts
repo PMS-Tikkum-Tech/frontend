@@ -1,9 +1,6 @@
 import axiosInstance from "@/lib/axios";
 import type { BackendUser, ApiResponse } from "@/types/auth";
 
-export const SELF_PROFILE_PICTURE_UNAVAILABLE_MESSAGE =
-  "Perubahan foto profil mandiri belum tersedia untuk role ini pada backend.";
-
 export const updateSelfProfilePicture = async (payload: {
   userId: number;
   profilePicture: File;
