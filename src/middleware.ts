@@ -4,8 +4,11 @@ import type { NextRequest } from "next/server";
 import {
   AUTH_COOKIE_KEY,
   AUTH_EXPIRES_COOKIE_KEY,
+  AUTH_REFRESH_EXPIRES_COOKIE_KEY,
+  AUTH_REFRESH_TOKEN_COOKIE_KEY,
   AUTH_ROLE_COOKIE_KEY,
   AUTH_TOKEN_COOKIE_KEY,
+  getCookieMaxAgeSeconds,
   isSessionExpired,
 } from "@/lib/auth-cookies";
 
@@ -13,6 +16,18 @@ type SessionRole = "admin" | "owner" | "tenant";
 type AuthMeResponse = {
   data?: {
     role?: string;
+  };
+};
+
+type AuthRefreshResponse = {
+  data?: {
+    token?: string;
+    refresh_token?: string;
+    expires_at?: string | null;
+    refresh_token_expires_at?: string | null;
+    user?: {
+      role?: string;
+    };
   };
 };
 
@@ -87,16 +102,21 @@ const getApiBaseUrl = (req: NextRequest) => {
 };
 
 const clearSessionCookies = (response: NextResponse) => {
-  [AUTH_COOKIE_KEY, AUTH_ROLE_COOKIE_KEY, AUTH_TOKEN_COOKIE_KEY, AUTH_EXPIRES_COOKIE_KEY].forEach(
-    (name) => {
-      response.cookies.set({
-        name,
-        value: "",
-        path: "/",
-        maxAge: 0,
-      });
-    }
-  );
+  [
+    AUTH_COOKIE_KEY,
+    AUTH_ROLE_COOKIE_KEY,
+    AUTH_TOKEN_COOKIE_KEY,
+    AUTH_EXPIRES_COOKIE_KEY,
+    AUTH_REFRESH_TOKEN_COOKIE_KEY,
+    AUTH_REFRESH_EXPIRES_COOKIE_KEY,
+  ].forEach((name) => {
+    response.cookies.set({
+      name,
+      value: "",
+      path: "/",
+      maxAge: 0,
+    });
+  });
 };
 
 const buildAuthRedirect = (req: NextRequest, nextPath: string) => {
@@ -108,12 +128,111 @@ const buildAuthRedirect = (req: NextRequest, nextPath: string) => {
   return response;
 };
 
-const getValidatedRole = async (req: NextRequest): Promise<SessionRole | null> => {
+const applySessionCookies = (
+  response: NextResponse,
+  payload: NonNullable<AuthRefreshResponse["data"]>,
+  role: SessionRole
+) => {
+  const accessMaxAge = getCookieMaxAgeSeconds(payload.expires_at);
+  const refreshMaxAge = getCookieMaxAgeSeconds(
+    payload.refresh_token_expires_at,
+    accessMaxAge
+  );
+
+  response.cookies.set({
+    name: AUTH_COOKIE_KEY,
+    value: "1",
+    path: "/",
+    maxAge: refreshMaxAge,
+  });
+  response.cookies.set({
+    name: AUTH_ROLE_COOKIE_KEY,
+    value: role,
+    path: "/",
+    maxAge: refreshMaxAge,
+  });
+  response.cookies.set({
+    name: AUTH_TOKEN_COOKIE_KEY,
+    value: payload.token || "",
+    path: "/",
+    maxAge: accessMaxAge,
+  });
+  response.cookies.set({
+    name: AUTH_EXPIRES_COOKIE_KEY,
+    value: payload.expires_at || "",
+    path: "/",
+    maxAge: accessMaxAge,
+  });
+  response.cookies.set({
+    name: AUTH_REFRESH_TOKEN_COOKIE_KEY,
+    value: payload.refresh_token || "",
+    path: "/",
+    maxAge: refreshMaxAge,
+  });
+  response.cookies.set({
+    name: AUTH_REFRESH_EXPIRES_COOKIE_KEY,
+    value: payload.refresh_token_expires_at || "",
+    path: "/",
+    maxAge: refreshMaxAge,
+  });
+};
+
+const refreshValidatedSession = async (
+  req: NextRequest
+): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
+  const refreshToken = decodeCookieValue(
+    req.cookies.get(AUTH_REFRESH_TOKEN_COOKIE_KEY)?.value
+  );
+  const refreshExpiresAt = decodeCookieValue(
+    req.cookies.get(AUTH_REFRESH_EXPIRES_COOKIE_KEY)?.value
+  );
+
+  if (!refreshToken || isSessionExpired(refreshExpiresAt)) {
+    return { role: null };
+  }
+
+  try {
+    const response = await fetch(`${getApiBaseUrl(req)}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return { role: null };
+    }
+
+    const payload = (await response.json()) as AuthRefreshResponse;
+    const refreshed = payload.data;
+    const role = refreshed?.user?.role;
+
+    if (!refreshed || !role || !VALID_ROLES.has(role as SessionRole)) {
+      return { role: null };
+    }
+
+    return {
+      role: role as SessionRole,
+      refreshed,
+    };
+  } catch {
+    return { role: null };
+  }
+};
+
+const getValidatedSession = async (
+  req: NextRequest
+): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
   const accessToken = decodeCookieValue(req.cookies.get(AUTH_TOKEN_COOKIE_KEY)?.value);
   const expiresAt = decodeCookieValue(req.cookies.get(AUTH_EXPIRES_COOKIE_KEY)?.value);
 
   if (!accessToken || isSessionExpired(expiresAt)) {
-    return null;
+    return refreshValidatedSession(req);
   }
 
   try {
@@ -126,19 +245,19 @@ const getValidatedRole = async (req: NextRequest): Promise<SessionRole | null> =
     });
 
     if (!response.ok) {
-      return null;
+      return refreshValidatedSession(req);
     }
 
     const payload = (await response.json()) as AuthMeResponse;
     const role = payload.data?.role;
 
     if (!role || !VALID_ROLES.has(role as SessionRole)) {
-      return null;
+      return refreshValidatedSession(req);
     }
 
-    return role as SessionRole;
+    return { role: role as SessionRole };
   } catch {
-    return null;
+    return refreshValidatedSession(req);
   }
 };
 
@@ -146,7 +265,8 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const search = req.nextUrl.search;
   const requiredRole = getRequiredRole(pathname);
-  const validatedRole = await getValidatedRole(req);
+  const validatedSession = await getValidatedSession(req);
+  const validatedRole = validatedSession.role;
 
   if (requiredRole) {
     if (!validatedRole) {
@@ -154,9 +274,13 @@ export async function middleware(req: NextRequest) {
     }
 
     if (validatedRole !== requiredRole) {
-      return NextResponse.redirect(
+      const response = NextResponse.redirect(
         new URL(getDefaultRouteByRole(validatedRole), req.url)
       );
+      if (validatedSession.refreshed) {
+        applySessionCookies(response, validatedSession.refreshed, validatedRole);
+      }
+      return response;
     }
   }
 
@@ -167,15 +291,23 @@ export async function middleware(req: NextRequest) {
       return response;
     }
 
-    return NextResponse.redirect(
+    const response = NextResponse.redirect(
       new URL(
         resolveRoleRoute(validatedRole, req.nextUrl.searchParams.get("next")),
         req.url
       )
     );
+    if (validatedSession.refreshed) {
+      applySessionCookies(response, validatedSession.refreshed, validatedRole);
+    }
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (validatedRole && validatedSession.refreshed) {
+    applySessionCookies(response, validatedSession.refreshed, validatedRole);
+  }
+  return response;
 }
 
 export const config = {

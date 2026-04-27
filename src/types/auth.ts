@@ -13,6 +13,7 @@ export type AuthSession = {
   accessToken: string;
   refreshToken: string;
   expiresAt?: string | null;
+  refreshTokenExpiresAt?: string | null;
 };
 
 export type BackendUser = {
@@ -34,6 +35,7 @@ export type AuthPayload = {
   token: string;
   refresh_token: string;
   expires_at?: string | null;
+  refresh_token_expires_at?: string | null;
 };
 
 export type ApiResponse<T> = {

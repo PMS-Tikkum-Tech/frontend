@@ -51,6 +51,7 @@ type AuthResult = {
   token: string;
   refreshToken: string;
   expiresAt?: string | null;
+  refreshTokenExpiresAt?: string | null;
 };
 
 type RegisterResult = {
@@ -91,6 +92,7 @@ const mapAuthPayload = (payload: AuthPayload): AuthResult => ({
   token: payload.token,
   refreshToken: payload.refresh_token,
   expiresAt: payload.expires_at,
+  refreshTokenExpiresAt: payload.refresh_token_expires_at,
 });
 
 export const getDefaultRouteByRole = (role: UserRole) => {
@@ -134,6 +136,17 @@ export const loginWithGoogle = async (
   const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
     "/api/v1/auth/google",
     data
+  );
+
+  return mapAuthPayload(res.data.data);
+};
+
+export const refreshAuthSession = async (refreshToken: string): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/refresh",
+    {
+      refresh_token: refreshToken,
+    }
   );
 
   return mapAuthPayload(res.data.data);

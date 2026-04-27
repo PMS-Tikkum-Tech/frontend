@@ -230,6 +230,7 @@ export default function LoginForm() {
         accessToken: result.token,
         refreshToken: result.refreshToken,
         expiresAt: result.expiresAt,
+        refreshTokenExpiresAt: result.refreshTokenExpiresAt,
       });
 
       router.push(resolveRoleRoute(result.user.role, searchParams.get("next")));

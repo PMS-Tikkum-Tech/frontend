@@ -120,7 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const parsedSession = JSON.parse(storedSession) as AuthSession;
-        if (isSessionExpired(parsedSession.expiresAt)) {
+        if (
+          isSessionExpired(parsedSession.expiresAt) &&
+          isSessionExpired(parsedSession.refreshTokenExpiresAt)
+        ) {
           removeStoredSession();
           clearClientAuthCookies();
           if (active) {
@@ -134,6 +137,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: parsedSession.user.role,
           accessToken: parsedSession.accessToken,
           expiresAt: parsedSession.expiresAt,
+          refreshToken: parsedSession.refreshToken,
+          refreshTokenExpiresAt: parsedSession.refreshTokenExpiresAt,
         });
 
         try {
@@ -155,6 +160,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: freshUser.role,
             accessToken: parsedSession.accessToken,
             expiresAt: parsedSession.expiresAt,
+            refreshToken: parsedSession.refreshToken,
+            refreshTokenExpiresAt: parsedSession.refreshTokenExpiresAt,
           });
         } catch {
           if (!active) {
@@ -188,6 +195,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role: nextSession.user.role,
       accessToken: nextSession.accessToken,
       expiresAt: nextSession.expiresAt,
+      refreshToken: nextSession.refreshToken,
+      refreshTokenExpiresAt: nextSession.refreshTokenExpiresAt,
     });
     setSessionState(nextSession);
     setIsLoading(false);
@@ -226,6 +235,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: freshUser.role,
         accessToken: session.accessToken,
         expiresAt: session.expiresAt,
+        refreshToken: session.refreshToken,
+        refreshTokenExpiresAt: session.refreshTokenExpiresAt,
       });
     } catch {
       // Keep existing user data if refresh fails.
