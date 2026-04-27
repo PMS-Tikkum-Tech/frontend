@@ -7,7 +7,9 @@ import { registerSchema } from "@/schemas/register.schema";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { requestTenantRegistrationOtp } from "@/lib/auth";
+import {
+  TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY,
+} from "@/lib/auth";
 import {
   PASSWORD_MIN_LENGTH,
   normalizeTextInput,
@@ -15,11 +17,13 @@ import {
   sanitizePhoneInput,
 } from "@/lib/form-validation";
 import { normalizePhoneNumber } from "@/lib/phone";
+import {
+  getTenantEmailVerificationErrorMessage,
+  savePendingTenantRegistration,
+  startTenantEmailVerification,
+} from "@/lib/tenant-email-verification";
 
 type RegisterFormData = z.infer<typeof registerSchema>;
-
-export const PENDING_TENANT_REGISTRATION_STORAGE_KEY =
-  "kyra.pending.tenant.registration";
 
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
@@ -28,7 +32,7 @@ const getErrorMessage = (error: unknown) => {
     }
 
     if (error.response?.status === 404) {
-      return "Layanan OTP pendaftaran tidak ditemukan. Periksa konfigurasi NEXT_PUBLIC_API_URL.";
+      return "Layanan verifikasi email tidak ditemukan. Periksa konfigurasi sistem.";
     }
 
     const payload = error.response?.data as
@@ -76,36 +80,39 @@ export default function RegisterForm() {
 
     try {
       const normalizedPhone = normalizePhoneNumber(data.phoneNumber);
-      const otpResult = await requestTenantRegistrationOtp(normalizedPhone);
+      const normalizedEmail = data.email.trim().toLowerCase();
+
+      await startTenantEmailVerification(normalizedEmail, data.password);
+      savePendingTenantRegistration({
+        fullName: normalizeTextInput(data.fullName),
+        email: normalizedEmail,
+        password: data.password,
+        phoneNumber: normalizedPhone,
+      });
 
       if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(
-          PENDING_TENANT_REGISTRATION_STORAGE_KEY,
-          JSON.stringify({
-            fullName: normalizeTextInput(data.fullName),
-            email: data.email.trim().toLowerCase(),
-            password: data.password,
-            phoneNumber: otpResult.phoneNumber,
-          })
+        window.sessionStorage.removeItem(
+          TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY
         );
       }
 
       const nextQuery = new URLSearchParams({
         mode: "verify",
-        otp_requested: "1",
-        email: data.email.trim().toLowerCase(),
-        phone: otpResult.phoneNumber,
+        email: normalizedEmail,
+        verification_email_sent: "1",
       });
 
-      if (otpResult.debugCode) {
-        nextQuery.set("debug_code", otpResult.debugCode);
-      }
-
       router.push(`/auth?${nextQuery.toString()}`);
-
       router.refresh();
     } catch (error) {
-      setServerError(getErrorMessage(error));
+      setServerError(
+        axios.isAxiosError(error)
+          ? getErrorMessage(error)
+          : getTenantEmailVerificationErrorMessage(
+              error,
+              "Gagal menyiapkan verifikasi email. Silakan coba lagi."
+            )
+      );
     }
   };
 
@@ -150,7 +157,7 @@ export default function RegisterForm() {
 
         {!errors.email && (
           <p className="mt-1 text-[11px] text-gray-400 leading-relaxed">
-            Alamat email akan digunakan untuk verifikasi akun.
+            Alamat email ini akan dipakai untuk verifikasi akun kamu.
           </p>
         )}
 
@@ -175,7 +182,7 @@ export default function RegisterForm() {
 
         {!errors.phoneNumber && (
           <p className="mt-1 text-[11px] text-gray-400 leading-relaxed">
-            Nomor ini akan dipakai untuk verifikasi OTP WhatsApp.
+            Nomor ini akan disimpan sebagai kontak utama penyewa.
           </p>
         )}
 

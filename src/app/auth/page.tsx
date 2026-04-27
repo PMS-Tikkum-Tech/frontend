@@ -57,12 +57,14 @@ function AuthPageContent() {
     if (nextMode !== "login" && nextMode !== "verify") {
       nextParams.delete("otp_requested");
       nextParams.delete("phone");
+      nextParams.delete("verification_email_sent");
     }
 
     if (nextMode === "register") {
       nextParams.delete("registered");
       nextParams.delete("debug_code");
       nextParams.delete("phone");
+      nextParams.delete("verification_email_sent");
     }
 
     const query = nextParams.toString();
@@ -71,22 +73,21 @@ function AuthPageContent() {
   };
 
   const registered = searchParams.get("registered") === "1";
-  const otpRequested = searchParams.get("otp_requested") === "1";
-  const debugCode = searchParams.get("debug_code");
+  const verificationEmailSent =
+    searchParams.get("verification_email_sent") === "1";
   const authEmail = searchParams.get("email");
-  const authPhone = searchParams.get("phone");
   const title =
     mode === "register"
       ? "Buat Akun KIKOST"
       : mode === "verify"
-        ? "Verifikasi OTP"
+        ? "Verifikasi Email"
         : "Masuk ke Akun Anda";
 
   const description =
     mode === "register"
-      ? "Isi data singkat untuk membuat akun penyewa."
+      ? "Isi data singkat untuk membuat akun penyewa dan lanjutkan verifikasi email."
       : mode === "verify"
-        ? "Masukkan kode 6 digit OTP dari WhatsApp."
+        ? "Buka tautan verifikasi yang dikirim ke email kamu, lalu kembali ke halaman ini."
         : "Gunakan email dan kata sandi untuk melanjutkan.";
 
   return (
@@ -143,18 +144,13 @@ function AuthPageContent() {
             <p className="mt-1 text-sm text-slate-500">{description}</p>
           </div>
 
-          {otpRequested && (
+          {verificationEmailSent && (
             <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-              Kode OTP sudah dikirim. Lanjutkan verifikasi untuk menyelesaikan
-              pendaftaran.
-              {authPhone && (
+              Email verifikasi sudah dikirim. Buka email kamu untuk melanjutkan
+              proses pendaftaran.
+              {authEmail && (
                 <p className="mt-1 text-xs text-sky-700">
-                  Nomor terdaftar: {authPhone}
-                </p>
-              )}
-              {debugCode && (
-                <p className="mt-1 text-xs text-sky-700">
-                  Kode OTP (dev): {debugCode}
+                  Email terdaftar: {authEmail}
                 </p>
               )}
             </div>

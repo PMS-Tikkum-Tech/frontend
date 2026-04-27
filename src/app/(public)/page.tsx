@@ -41,6 +41,7 @@ import {
   getAdminProperties,
   type AdminPropertyListItem,
 } from "@/lib/dashboard/admin.api";
+import { TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY } from "@/lib/auth";
 import { useTransientToast } from "@/hooks/useTransientToast";
 
 const heroSlides = [
@@ -544,6 +545,28 @@ export default function PublicHomePage() {
   const [propertyError, setPropertyError] = useState<string | null>(null);
   const [propertyNotice, setPropertyNotice] = useState<string | null>(null);
   const [activeDistrict, setActiveDistrict] = useState("Semua");
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const shouldShowPendingApprovalNotice = window.sessionStorage.getItem(
+      TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY
+    );
+
+    if (!shouldShowPendingApprovalNotice) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY);
+    showSuccessToast(
+      "Pendaftaran berhasil. Akun kamu sudah siap digunakan.",
+      {
+        durationMs: 7000,
+      }
+    );
+  }, [showSuccessToast]);
 
   useEffect(() => {
     const interval = setInterval(() => {

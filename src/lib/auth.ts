@@ -22,7 +22,7 @@ type RegisterRequest = {
   email: string;
   password: string;
   phone_number: string;
-  phone_verification_token: string;
+  phone_verification_token?: string;
 };
 
 type OtpRequestPayload = {
@@ -57,7 +57,15 @@ type AuthResult = {
 type RegisterResult = {
   email: string;
   phoneNumber: string;
+  accountStatus?: "active" | "inactive" | "pending_verification";
 };
+
+type RegisterPayload = {
+  user: BackendUser;
+};
+
+export const TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY =
+  "kyra.pending.tenant.approval.notice";
 
 const isSafeNextPath = (nextPath: string) => {
   return nextPath.startsWith("/") && !nextPath.startsWith("//");
@@ -191,7 +199,7 @@ export const verifyTenantRegistrationOtp = async (payload: {
 export const registerTenant = async (
   data: RegisterRequest
 ): Promise<RegisterResult> => {
-  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+  const res = await axiosInstance.post<ApiResponse<RegisterPayload>>(
     "/api/v1/auth/tenant/register",
     data
   );
@@ -199,6 +207,7 @@ export const registerTenant = async (
   return {
     email: res.data.data.user.email,
     phoneNumber: res.data.data.user.phone_number || data.phone_number,
+    accountStatus: res.data.data.user.account_status,
   };
 };
 

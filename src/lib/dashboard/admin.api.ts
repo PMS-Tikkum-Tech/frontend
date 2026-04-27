@@ -206,7 +206,7 @@ export interface AdminUser {
   relationship?: string | null;
   nik?: string | null;
   role: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
-  account_status: "active" | "inactive";
+  account_status: "active" | "inactive" | "pending_verification";
   profile_picture_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -222,7 +222,7 @@ export interface AdminUserCreatePayload {
   relationship?: string;
   nik?: string;
   role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
-  account_status?: "active" | "inactive";
+  account_status?: "active" | "inactive" | "pending_verification";
 }
 
 export interface AdminUserUpdatePayload {
@@ -235,7 +235,7 @@ export interface AdminUserUpdatePayload {
   relationship?: string;
   nik?: string;
   role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
-  account_status?: "active" | "inactive";
+  account_status?: "active" | "inactive" | "pending_verification";
 }
 
 export interface AdminMaintenanceRequest {

@@ -73,11 +73,13 @@ const roleStyleMap: Record<string, string> = {
 const statusLabelMap: Record<string, string> = {
   active: "Aktif",
   inactive: "Nonaktif",
+  pending_verification: "Menunggu Verifikasi",
 };
 
 const statusStyleMap: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   inactive: "bg-red-100 text-red-700",
+  pending_verification: "bg-amber-100 text-amber-700",
 };
 
 type Notice = {
@@ -96,7 +98,7 @@ type UserFormState = {
   email: string;
   phoneNumber: string;
   role: UserRole;
-  accountStatus: "active" | "inactive";
+  accountStatus: "active" | "inactive" | "pending_verification";
   password: string;
 };
 
@@ -426,7 +428,12 @@ export default function AdminAccountPage() {
 
   const summary = useMemo(() => {
     const activeCount = users.filter((user) => user.account_status === "active").length;
-    const inactiveCount = users.length - activeCount;
+    const pendingCount = users.filter(
+      (user) => user.account_status === "pending_verification"
+    ).length;
+    const inactiveCount = users.filter(
+      (user) => user.account_status === "inactive"
+    ).length;
     const adminOwnerCount = users.filter(
       (user) => user.role === "admin" || user.role === "owner"
     ).length;
@@ -438,6 +445,7 @@ export default function AdminAccountPage() {
     return {
       total: users.length,
       activeCount,
+      pendingCount,
       inactiveCount,
       adminOwnerCount,
       tenantCount,
@@ -520,7 +528,7 @@ export default function AdminAccountPage() {
         <SummaryCard
           title="Akun Aktif"
           value={summary.activeCount}
-          caption={`${summary.inactiveCount} akun nonaktif`}
+          caption={`${summary.pendingCount} menunggu verifikasi • ${summary.inactiveCount} nonaktif`}
           tone="success"
         />
         <SummaryCard
@@ -859,12 +867,16 @@ export default function AdminAccountPage() {
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      accountStatus: event.target.value as "active" | "inactive",
+                      accountStatus: event.target.value as
+                        | "active"
+                        | "inactive"
+                        | "pending_verification",
                     }))
                   }
                   className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 >
                   <option value="active">Aktif</option>
+                  <option value="pending_verification">Menunggu Verifikasi</option>
                   <option value="inactive">Nonaktif</option>
                 </select>
               </div>
@@ -1030,7 +1042,11 @@ function RoleBadge({ role }: { role: UserRole }) {
   );
 }
 
-function StatusBadge({ status }: { status: "active" | "inactive" }) {
+function StatusBadge({
+  status,
+}: {
+  status: "active" | "inactive" | "pending_verification";
+}) {
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${

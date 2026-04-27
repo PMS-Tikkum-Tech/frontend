@@ -26,7 +26,7 @@ export type BackendUser = {
   emergency_contact_number?: string | number | null;
   relationship?: string | null;
   nik?: string | number | null;
-  account_status?: "active" | "inactive";
+  account_status?: "active" | "inactive" | "pending_verification";
   profile_picture_url?: string | null;
 };
 
