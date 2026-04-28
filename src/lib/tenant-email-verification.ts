@@ -366,6 +366,18 @@ export const getTenantEmailVerificationErrorMessage = (
       return "Email ini sudah dipakai pada proses verifikasi lain. Silakan gunakan email lain atau lanjutkan verifikasi yang sebelumnya.";
     case "auth/invalid-email":
       return "Alamat email tidak valid.";
+    case "auth/invalid-continue-uri":
+      return "Tautan lanjutan verifikasi email tidak valid. Periksa pengaturan URL verifikasi di Firebase.";
+    case "auth/unauthorized-continue-uri":
+      return "Domain website ini belum diizinkan di Firebase Authentication. Tambahkan domain website ke daftar Authorized domains.";
+    case "auth/unauthorized-domain":
+      return "Domain website ini belum diizinkan untuk memakai Firebase Authentication.";
+    case "auth/operation-not-allowed":
+      return "Metode masuk Email/Password belum diaktifkan di Firebase Authentication.";
+    case "auth/app-not-authorized":
+      return "Aplikasi ini belum diizinkan memakai konfigurasi Firebase yang sedang dipakai.";
+    case "auth/invalid-api-key":
+      return "API key Firebase tidak valid. Periksa konfigurasi Firebase pada deployment.";
     case "auth/weak-password":
       return "Kata sandi terlalu lemah untuk proses verifikasi email.";
     case "auth/too-many-requests":

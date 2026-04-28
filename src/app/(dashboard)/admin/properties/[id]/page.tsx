@@ -47,6 +47,13 @@ import {
   updateAdminProperty,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
+import {
+  buildPersistedUnitName,
+  buildPropertyStructure,
+  parseUnitIdentity,
+  type PropertyStructure,
+  type PropertyStructureUnit,
+} from "@/lib/dashboard/property-structure";
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -97,6 +104,9 @@ const paymentLabelMap: Record<string, string> = {
 const unitStatusLabelMap: Record<string, string> = {
   vacant: "Kosong",
   occupied: "Terisi",
+  booking: "Booking",
+  booked: "Booking",
+  reserved: "Booking",
   maintenance: "Perawatan",
   cleaning: "Pembersihan",
   renovation: "Renovasi",
@@ -109,6 +119,9 @@ const paymentBadgeClassMap: Record<string, string> = {
 
 const unitBadgeClassMap: Record<string, string> = {
   occupied: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  booking: "border-violet-200 bg-violet-50 text-violet-700",
+  booked: "border-violet-200 bg-violet-50 text-violet-700",
+  reserved: "border-violet-200 bg-violet-50 text-violet-700",
   vacant: "border-sky-200 bg-sky-50 text-sky-700",
   maintenance: "border-amber-200 bg-amber-50 text-amber-700",
 };
@@ -227,11 +240,14 @@ type Notice = {
 } | null;
 
 type UnitFormState = {
+  buildingName: string;
+  ownerId: string;
   name: string;
   unit_type: string;
-  status: "vacant" | "occupied" | "maintenance";
+  status: "vacant" | "occupied" | "booking" | "maintenance";
   people_allowed: string;
   price: string;
+  notes: string;
 };
 
 type TenantAssignmentFormState = {
@@ -242,12 +258,15 @@ type TenantAssignmentFormState = {
   paymentStatus: "paid" | "unpaid";
 };
 
-const getInitialUnitForm = (): UnitFormState => ({
+const getInitialUnitForm = (ownerId?: number | null): UnitFormState => ({
+  buildingName: "",
+  ownerId: ownerId ? String(ownerId) : "",
   name: "",
   unit_type: "standard",
   status: "vacant",
   people_allowed: "1",
   price: "",
+  notes: "",
 });
 
 const getInitialTenantAssignmentForm = (): TenantAssignmentFormState => ({
@@ -511,6 +530,35 @@ export default function DetailPropertiPage() {
     };
   }, [propertyDetail]);
 
+  const propertyStructure = useMemo(() => {
+    return buildPropertyStructure({
+      propertyId: propertyDetail?.property.id || propertyId || "-",
+      propertyName: propertyDetail?.property.name || "Properti",
+      units: unitRows,
+      tenants: tenantRows,
+      owners,
+      fallbackOwner: propertyDetail?.property.user || null,
+    });
+  }, [owners, propertyDetail, propertyId, tenantRows, unitRows]);
+
+  const unitStructureLookup = useMemo(() => {
+    const lookup = new Map<number, PropertyStructureUnit>();
+
+    propertyStructure.blocks.forEach((block) => {
+      block.units.forEach((unit) => {
+        lookup.set(unit.id, unit);
+      });
+    });
+
+    return lookup;
+  }, [propertyStructure]);
+
+  const blockNameOptions = useMemo(() => {
+    return propertyStructure.blocks
+      .map((block) => block.name)
+      .filter((name) => name !== "Bangunan belum diatur");
+  }, [propertyStructure]);
+
   const activeTenantOptions = useMemo(() => {
     return [...availableTenants]
       .filter((tenant) => tenant.role === "tenant")
@@ -764,13 +812,16 @@ export default function DetailPropertiPage() {
     if (
       !Number.isFinite(parsedPropertyId) ||
       parsedPropertyId <= 0 ||
+      unitForm.buildingName.trim() === "" ||
       unitForm.name.trim() === "" ||
       !Number.isFinite(parsedPeopleAllowed) ||
       parsedPeopleAllowed <= 0 ||
       !Number.isFinite(parsedPrice) ||
       parsedPrice <= 0
     ) {
-      setError("Data unit belum valid. Periksa nama unit, kapasitas, dan harga.");
+      setError(
+        "Data unit belum valid. Periksa bangunan/blok, nama unit, kapasitas, dan harga."
+      );
       return;
     }
 
@@ -779,9 +830,25 @@ export default function DetailPropertiPage() {
     setNotice(null);
 
     try {
+      const parsedOwnerId = Number(unitForm.ownerId);
+      const unitPayloadName = buildPersistedUnitName(
+        unitForm.buildingName,
+        unitForm.name
+      );
+      const blockPayload = {
+        building_name: unitForm.buildingName.trim(),
+        block_name: unitForm.buildingName.trim(),
+        owner_id:
+          Number.isFinite(parsedOwnerId) && parsedOwnerId > 0
+            ? parsedOwnerId
+            : undefined,
+        notes: unitForm.notes.trim() || undefined,
+      };
+
       if (isEditing) {
         const payload: AdminUnitUpdatePayload = {
-          name: unitForm.name.trim(),
+          name: unitPayloadName,
+          ...blockPayload,
           unit_type: unitForm.unit_type,
           status: unitForm.status,
           people_allowed: parsedPeopleAllowed,
@@ -792,7 +859,8 @@ export default function DetailPropertiPage() {
       } else {
         await createAdminUnit({
           property_id: parsedPropertyId,
-          name: unitForm.name.trim(),
+          name: unitPayloadName,
+          ...blockPayload,
           unit_type: unitForm.unit_type,
           status: unitForm.status,
           people_allowed: parsedPeopleAllowed,
@@ -800,7 +868,7 @@ export default function DetailPropertiPage() {
         });
       }
 
-      setUnitForm(getInitialUnitForm());
+      setUnitForm(getInitialUnitForm(propertyDetail?.property.user?.id));
       setEditingUnitId(null);
       setShowAddUnitForm(false);
       setNotice({
@@ -828,7 +896,7 @@ export default function DetailPropertiPage() {
     setNotice(null);
     setError(null);
     setEditingUnitId(null);
-    setUnitForm(getInitialUnitForm());
+    setUnitForm(getInitialUnitForm(propertyDetail?.property.user?.id));
     setShowAddUnitForm((prev) => (prev && !editingUnitId ? false : true));
   };
 
@@ -836,12 +904,23 @@ export default function DetailPropertiPage() {
     setNotice(null);
     setError(null);
     setEditingUnitId(unit.unit_id);
+    const identity = parseUnitIdentity({
+      unitName: unit.unit_name,
+      buildingName: unit.building_name || unit.block_name,
+    });
     setUnitForm({
-      name: unit.unit_name,
+      buildingName: identity.buildingName === "Bangunan belum diatur" ? "" : identity.buildingName,
+      ownerId: unit.owner_id
+        ? String(unit.owner_id)
+        : propertyDetail?.property.user?.id
+          ? String(propertyDetail.property.user.id)
+          : "",
+      name: identity.unitName,
       unit_type: unit.unit_type,
-      status: unit.status as "vacant" | "occupied" | "maintenance",
+      status: unit.status as "vacant" | "occupied" | "booking" | "maintenance",
       people_allowed: String(unit.people_allowed || 1),
       price: String(unit.price || ""),
+      notes: unit.notes || unit.description || "",
     });
     setShowAddUnitForm(true);
   };
@@ -853,7 +932,7 @@ export default function DetailPropertiPage() {
 
     setShowAddUnitForm(false);
     setEditingUnitId(null);
-    setUnitForm(getInitialUnitForm());
+    setUnitForm(getInitialUnitForm(propertyDetail?.property.user?.id));
   };
 
   const handleDeleteUnit = async () => {
@@ -1003,23 +1082,29 @@ export default function DetailPropertiPage() {
         </div>
       ) : (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <StatCard
+              icon={<Building2 size={16} />}
+              label="Bangunan/Blok"
+              value={String(propertyStructure.blockCount)}
+              tone="default"
+            />
             <StatCard
               icon={<Building2 size={16} />}
               label="Total Unit"
-              value={String(propertyDetail.stats.total_units)}
+              value={String(propertyStructure.totalUnits || propertyDetail.stats.total_units)}
               tone="default"
             />
             <StatCard
               icon={<Users size={16} />}
               label="Unit Terisi"
-              value={String(propertyDetail.stats.occupied_units)}
+              value={String(propertyStructure.occupiedUnits || propertyDetail.stats.occupied_units)}
               tone="success"
             />
             <StatCard
               icon={<DoorOpen size={16} />}
               label="Unit Kosong"
-              value={String(propertyDetail.stats.vacant_units)}
+              value={String(propertyStructure.vacantUnits || propertyDetail.stats.vacant_units)}
               tone="info"
             />
             <StatCard
@@ -1197,11 +1282,11 @@ export default function DetailPropertiPage() {
                     value={formatPriceRange(propertyDetail.stats.price_range)}
                   />
                   <InfoRow
-                    label="Pemilik"
+                    label="Owner Default"
                     value={propertyDetail.property.user?.full_name || "-"}
                   />
                   <InfoRow
-                    label="Email Pemilik"
+                    label="Email Owner Default"
                     value={propertyDetail.property.user?.email || "-"}
                   />
                   <InfoRow
@@ -1264,6 +1349,8 @@ export default function DetailPropertiPage() {
               )}
             </div>
           </section>
+
+          <PropertyMappingSection structure={propertyStructure} />
 
           <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1340,7 +1427,10 @@ export default function DetailPropertiPage() {
                     <option value="">Pilih unit</option>
                     {availableUnitOptions.map((unit) => (
                       <option key={unit.unit_id} value={unit.unit_id}>
-                        {unit.unit_name} - {formatReadableText(unit.unit_type)}
+                        {unitStructureLookup.get(unit.unit_id)
+                          ? `${unitStructureLookup.get(unit.unit_id)?.buildingName} / ${unitStructureLookup.get(unit.unit_id)?.displayName}`
+                          : unit.unit_name}{" "}
+                        - {formatReadableText(unit.unit_type)}
                       </option>
                     ))}
                   </select>
@@ -1433,14 +1523,16 @@ export default function DetailPropertiPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-[940px] w-full text-sm">
+              <table className="min-w-[1180px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
                     <th className="p-3 text-left font-semibold">Nama</th>
-                    <th className="p-3 text-left font-semibold">Unit</th>
-                    <th className="p-3 text-left font-semibold">Mulai Sewa</th>
-                    <th className="p-3 text-left font-semibold">Telepon</th>
-                    <th className="p-3 text-left font-semibold">Akhir Sewa</th>
+                    <th className="p-3 text-left font-semibold">Bangunan / Unit</th>
+                    <th className="p-3 text-left font-semibold">Check-in</th>
+                    <th className="p-3 text-left font-semibold">WhatsApp</th>
+                    <th className="p-3 text-left font-semibold">Check-out</th>
+                    <th className="p-3 text-left font-semibold">Lama Sewa</th>
+                    <th className="p-3 text-left font-semibold">Keterangan</th>
                     <th className="p-3 text-left font-semibold">Status Pembayaran</th>
                     <th className="p-3 text-right font-semibold">Aksi</th>
                   </tr>
@@ -1449,60 +1541,85 @@ export default function DetailPropertiPage() {
                 <tbody>
                   {tenantFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-4 text-center text-slate-500">
+                      <td colSpan={9} className="p-4 text-center text-slate-500">
                         Tidak ada data penghuni.
                       </td>
                     </tr>
                   ) : (
-                    tenantFiltered.map((tenant) => (
-                      <tr
-                        key={tenant.lease_id}
-                        className="border-t border-slate-100 hover:bg-slate-50"
-                      >
-                        <td className="p-3 font-medium text-slate-800">{tenant.tenant_name}</td>
-                        <td className="p-3 text-slate-700">{tenant.unit_name}</td>
-                        <td className="p-3 text-slate-700">{formatDate(tenant.lease_start)}</td>
-                        <td className="p-3 text-slate-700">{tenant.mobile_phone || "-"}</td>
-                        <td className="p-3 text-slate-700">{formatDate(tenant.lease_end)}</td>
-                        <td className="p-3">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                              paymentBadgeClassMap[tenant.payment_status || ""] ||
-                              "border-slate-200 bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {paymentLabelMap[tenant.payment_status || ""] ||
-                              tenant.payment_status ||
+                    tenantFiltered.map((tenant) => {
+                      const structuredUnit = unitStructureLookup.get(tenant.unit_id);
+
+                      return (
+                        <tr
+                          key={tenant.lease_id}
+                          className="border-t border-slate-100 hover:bg-slate-50"
+                        >
+                          <td className="p-3 font-medium text-slate-800">
+                            {tenant.tenant_name}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {structuredUnit
+                              ? `${structuredUnit.buildingName} / ${structuredUnit.displayName}`
+                              : tenant.unit_name}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {formatDate(tenant.lease_start)}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {tenant.mobile_phone || tenant.tenant_phone || "-"}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {formatDate(tenant.lease_end)}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {structuredUnit?.leaseDurationLabel || "-"}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {tenant.notes ||
+                              tenant.description ||
+                              structuredUnit?.note ||
                               "-"}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditTenantForm(tenant)}
-                              disabled={isDeletingTenantLeaseId === tenant.lease_id}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Ubah penghuni"
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                paymentBadgeClassMap[tenant.payment_status || ""] ||
+                                "border-slate-200 bg-slate-100 text-slate-600"
+                              }`}
                             >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNotice(null);
-                                setDeleteTenantTarget(tenant);
-                              }}
-                              disabled={isDeletingTenantLeaseId === tenant.lease_id}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Hapus penghuni"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {paymentLabelMap[tenant.payment_status || ""] ||
+                                tenant.payment_status ||
+                                "-"}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditTenantForm(tenant)}
+                                disabled={isDeletingTenantLeaseId === tenant.lease_id}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Ubah penghuni"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNotice(null);
+                                  setDeleteTenantTarget(tenant);
+                                }}
+                                disabled={isDeletingTenantLeaseId === tenant.lease_id}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Hapus penghuni"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1531,8 +1648,54 @@ export default function DetailPropertiPage() {
                 }}
                 className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2"
               >
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                    Bangunan / Blok
+                  </label>
+                  <input
+                    list="property-block-options"
+                    placeholder="Contoh: A1 Cozy"
+                    value={unitForm.buildingName}
+                    onChange={(event) =>
+                      setUnitForm((prev) => ({
+                        ...prev,
+                        buildingName: event.target.value,
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  />
+                  <datalist id="property-block-options">
+                    {blockNameOptions.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                    Owner Bangunan
+                  </label>
+                  <select
+                    value={unitForm.ownerId}
+                    onChange={(event) =>
+                      setUnitForm((prev) => ({
+                        ...prev,
+                        ownerId: event.target.value,
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  >
+                    <option value="">Pilih owner</option>
+                    {modalOwners.map((owner) => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <input
-                  placeholder="Nama / Nomor Unit"
+                  placeholder="Nama / Nomor Unit, contoh: 101"
                   value={unitForm.name}
                   onChange={(event) =>
                     setUnitForm((prev) => ({
@@ -1597,6 +1760,7 @@ export default function DetailPropertiPage() {
                       status: event.target.value as
                         | "vacant"
                         | "occupied"
+                        | "booking"
                         | "maintenance",
                     }))
                   }
@@ -1604,8 +1768,22 @@ export default function DetailPropertiPage() {
                 >
                   <option value="vacant">Kosong</option>
                   <option value="occupied">Terisi</option>
+                  <option value="booking">Booking</option>
                   <option value="maintenance">Perawatan</option>
                 </select>
+
+                <textarea
+                  placeholder="Keterangan unit atau penghuni (opsional)"
+                  value={unitForm.notes}
+                  onChange={(event) =>
+                    setUnitForm((prev) => ({
+                      ...prev,
+                      notes: event.target.value,
+                    }))
+                  }
+                  rows={3}
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:col-span-2"
+                />
 
                 <div className="flex items-center justify-end md:col-span-2">
                   <button
@@ -1656,11 +1834,13 @@ export default function DetailPropertiPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-[920px] w-full text-sm">
+              <table className="min-w-[1120px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
+                    <th className="p-3 text-left font-semibold">Bangunan/Blok</th>
                     <th className="p-3 text-left font-semibold">Nomor Unit</th>
                     <th className="p-3 text-left font-semibold">Tipe</th>
+                    <th className="p-3 text-left font-semibold">Owner</th>
                     <th className="p-3 text-left font-semibold">Kapasitas</th>
                     <th className="p-3 text-left font-semibold">Harga / Bulan</th>
                     <th className="p-3 text-left font-semibold">Penyewa</th>
@@ -1672,64 +1852,80 @@ export default function DetailPropertiPage() {
                 <tbody>
                   {unitFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-4 text-center text-slate-500">
+                      <td colSpan={9} className="p-4 text-center text-slate-500">
                         Tidak ada data unit.
                       </td>
                     </tr>
                   ) : (
-                    unitFiltered.map((unit) => (
-                      <tr
-                        key={unit.unit_id}
-                        className="border-t border-slate-100 hover:bg-slate-50"
-                      >
-                        <td className="p-3 font-medium text-slate-800">{unit.unit_name}</td>
-                        <td className="p-3 text-slate-700">
-                          {formatReadableText(unit.unit_type)}
-                        </td>
-                        <td className="p-3 text-slate-700">
-                          {Number(unit.people_allowed || 0)} orang
-                        </td>
-                        <td className="p-3 text-slate-700">
-                          Rp {Number(unit.price || 0).toLocaleString("id-ID")}
-                        </td>
-                        <td className="p-3 text-slate-700">{unit.tenant_name || "-"}</td>
-                        <td className="p-3">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                              unitBadgeClassMap[unit.status] ||
-                              "border-slate-200 bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditUnitForm(unit)}
-                              disabled={isDeletingUnitId === unit.unit_id}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Ubah unit"
+                    unitFiltered.map((unit) => {
+                      const structuredUnit = unitStructureLookup.get(unit.unit_id);
+
+                      return (
+                        <tr
+                          key={unit.unit_id}
+                          className="border-t border-slate-100 hover:bg-slate-50"
+                        >
+                          <td className="p-3 text-slate-700">
+                            {structuredUnit?.buildingName || "-"}
+                          </td>
+                          <td className="p-3 font-medium text-slate-800">
+                            {structuredUnit?.displayName || unit.unit_name}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {formatReadableText(unit.unit_type)}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {unit.owner_name ||
+                              propertyStructure.blocks.find((block) =>
+                                block.units.some((item) => item.id === unit.unit_id)
+                              )?.ownerName ||
+                              "-"}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            {Number(unit.people_allowed || 0)} orang
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+                          </td>
+                          <td className="p-3 text-slate-700">{unit.tenant_name || "-"}</td>
+                          <td className="p-3">
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                unitBadgeClassMap[unit.status] ||
+                                "border-slate-200 bg-slate-100 text-slate-600"
+                              }`}
                             >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNotice(null);
-                                setDeleteUnitTarget(unit);
-                              }}
-                              disabled={isDeletingUnitId === unit.unit_id}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Hapus unit"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditUnitForm(unit)}
+                                disabled={isDeletingUnitId === unit.unit_id}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Ubah unit"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNotice(null);
+                                  setDeleteUnitTarget(unit);
+                                }}
+                                disabled={isDeletingUnitId === unit.unit_id}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Hapus unit"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -2040,5 +2236,146 @@ function InfoRow({ label, value }: { label: string; value: string }) {
         {value}
       </span>
     </div>
+  );
+}
+
+function PropertyMappingSection({ structure }: { structure: PropertyStructure }) {
+  return (
+    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Mapping Operasional
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-800">
+            Properti → Bangunan → Owner → Unit → Tenant
+          </h2>
+          <p className="mt-1 max-w-3xl text-sm text-slate-600">
+            Satu properti utama tetap bisa memuat banyak bangunan/blok dengan
+            owner, unit, status hunian, dan data tenant yang berbeda.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          <MappingMetric label="Blok" value={structure.blockCount} />
+          <MappingMetric label="Unit" value={structure.totalUnits} />
+          <MappingMetric label="Terisi" value={structure.occupiedUnits} />
+          <MappingMetric label="Booking" value={structure.bookingUnits} />
+        </div>
+      </div>
+
+      {structure.blocks.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+          Belum ada unit. Tambahkan bangunan/blok saat membuat unit pertama.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {structure.blocks.map((block) => (
+            <article
+              key={block.key}
+              className="overflow-hidden rounded-2xl border border-slate-200"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    {block.name}
+                  </h3>
+                  <p className="mt-0.5 text-sm text-slate-600">
+                    Owner: <span className="font-medium">{block.ownerName}</span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <StatusPill label="Unit" value={block.totalUnits} />
+                  <StatusPill label="Kosong" value={block.vacantUnits} />
+                  <StatusPill label="Terisi" value={block.occupiedUnits} />
+                  <StatusPill label="Booking" value={block.bookingUnits} />
+                  <StatusPill label="Maintenance" value={block.maintenanceUnits} />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1080px] text-sm">
+                  <thead className="bg-white text-slate-700">
+                    <tr>
+                      <th className="p-3 text-left font-semibold">Unit</th>
+                      <th className="p-3 text-left font-semibold">Tipe</th>
+                      <th className="p-3 text-left font-semibold">Harga</th>
+                      <th className="p-3 text-left font-semibold">Status</th>
+                      <th className="p-3 text-left font-semibold">Tenant</th>
+                      <th className="p-3 text-left font-semibold">WhatsApp</th>
+                      <th className="p-3 text-left font-semibold">Check-in</th>
+                      <th className="p-3 text-left font-semibold">Check-out</th>
+                      <th className="p-3 text-left font-semibold">Lama Sewa</th>
+                      <th className="p-3 text-left font-semibold">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {block.units.map((unit) => (
+                      <tr
+                        key={unit.id}
+                        className="border-t border-slate-100 hover:bg-slate-50"
+                      >
+                        <td className="p-3 font-medium text-slate-900">
+                          {unit.displayName}
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          {formatReadableText(unit.unitType)}
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                              unitBadgeClassMap[unit.status] ||
+                              "border-slate-200 bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {unitStatusLabelMap[unit.status] ||
+                              formatReadableText(unit.status)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          {unit.tenantName || "-"}
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          {unit.tenantPhone || "-"}
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          {formatDate(unit.leaseStart)}
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          {formatDate(unit.leaseEnd)}
+                        </td>
+                        <td className="p-3 text-slate-700">
+                          {unit.leaseDurationLabel}
+                        </td>
+                        <td className="p-3 text-slate-700">{unit.note || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MappingMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-base font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function StatusPill({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-600">
+      {label}: <span className="font-semibold text-slate-900">{value}</span>
+    </span>
   );
 }

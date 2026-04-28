@@ -36,6 +36,7 @@ const initialSummary: PropertySummary = {
 
 const propertyStatusLabelMap: Record<string, string> = {
   occupied: "Terisi",
+  booking: "Booking",
   vacant: "Kosong",
   maintenance: "Perawatan",
   cleaning: "Pembersihan",

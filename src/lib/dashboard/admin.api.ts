@@ -32,7 +32,9 @@ export interface AdminPropertyListItem {
   condition: string;
   rules: string;
   total_units: number;
+  block_count?: number | null;
   occupied_units: number;
+  booking_units?: number | null;
   vacant_units: number;
   maintenance_units: number;
   roomphoto_urls: string[];
@@ -78,7 +80,9 @@ export interface AdminPropertyDetailPayload {
     latitude?: number | null;
     longitude?: number | null;
     total_units: number;
+    block_count?: number | null;
     occupied_units: number;
+    booking_units?: number | null;
     vacant_units: number;
     maintenance_units: number;
     total_tenants: number;
@@ -134,9 +138,22 @@ export interface AdminPropertyTenantRow {
   tenant_email?: string | null;
   unit_id: number;
   unit_name: string;
+  building_id?: number | null;
+  building_name?: string | null;
+  block_id?: number | null;
+  block_name?: string | null;
+  owner_id?: number | null;
+  owner_name?: string | null;
+  block_owner_id?: number | null;
+  block_owner_name?: string | null;
   mobile_phone?: string | null;
+  tenant_phone?: string | null;
   lease_start?: string | null;
   lease_end?: string | null;
+  check_in_date?: string | null;
+  check_out_date?: string | null;
+  notes?: string | null;
+  description?: string | null;
   payment_status?: string | null;
 }
 
@@ -161,26 +178,56 @@ export interface AdminPropertyUnitRow {
   unit_type: string;
   people_allowed: number;
   tenant_name?: string | null;
+  tenant_email?: string | null;
+  tenant_phone?: string | null;
+  mobile_phone?: string | null;
   price: number;
   lease_end?: string | null;
+  lease_start?: string | null;
+  check_in_date?: string | null;
+  check_out_date?: string | null;
+  building_id?: number | null;
+  building_name?: string | null;
+  building_owner_id?: number | null;
+  building_owner_name?: string | null;
+  block_id?: number | null;
+  block_name?: string | null;
+  block_owner_id?: number | null;
+  block_owner_name?: string | null;
+  owner_id?: number | null;
+  owner_name?: string | null;
+  notes?: string | null;
+  description?: string | null;
   status: string;
 }
 
 export interface AdminUnitCreatePayload {
   property_id: number;
   name: string;
+  building_id?: number;
+  building_name?: string;
+  block_id?: number;
+  block_name?: string;
+  owner_id?: number;
   unit_type: string;
-  status: "vacant" | "occupied" | "maintenance";
+  status: "vacant" | "occupied" | "booking" | "maintenance";
   people_allowed: number;
   price: number;
+  notes?: string;
 }
 
 export interface AdminUnitUpdatePayload {
   name?: string;
+  building_id?: number;
+  building_name?: string;
+  block_id?: number;
+  block_name?: string;
+  owner_id?: number;
   unit_type?: string;
-  status?: "vacant" | "occupied" | "maintenance";
+  status?: "vacant" | "occupied" | "booking" | "maintenance";
   people_allowed?: number;
   price?: number;
+  notes?: string;
 }
 
 export interface AdminPropertyMaintenanceRow {
@@ -934,11 +981,15 @@ const normalizeFinancialTransaction = (
 export const mapPropertyStatus = (
   property: Pick<
     AdminPropertyListItem,
-    "occupied_units" | "vacant_units" | "maintenance_units"
+    "occupied_units" | "booking_units" | "vacant_units" | "maintenance_units"
   >
 ): PropertyStatus => {
   if (property.maintenance_units > 0) {
     return "maintenance";
+  }
+
+  if ((property.booking_units || 0) > 0) {
+    return "booking";
   }
 
   if (property.occupied_units > 0) {
@@ -961,7 +1012,9 @@ export const mapPropertyToCard = (property: AdminPropertyListItem): Property => 
     status: mapPropertyStatus(property),
     image,
     totalUnits: property.total_units,
+    blockCount: property.block_count || undefined,
     occupiedUnits: property.occupied_units,
+    bookingUnits: property.booking_units || undefined,
     vacantUnits: property.vacant_units,
     maintenanceUnits: property.maintenance_units,
   };
@@ -1124,7 +1177,20 @@ export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
   const response = await axiosInstance.post<ApiResponse<unknown>>(
     "/api/v1/units",
     {
-      unit: payload,
+      unit: {
+        property_id: payload.property_id,
+        name: payload.name,
+        building_id: payload.building_id,
+        building_name: payload.building_name,
+        block_id: payload.block_id,
+        block_name: payload.block_name,
+        owner_id: payload.owner_id,
+        unit_type: payload.unit_type,
+        status: payload.status,
+        people_allowed: payload.people_allowed,
+        price: payload.price,
+        notes: payload.notes,
+      },
     }
   );
 
@@ -1141,7 +1207,19 @@ export const updateAdminUnit = async (
   const response = await axiosInstance.patch<ApiResponse<unknown>>(
     `/api/v1/units/${id}`,
     {
-      unit: payload,
+      unit: {
+        name: payload.name,
+        building_id: payload.building_id,
+        building_name: payload.building_name,
+        block_id: payload.block_id,
+        block_name: payload.block_name,
+        owner_id: payload.owner_id,
+        unit_type: payload.unit_type,
+        status: payload.status,
+        people_allowed: payload.people_allowed,
+        price: payload.price,
+        notes: payload.notes,
+      },
     }
   );
 

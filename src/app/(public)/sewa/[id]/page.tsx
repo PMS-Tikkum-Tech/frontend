@@ -273,8 +273,13 @@ const getFacilityIcon = (facility: string): ReactNode => {
 type AvailableUnitCard = {
   id: number;
   name: string;
+  displayName: string;
+  buildingName: string | null;
+  unitNumber: string;
   unitType: string;
+  unitTypeValue: string;
   status: string;
+  statusValue: string;
   capacity: string;
   floorInfo: string;
   priceValue: number;
@@ -302,6 +307,10 @@ const toUnitStatusLabel = (status?: string | null) => {
     return "Terisi";
   }
 
+  if (status === "booking" || status === "booked" || status === "reserved") {
+    return "Booking";
+  }
+
   if (status === "maintenance") {
     return "Perawatan";
   }
@@ -320,11 +329,79 @@ const getUnitStatusBadgeClass = (status: string) => {
     return "border-sky-100 bg-sky-50 text-sky-700";
   }
 
+  if (normalized === "booking") {
+    return "border-violet-100 bg-violet-50 text-violet-700";
+  }
+
   if (normalized === "perawatan") {
     return "border-indigo-100 bg-indigo-50 text-indigo-700";
   }
 
   return "border-slate-200 bg-slate-100 text-slate-600";
+};
+
+const sanitizeUnitLabelPart = (value?: string | number | null) => {
+  if (value == null) {
+    return "";
+  }
+
+  return String(value).trim();
+};
+
+const parseBuildingNameFromUnitName = (unitName: string) => {
+  const separatorMatch = unitName.match(/^(.+?)\s*(?:-|\/|\||•|·|:)\s*(.+)$/);
+  return separatorMatch?.[1]?.trim() || null;
+};
+
+const resolveTenantUnitNumber = (
+  unit: PublicPropertyUnitSummary,
+  buildingName?: string | null
+) => {
+  const explicitNumber =
+    sanitizeUnitLabelPart(unit.unit_number) ||
+    sanitizeUnitLabelPart(unit.room_number) ||
+    sanitizeUnitLabelPart(unit.number);
+
+  if (explicitNumber) {
+    return explicitNumber.replace(/^(unit|kamar|room)\s+/i, "").trim();
+  }
+
+  let candidate = sanitizeUnitLabelPart(unit.name);
+  if (!candidate) {
+    return String(unit.id);
+  }
+
+  const normalizedBuilding = buildingName?.trim();
+  if (
+    normalizedBuilding &&
+    candidate.toLowerCase().startsWith(normalizedBuilding.toLowerCase())
+  ) {
+    candidate = candidate.slice(normalizedBuilding.length).trim();
+  }
+
+  candidate = candidate.replace(/^\s*(?:-|\/|\||•|·|:)\s*/, "").trim();
+  const separatorMatch = candidate.match(/^.+?\s*(?:-|\/|\||•|·|:)\s*(.+)$/);
+  if (separatorMatch?.[1]) {
+    candidate = separatorMatch[1].trim();
+  }
+
+  return (
+    candidate
+      .replace(/^(unit|kamar|room)\s+/i, "")
+      .replace(/^#/, "")
+      .trim() || String(unit.id)
+  );
+};
+
+const buildTenantUnitDisplayName = (
+  buildingName: string | null,
+  unitNumber: string
+) => {
+  if (!buildingName) {
+    return `Unit ${unitNumber}`;
+  }
+
+  return `${buildingName} - Unit ${unitNumber}`;
 };
 
 const mapPublicUnitToCard = (
@@ -336,12 +413,23 @@ const mapPublicUnitToCard = (
     typeof unit.people_allowed === "number" && unit.people_allowed > 0
       ? `${unit.people_allowed} orang`
       : "Sesuai ketentuan properti";
+  const buildingName =
+    unit.building_name ||
+    unit.block_name ||
+    parseBuildingNameFromUnitName(unit.name || "") ||
+    null;
+  const unitNumber = resolveTenantUnitNumber(unit, buildingName);
 
   return {
     id: unit.id,
     name: unit.name || `Unit ${unit.id}`,
+    displayName: buildTenantUnitDisplayName(buildingName, unitNumber),
+    buildingName,
+    unitNumber,
     unitType: formatLabel(unit.unit_type || property.property_type),
+    unitTypeValue: unit.unit_type || property.property_type || "",
     status: toUnitStatusLabel(unit.status),
+    statusValue: unit.status || "vacant",
     capacity,
     floorInfo: "Informasi lantai menyusul",
     priceValue: monthlyPrice,
@@ -360,6 +448,11 @@ export default function SewaPropertyDetailPage() {
   const [property, setProperty] = useState<PublicPropertySummary | null>(null);
   const [related, setRelated] = useState<PublicPropertySummary[]>([]);
   const [availableUnits, setAvailableUnits] = useState<AvailableUnitCard[]>([]);
+  const [unitStatusFilter, setUnitStatusFilter] = useState("all");
+  const [unitTypeFilter, setUnitTypeFilter] = useState("all");
+  const [unitFacilityFilter, setUnitFacilityFilter] = useState("all");
+  const [unitMinPrice, setUnitMinPrice] = useState("");
+  const [unitMaxPrice, setUnitMaxPrice] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [heroMediaItems, setHeroMediaItems] = useState<PropertyMedia[]>([
@@ -481,7 +574,6 @@ export default function SewaPropertyDetailPage() {
             page: 1,
             per_page: 100,
             sort: "price_asc",
-            status: "vacant",
           });
 
           if (unitsResponse.data.length > 0) {
@@ -602,6 +694,82 @@ export default function SewaPropertyDetailPage() {
       },
     ];
   }, [geocodedCoordinate, property]);
+
+  const unitStatusOptions = useMemo(() => {
+    return Array.from(
+      new Map(
+        availableUnits.map((unit) => [unit.statusValue, unit.status])
+      ).entries()
+    );
+  }, [availableUnits]);
+
+  const unitTypeOptions = useMemo(() => {
+    return Array.from(
+      new Map(
+        availableUnits.map((unit) => [unit.unitTypeValue, unit.unitType])
+      ).entries()
+    ).filter(([value]) => Boolean(value));
+  }, [availableUnits]);
+
+  const unitFacilityOptions = useMemo(() => {
+    return Array.from(
+      new Set(availableUnits.flatMap((unit) => unit.facilities))
+    ).filter(Boolean);
+  }, [availableUnits]);
+
+  const filteredAvailableUnits = useMemo(() => {
+    const minPrice = unitMinPrice.trim() ? Number(unitMinPrice) : null;
+    const maxPrice = unitMaxPrice.trim() ? Number(unitMaxPrice) : null;
+
+    return availableUnits
+      .filter((unit) => {
+        const matchStatus =
+          unitStatusFilter === "all" || unit.statusValue === unitStatusFilter;
+        const matchType =
+          unitTypeFilter === "all" || unit.unitTypeValue === unitTypeFilter;
+        const matchFacility =
+          unitFacilityFilter === "all" ||
+          unit.facilities.includes(unitFacilityFilter);
+        const matchMinPrice =
+          minPrice == null || !Number.isFinite(minPrice)
+            ? true
+            : unit.priceValue >= minPrice;
+        const matchMaxPrice =
+          maxPrice == null || !Number.isFinite(maxPrice)
+            ? true
+            : unit.priceValue <= maxPrice;
+
+        return (
+          matchStatus &&
+          matchType &&
+          matchFacility &&
+          matchMinPrice &&
+          matchMaxPrice
+        );
+      })
+      .sort((first, second) => {
+        const buildingCompare = (first.buildingName || "").localeCompare(
+          second.buildingName || "",
+          "id-ID",
+          { numeric: true }
+        );
+
+        if (buildingCompare !== 0) {
+          return buildingCompare;
+        }
+
+        return first.unitNumber.localeCompare(second.unitNumber, "id-ID", {
+          numeric: true,
+        });
+      });
+  }, [
+    availableUnits,
+    unitFacilityFilter,
+    unitMaxPrice,
+    unitMinPrice,
+    unitStatusFilter,
+    unitTypeFilter,
+  ]);
 
   const handleSubmitVisitRequest = async (payload: VisitRequestFormPayload) => {
     if (!property) {
@@ -1047,13 +1215,72 @@ export default function SewaPropertyDetailPage() {
                   Pilihan unit yang siap disewa
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Lihat unit yang masih kosong beserta kapasitas dan harganya.
+                  Lihat unit berdasarkan gedung/blok dan nomor kamar, tanpa data owner.
                 </p>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
                 <Home size={13} />
-                {availableUnits.length} unit
+                {filteredAvailableUnits.length} dari {availableUnits.length} unit
               </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 rounded-2xl border border-blue-100 bg-white p-4 md:grid-cols-5">
+              <select
+                value={unitStatusFilter}
+                onChange={(event) => setUnitStatusFilter(event.target.value)}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="all">Semua Status</option>
+                {unitStatusOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={unitTypeFilter}
+                onChange={(event) => setUnitTypeFilter(event.target.value)}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="all">Semua Tipe</option>
+                {unitTypeOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={unitFacilityFilter}
+                onChange={(event) => setUnitFacilityFilter(event.target.value)}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="all">Semua Fasilitas</option>
+                {unitFacilityOptions.map((facility) => (
+                  <option key={facility} value={facility}>
+                    {formatLabel(facility)}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="number"
+                min={0}
+                placeholder="Harga min"
+                value={unitMinPrice}
+                onChange={(event) => setUnitMinPrice(event.target.value)}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
+
+              <input
+                type="number"
+                min={0}
+                placeholder="Harga max"
+                value={unitMaxPrice}
+                onChange={(event) => setUnitMaxPrice(event.target.value)}
+                className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              />
             </div>
 
             <div className="mt-5">
@@ -1067,9 +1294,19 @@ export default function SewaPropertyDetailPage() {
                     unit tersedia.
                   </p>
                 </div>
+              ) : filteredAvailableUnits.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-blue-100 bg-white px-4 py-5 text-sm text-slate-600">
+                  <p className="font-medium text-slate-800">
+                    Tidak ada unit yang sesuai filter.
+                  </p>
+                  <p className="mt-1">
+                    Ubah status, tipe, fasilitas, atau rentang harga untuk
+                    melihat pilihan unit lainnya.
+                  </p>
+                </div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {availableUnits.map((unit) => (
+                  {filteredAvailableUnits.map((unit) => (
                     <article
                       key={unit.id}
                       className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:border-blue-200"
@@ -1077,7 +1314,7 @@ export default function SewaPropertyDetailPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">
-                            {unit.name}
+                            {unit.displayName}
                           </p>
                           <p className="mt-0.5 text-xs text-slate-500">
                             {unit.unitType} • {unit.floorInfo}

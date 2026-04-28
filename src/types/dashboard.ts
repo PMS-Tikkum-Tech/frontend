@@ -29,6 +29,7 @@ export interface SourceData {
 export type PropertyStatus =
   | "vacant"
   | "occupied"
+  | "booking"
   | "maintenance"
   | "cleaning"
   | "renovation";
@@ -43,7 +44,9 @@ export interface Property {
   endDate?: string;
   image: string;
   totalUnits?: number;
+  blockCount?: number;
   occupiedUnits?: number;
+  bookingUnits?: number;
   vacantUnits?: number;
   maintenanceUnits?: number;
 }

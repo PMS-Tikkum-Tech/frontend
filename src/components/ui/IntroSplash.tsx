@@ -1,16 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const INTRO_STORAGE_KEY = "kikost_intro_seen";
 const INTRO_MESSAGE = "Selamat datang di uji coba Sistem Manajemen Properti KIKOST";
+const INTRO_EXCLUDED_PATHS = ["/verifikasi-email", "/__/auth/action"];
 
 export default function IntroSplash() {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
   const [typedText, setTypedText] = useState("");
 
   const exitTimeoutRef = useRef<number | null>(null);
+  const isExcludedRoute = INTRO_EXCLUDED_PATHS.some((path) =>
+    pathname?.startsWith(path)
+  );
 
   const closeSplash = useCallback(() => {
     if (typeof window !== "undefined") {
@@ -25,6 +31,10 @@ export default function IntroSplash() {
 
   useEffect(() => {
     if (typeof window === "undefined") {
+      return;
+    }
+
+    if (isExcludedRoute) {
       return;
     }
 
@@ -61,9 +71,9 @@ export default function IntroSplash() {
         window.clearTimeout(exitTimeoutRef.current);
       }
     };
-  }, [closeSplash]);
+  }, [closeSplash, isExcludedRoute]);
 
-  if (!isVisible) {
+  if (!isVisible || isExcludedRoute) {
     return null;
   }
 

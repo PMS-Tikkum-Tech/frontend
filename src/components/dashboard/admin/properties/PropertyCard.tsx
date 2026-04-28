@@ -23,6 +23,8 @@ export default function PropertyCard({ data }: { data: Property }) {
   const statusColor =
     data.status === "occupied"
       ? "border-green-200 bg-green-50 text-green-700"
+      : data.status === "booking"
+        ? "border-violet-200 bg-violet-50 text-violet-700"
       : data.status === "maintenance"
         ? "border-amber-200 bg-amber-50 text-amber-700"
         : "border-sky-200 bg-sky-50 text-sky-700";
@@ -30,6 +32,8 @@ export default function PropertyCard({ data }: { data: Property }) {
   const statusLabel =
     data.status === "occupied"
       ? "Terisi"
+      : data.status === "booking"
+        ? "Booking"
       : data.status === "maintenance"
         ? "Perawatan"
       : "Kosong";

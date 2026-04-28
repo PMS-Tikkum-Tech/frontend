@@ -263,6 +263,13 @@ export interface PublicPropertySummary extends TenantPropertySummary {
 export interface PublicPropertyUnitSummary {
   id: number;
   name?: string | null;
+  unit_number?: string | number | null;
+  room_number?: string | number | null;
+  number?: string | number | null;
+  building_id?: number | null;
+  building_name?: string | null;
+  block_id?: number | null;
+  block_name?: string | null;
   unit_type?: string | null;
   status?: "vacant" | "occupied" | "maintenance" | string;
   people_allowed?: number | null;
@@ -299,7 +306,16 @@ export type TenantBookingPaymentPayload = {
 type ManualRentalCatalogUnit = {
   id: number;
   name?: string | null;
+  unit_number?: string | number | null;
+  room_number?: string | number | null;
+  number?: string | number | null;
+  building_id?: number | null;
+  building_name?: string | null;
+  block_id?: number | null;
+  block_name?: string | null;
   unit_type?: string | null;
+  status?: string | null;
+  people_allowed?: number | null;
   monthly_rent_amount?: number | null;
   roomphoto_urls?: string[];
   property?: {
@@ -1016,9 +1032,16 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
   return {
     id: unit.id,
     name: unit.name || `Unit ${unit.id}`,
+    unit_number: unit.unit_number ?? unit.room_number ?? unit.number ?? null,
+    room_number: unit.room_number ?? null,
+    number: unit.number ?? null,
+    building_id: unit.building_id ?? unit.block_id ?? null,
+    building_name: unit.building_name || unit.block_name || null,
+    block_id: unit.block_id ?? unit.building_id ?? null,
+    block_name: unit.block_name || unit.building_name || null,
     unit_type: unit.unit_type || null,
-    status: "vacant",
-    people_allowed: null,
+    status: unit.status || "vacant",
+    people_allowed: unit.people_allowed || null,
     price: unit.monthly_rent_amount || null,
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,
