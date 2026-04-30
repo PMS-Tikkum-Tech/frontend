@@ -17,7 +17,7 @@ Hierarki data yang dipakai:
 
 ```text
 Property
-  -> BuildingBlock
+  -> PropertyBuilding
     -> Owner
     -> Unit
       -> TenantAssignment
@@ -38,13 +38,13 @@ Kinara Cozy Kost
 
 ## Flow Admin
 
-1. Admin membuat satu properti utama, misalnya `Kinara Cozy Kost`.
+1. Admin membuat satu properti utama, misalnya `Kinara Cozy Kost`, tanpa memilih owner.
 2. Admin menambahkan bangunan/blok di dalam properti.
 3. Setiap bangunan/blok punya owner sendiri.
 4. Admin membuat unit di bawah bangunan/blok.
 5. Unit punya status: `vacant`, `occupied`, `booking`, `maintenance`.
 6. Jika unit terisi, admin mengisi tenant assignment: tenant, WhatsApp, tanggal check-in, tanggal check-out, lama sewa, dan keterangan.
-7. Halaman detail properti menampilkan mapping lengkap property -> building/block -> owner -> unit -> tenant.
+7. Halaman detail properti menampilkan mapping lengkap property -> building -> owner -> unit -> tenant.
 
 ## Flow Tenant
 
@@ -52,6 +52,100 @@ Kinara Cozy Kost
 2. Detail owner bangunan tidak ditampilkan.
 3. Tenant melihat unit/kamar dari seluruh bangunan/blok di properti tersebut.
 4. Tenant bisa memfilter unit berdasarkan status/ketersediaan, harga, tipe kamar, dan fasilitas.
+5. Nama unit untuk tenant diformat tanpa data internal:
+
+```text
+building_name + " - Unit " + unit_number
+```
+
+Contoh:
+
+```text
+A1 Cozy - Unit 1
+A2 Cozy - Unit 3
+A5 Cozy - Unit 10
+```
+
+Tenant boleh melihat nama gedung/blok dan nomor unit, tetapi tidak boleh melihat owner, `owner_id`, `building_id`, `property_id`, atau data laporan internal.
+
+## Flow Registrasi dan Onboarding Tenant
+
+KIKOST memakai progressive profiling. Registrasi dibuat minimal; data lengkap hanya diminta saat tenant ingin booking/sewa.
+
+### Registrasi Minimal
+
+Tenant dapat daftar/masuk cepat dengan:
+
+1. Nomor telepon WhatsApp:
+   - Input nomor.
+   - Sistem kirim OTP.
+   - Tenant input OTP.
+   - Akun dibuat setelah token verifikasi dikonsumsi.
+2. Email:
+   - Input email.
+   - Sistem kirim kode verifikasi.
+   - Tenant input kode.
+   - Akun dibuat setelah token verifikasi dikonsumsi.
+
+Data awal yang disimpan:
+
+```text
+user_id
+phone_number atau email
+verification_status
+tenant_status = verified
+nama opsional
+```
+
+### Saat Booking / Sewa
+
+Ketika tenant submit booking/sewa, backend mengecek data dasar. Jika belum lengkap, response memakai kode:
+
+```text
+BASIC_PROFILE_REQUIRED
+```
+
+Frontend mengarahkan tenant ke:
+
+```text
+/tenant/akun?required=booking&next=<halaman booking>
+```
+
+Data dasar wajib:
+
+```text
+Nama lengkap
+Nomor WhatsApp
+Email
+NIK / Nomor identitas
+Tanggal lahir
+Alamat domisili
+```
+
+Setelah lengkap:
+
+```text
+tenant_status = basic_completed
+```
+
+Setelah booking disetujui admin dan lease aktif:
+
+```text
+tenant_status = active
+```
+
+### Data Lanjutan Opsional
+
+Data berikut tidak wajib untuk booking dan bisa dilengkapi dari halaman profil:
+
+```text
+Pekerjaan / status mahasiswa
+Nama kampus / perusahaan
+Kontak darurat
+Nomor kontak darurat
+Upload KTP
+Upload selfie
+```
 
 ## Struktur Data Rekomendasi
 
@@ -73,9 +167,11 @@ created_at
 updated_at
 ```
 
-`default_owner_id` hanya fallback untuk data lama. Owner operasional yang benar berada di `property_blocks.owner_id`.
+`default_owner_id` hanya fallback untuk data lama. Owner operasional yang benar berada di `property_buildings.owner_id`.
 
-### property_blocks
+Pada flow baru, form tambah properti tidak mewajibkan `default_owner_id`.
+
+### property_buildings
 
 ```sql
 id
@@ -105,7 +201,7 @@ Contoh data:
 ```sql
 id
 property_id
-property_block_id
+property_building_id
 name
 unit_type
 status
@@ -131,7 +227,7 @@ maintenance
 ```sql
 id
 property_id
-property_block_id
+property_building_id
 unit_id
 tenant_id
 tenant_phone
@@ -252,9 +348,9 @@ Tenant response tidak perlu expose owner:
 Untuk data lama yang sudah berupa properti per bangunan:
 
 1. Buat satu properti utama, misalnya `Kinara Cozy Kost`.
-2. Ubah properti lama `A1 Cozy`, `A2 Cozy`, dan seterusnya menjadi `property_blocks`.
-3. Pindahkan unit dari properti lama ke properti utama dan isi `property_block_id`.
-4. Pindahkan owner lama dari `properties.user_id` ke `property_blocks.owner_id`.
+2. Ubah properti lama `A1 Cozy`, `A2 Cozy`, dan seterusnya menjadi `property_buildings`.
+3. Pindahkan unit dari properti lama ke properti utama dan isi `property_building_id`.
+4. Pindahkan owner lama dari `properties.user_id` ke `property_buildings.owner_id`.
 5. Redirect public slug/detail lama ke properti utama jika masih ada link lama.
 
 ## Kompatibilitas Frontend Saat Ini

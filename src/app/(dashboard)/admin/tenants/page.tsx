@@ -36,6 +36,7 @@ import {
   EMAIL_MAX_LENGTH,
   NIK_LENGTH,
   PASSWORD_MIN_LENGTH,
+  PHONE_INPUT_MAX_LENGTH,
   getEmailValidationMessage,
   getNikValidationMessage,
   getPasswordValidationMessage,
@@ -325,12 +326,14 @@ export default function AdminTenantsPage() {
     setForm({
       fullName: tenant.full_name,
       email: tenant.email,
-      phoneNumber: tenant.phone_number || "",
+      phoneNumber: sanitizePhoneInput(tenant.phone_number || ""),
       accountStatus: tenant.account_status,
       password: "",
       nik: tenant.nik || "",
       emergencyContactName: tenant.emergency_contact_name || "",
-      emergencyContactNumber: tenant.emergency_contact_number || "",
+      emergencyContactNumber: sanitizePhoneInput(
+        tenant.emergency_contact_number?.toString() || ""
+      ),
       relationship: tenant.relationship || "",
     });
     setFormError(null);
@@ -784,7 +787,7 @@ export default function AdminTenantsPage() {
                   placeholder="Contoh: 081234567890"
                   type="tel"
                   inputMode="numeric"
-                  maxLength={16}
+                  maxLength={PHONE_INPUT_MAX_LENGTH}
                   error={fieldErrors.phoneNumber}
                 />
 
@@ -824,7 +827,7 @@ export default function AdminTenantsPage() {
                   placeholder="Masukkan nomor kontak darurat"
                   type="tel"
                   inputMode="numeric"
-                  maxLength={16}
+                  maxLength={PHONE_INPUT_MAX_LENGTH}
                   error={fieldErrors.emergencyContactNumber}
                 />
               </div>

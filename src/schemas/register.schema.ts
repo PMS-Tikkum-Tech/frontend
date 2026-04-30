@@ -3,6 +3,7 @@ import {
   EMAIL_MAX_LENGTH,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  getEmailValidationMessage,
   getPhoneValidationMessage,
   isStrongPassword,
 } from "@/lib/form-validation";
@@ -18,8 +19,10 @@ export const registerSchema = z
     email: z
       .string()
       .trim()
-      .email("Format alamat email tidak valid.")
-      .max(EMAIL_MAX_LENGTH, "Alamat email terlalu panjang."),
+      .max(EMAIL_MAX_LENGTH, "Alamat email terlalu panjang.")
+      .refine((value) => !getEmailValidationMessage(value), {
+        message: "Masukkan alamat email yang valid.",
+      }),
 
     phoneNumber: z
       .string()

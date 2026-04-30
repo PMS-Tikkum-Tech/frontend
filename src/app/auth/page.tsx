@@ -85,7 +85,7 @@ function AuthPageContent() {
 
   const description =
     mode === "register"
-      ? "Isi data singkat untuk membuat akun penyewa dan lanjutkan verifikasi email."
+      ? "Pilih metode pendaftaran dan verifikasi nomor WhatsApp atau email."
       : mode === "verify"
         ? "Buka tautan verifikasi yang dikirim ke email kamu, lalu kembali ke halaman ini."
         : "Gunakan email dan kata sandi untuk melanjutkan.";

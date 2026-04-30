@@ -21,6 +21,7 @@ import {
   getTenantPayments,
   type TenantPayment,
 } from "@/lib/dashboard/tenant.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
 type UnitOption = {
   propertyId: number;
@@ -79,7 +80,7 @@ export default function ComplaintPage() {
           propertyId: payment.property.id,
           propertyName: payment.property.name || "-",
           unitId: payment.unit.id,
-          unitName: payment.unit.name || "-",
+          unitName: getTenantUnitDisplayName(payment.unit),
         });
       });
 

@@ -13,6 +13,7 @@ import {
   getTenantMaintenanceRequests,
   type TenantMaintenanceRequest,
 } from "@/lib/dashboard/tenant.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
 type MaintenanceFilter = "all" | "active" | "completed";
 
@@ -296,7 +297,7 @@ function MaintenanceCard({ request }: { request: TenantMaintenanceRequest }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-800">
-            {request.property.name || "-"} • {request.unit.name || "-"}
+            {request.property.name || "-"} • {getTenantUnitDisplayName(request.unit)}
           </h2>
           <p className="mt-1 text-sm text-slate-600">{request.issue}</p>
           <p className="mt-1 text-xs text-slate-500">Kategori: {request.category}</p>

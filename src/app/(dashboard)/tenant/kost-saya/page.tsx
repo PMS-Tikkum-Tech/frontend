@@ -22,6 +22,7 @@ import {
   type TenantPayment,
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
@@ -62,6 +63,17 @@ const formatDateTime = (value?: string | null) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  });
+};
+
+const getStayUnitDisplayName = (stay: TenantStaySummary) => {
+  return getTenantUnitDisplayName({
+    name: stay.unit_name,
+    unit_name: stay.unit_name,
+    unit_number: stay.unit_number,
+    room_number: stay.room_number,
+    building_name: stay.building_name,
+    block_name: stay.block_name,
   });
 };
 
@@ -257,7 +269,7 @@ export default function KostSayaPage() {
         id: `payment-${payment.id}`,
         type: "payment" as const,
         title: status.title,
-        subtitle: `${payment.property.name || "-"} • ${payment.unit.name || "-"}`,
+        subtitle: `${payment.property.name || "-"} • ${getTenantUnitDisplayName(payment.unit)}`,
         statusLabel: status.label,
         tone: status.tone,
         amountLabel: formatCurrency(payment.amount),
@@ -312,7 +324,7 @@ export default function KostSayaPage() {
         id: `maintenance-${item.id}`,
         type: "maintenance" as const,
         title: status.title,
-        subtitle: `${item.issue} • ${item.unit.name || "-"}`,
+        subtitle: `${item.issue} • ${getTenantUnitDisplayName(item.unit)}`,
         statusLabel: status.label,
         tone: status.tone,
         timeLabel: formatDateTime(referenceTime),
@@ -386,14 +398,14 @@ export default function KostSayaPage() {
                         className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700"
                       >
                         <Home size={14} className="text-emerald-700" />
-                        {stay.unit_name || "-"}
+                        {getStayUnitDisplayName(stay)}
                       </span>
                     ))}
                   </div>
                 ) : latestPayment ? (
                   <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700">
                     <Home size={14} className="text-emerald-700" />
-                    {latestPayment.unit.name || "-"}
+                    {getTenantUnitDisplayName(latestPayment.unit)}
                   </p>
                 ) : null}
                 <p className="mt-3 text-sm text-slate-600">
@@ -777,7 +789,9 @@ function ActiveStayCard({
         </div>
         <div className="absolute bottom-4 left-4 right-4 text-white">
           <p className="text-lg font-semibold">{stay.property_name || "-"}</p>
-          <p className="mt-1 text-sm text-white/85">{stay.unit_name || "-"}</p>
+          <p className="mt-1 text-sm text-white/85">
+            {getStayUnitDisplayName(stay)}
+          </p>
         </div>
       </div>
 

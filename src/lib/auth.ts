@@ -39,6 +39,20 @@ type OtpVerifyPayload = {
   expires_at?: string | null;
 };
 
+type EmailCodeRequestPayload = {
+  request_id: string;
+  email: string;
+  expires_at?: string | null;
+  resend_available_at?: string | null;
+  debug_code?: string | null;
+};
+
+type EmailCodeVerifyPayload = {
+  email: string;
+  email_verification_token: string;
+  expires_at?: string | null;
+};
+
 type ChangePasswordRequest = {
   userId: number;
   current_password: string;
@@ -89,9 +103,10 @@ const getRequiredRoleByPath = (path: string) => {
 
 const mapUser = (user: BackendUser): SessionUser => ({
   id: user.id,
-  name: user.full_name,
-  email: user.email,
+  name: user.full_name?.trim() || "Tenant KIKOST",
+  email: user.email?.trim() || "",
   role: user.role,
+  tenantStatus: user.tenant_status ?? null,
   avatar: user.profile_picture_url ?? null,
 });
 
@@ -112,7 +127,7 @@ export const getDefaultRouteByRole = (role: UserRole) => {
     return "/owner";
   }
 
-  return "/tenant";
+  return "/";
 };
 
 export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
@@ -121,6 +136,10 @@ export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
   }
 
   const pathWithoutQuery = nextPath.split("?")[0]?.split("#")[0] || nextPath;
+  if (pathWithoutQuery === "/tenant") {
+    return "/";
+  }
+
   const requiredRole = getRequiredRoleByPath(pathWithoutQuery);
 
   if (!requiredRole || requiredRole === role) {
@@ -196,6 +215,72 @@ export const verifyTenantRegistrationOtp = async (payload: {
   };
 };
 
+export const completeTenantPhoneRegistration = async (payload: {
+  phoneVerificationToken: string;
+  fullName?: string;
+}): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/tenant/register/complete_phone",
+    {
+      phone_verification_token: payload.phoneVerificationToken,
+      full_name: payload.fullName?.trim() || undefined,
+    }
+  );
+
+  return mapAuthPayload(res.data.data);
+};
+
+export const requestTenantRegistrationEmailCode = async (email: string) => {
+  const res = await axiosInstance.post<ApiResponse<EmailCodeRequestPayload>>(
+    "/api/v1/auth/tenant/register/request_email_code",
+    {
+      email,
+    }
+  );
+
+  return {
+    requestId: res.data.data.request_id,
+    email: res.data.data.email,
+    expiresAt: res.data.data.expires_at ?? null,
+    resendAvailableAt: res.data.data.resend_available_at ?? null,
+    debugCode: res.data.data.debug_code ?? null,
+  };
+};
+
+export const verifyTenantRegistrationEmailCode = async (payload: {
+  email: string;
+  code: string;
+}) => {
+  const res = await axiosInstance.post<ApiResponse<EmailCodeVerifyPayload>>(
+    "/api/v1/auth/tenant/register/verify_email_code",
+    {
+      email: payload.email,
+      code: payload.code,
+    }
+  );
+
+  return {
+    email: res.data.data.email,
+    emailVerificationToken: res.data.data.email_verification_token,
+    expiresAt: res.data.data.expires_at ?? null,
+  };
+};
+
+export const completeTenantEmailRegistration = async (payload: {
+  emailVerificationToken: string;
+  fullName?: string;
+}): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/tenant/register/complete_email",
+    {
+      email_verification_token: payload.emailVerificationToken,
+      full_name: payload.fullName?.trim() || undefined,
+    }
+  );
+
+  return mapAuthPayload(res.data.data);
+};
+
 export const registerTenant = async (
   data: RegisterRequest
 ): Promise<RegisterResult> => {
@@ -205,7 +290,7 @@ export const registerTenant = async (
   );
 
   return {
-    email: res.data.data.user.email,
+    email: res.data.data.user.email || data.email,
     phoneNumber: res.data.data.user.phone_number || data.phone_number,
     accountStatus: res.data.data.user.account_status,
   };

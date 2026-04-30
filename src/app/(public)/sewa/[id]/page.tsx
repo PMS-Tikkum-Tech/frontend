@@ -14,12 +14,13 @@ import {
   ChevronRight,
   CheckCircle2,
   Home,
+  Image as ImageIcon,
   MapPin,
-  NotebookPen,
   Tag,
   ShieldCheck,
   Sparkles,
   Users,
+  Video,
   Wifi,
   X,
 } from "lucide-react";
@@ -41,6 +42,11 @@ import {
   resolveBackendCoordinate,
   type PropertyCoordinate,
 } from "@/lib/maps/property-coordinate";
+import {
+  getTenantUnitBuildingName,
+  getTenantUnitDisplayName,
+  getTenantUnitNumber,
+} from "@/lib/dashboard/tenant-unit-display";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
@@ -280,11 +286,11 @@ type AvailableUnitCard = {
   unitTypeValue: string;
   status: string;
   statusValue: string;
-  capacity: string;
-  floorInfo: string;
+  capacityLabel: string | null;
   priceValue: number;
   priceLabel: string;
   facilities: string[];
+  media: PropertyMedia[];
 };
 
 type VisitRequestFormPayload = {
@@ -340,68 +346,28 @@ const getUnitStatusBadgeClass = (status: string) => {
   return "border-slate-200 bg-slate-100 text-slate-600";
 };
 
-const sanitizeUnitLabelPart = (value?: string | number | null) => {
-  if (value == null) {
-    return "";
-  }
+const buildUnitMedias = (unit: PublicPropertyUnitSummary): PropertyMedia[] => {
+  const photoCandidates = Array.from(
+    new Set([...(unit.photo_urls || []), ...(unit.roomphoto_urls || []), unit.photo_url || ""])
+  )
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  const videoCandidates = Array.from(
+    new Set([...(unit.video_urls || []), unit.video_url || "", unit.video_360_url || ""])
+  )
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 
-  return String(value).trim();
-};
-
-const parseBuildingNameFromUnitName = (unitName: string) => {
-  const separatorMatch = unitName.match(/^(.+?)\s*(?:-|\/|\||•|·|:)\s*(.+)$/);
-  return separatorMatch?.[1]?.trim() || null;
-};
-
-const resolveTenantUnitNumber = (
-  unit: PublicPropertyUnitSummary,
-  buildingName?: string | null
-) => {
-  const explicitNumber =
-    sanitizeUnitLabelPart(unit.unit_number) ||
-    sanitizeUnitLabelPart(unit.room_number) ||
-    sanitizeUnitLabelPart(unit.number);
-
-  if (explicitNumber) {
-    return explicitNumber.replace(/^(unit|kamar|room)\s+/i, "").trim();
-  }
-
-  let candidate = sanitizeUnitLabelPart(unit.name);
-  if (!candidate) {
-    return String(unit.id);
-  }
-
-  const normalizedBuilding = buildingName?.trim();
-  if (
-    normalizedBuilding &&
-    candidate.toLowerCase().startsWith(normalizedBuilding.toLowerCase())
-  ) {
-    candidate = candidate.slice(normalizedBuilding.length).trim();
-  }
-
-  candidate = candidate.replace(/^\s*(?:-|\/|\||•|·|:)\s*/, "").trim();
-  const separatorMatch = candidate.match(/^.+?\s*(?:-|\/|\||•|·|:)\s*(.+)$/);
-  if (separatorMatch?.[1]) {
-    candidate = separatorMatch[1].trim();
-  }
-
-  return (
-    candidate
-      .replace(/^(unit|kamar|room)\s+/i, "")
-      .replace(/^#/, "")
-      .trim() || String(unit.id)
-  );
-};
-
-const buildTenantUnitDisplayName = (
-  buildingName: string | null,
-  unitNumber: string
-) => {
-  if (!buildingName) {
-    return `Unit ${unitNumber}`;
-  }
-
-  return `${buildingName} - Unit ${unitNumber}`;
+  return [
+    ...photoCandidates.map((path) => ({
+      type: "image" as const,
+      src: resolvePropertyImage(path),
+    })),
+    ...videoCandidates.map((path) => ({
+      type: "video" as const,
+      src: resolvePropertyImage(path),
+    })),
+  ];
 };
 
 const mapPublicUnitToCard = (
@@ -409,32 +375,28 @@ const mapPublicUnitToCard = (
   property: PublicPropertySummary
 ): AvailableUnitCard => {
   const monthlyPrice = unit.price || property.price_min || property.price_max || 0;
-  const capacity =
+  const capacityLabel =
     typeof unit.people_allowed === "number" && unit.people_allowed > 0
       ? `${unit.people_allowed} orang`
-      : "Sesuai ketentuan properti";
-  const buildingName =
-    unit.building_name ||
-    unit.block_name ||
-    parseBuildingNameFromUnitName(unit.name || "") ||
-    null;
-  const unitNumber = resolveTenantUnitNumber(unit, buildingName);
+      : null;
+  const buildingName = getTenantUnitBuildingName(unit);
+  const unitNumber = getTenantUnitNumber(unit, buildingName);
 
   return {
     id: unit.id,
     name: unit.name || `Unit ${unit.id}`,
-    displayName: buildTenantUnitDisplayName(buildingName, unitNumber),
+    displayName: getTenantUnitDisplayName(unit),
     buildingName,
     unitNumber,
     unitType: formatLabel(unit.unit_type || property.property_type),
     unitTypeValue: unit.unit_type || property.property_type || "",
     status: toUnitStatusLabel(unit.status),
     statusValue: unit.status || "vacant",
-    capacity,
-    floorInfo: "Informasi lantai menyusul",
+    capacityLabel,
     priceValue: monthlyPrice,
     priceLabel: formatCurrency(monthlyPrice),
     facilities: (property.facilities || []).slice(0, 3),
+    media: buildUnitMedias(unit),
   };
 };
 
@@ -1311,13 +1273,46 @@ export default function SewaPropertyDetailPage() {
                       key={unit.id}
                       className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:border-blue-200"
                     >
+                      {unit.media.length > 0 ? (
+                        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
+                          {unit.media[0].type === "video" ? (
+                            <video
+                              src={unit.media[0].src}
+                              controls
+                              preload="metadata"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Image
+                              src={unit.media[0].src}
+                              alt={`Media ${unit.displayName}`}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          )}
+                          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-900/75 px-2 py-1 text-[11px] font-semibold text-white">
+                            {unit.media[0].type === "video" ? (
+                              <Video size={12} />
+                            ) : (
+                              <ImageIcon size={12} />
+                            )}
+                            {unit.media.length} media
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="mb-3 flex aspect-[16/9] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs font-medium text-slate-500">
+                          Media unit belum tersedia
+                        </div>
+                      )}
+
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">
                             {unit.displayName}
                           </p>
                           <p className="mt-0.5 text-xs text-slate-500">
-                            {unit.unitType} • {unit.floorInfo}
+                            {unit.unitType}
                           </p>
                         </div>
                         <span
@@ -1330,10 +1325,12 @@ export default function SewaPropertyDetailPage() {
                       </div>
 
                       <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                        <p className="inline-flex items-center gap-1.5">
-                          <Users size={13} className="text-blue-700" />
-                          Kapasitas {unit.capacity}
-                        </p>
+                        {unit.capacityLabel ? (
+                          <p className="inline-flex items-center gap-1.5">
+                            <Users size={13} className="text-blue-700" />
+                            Kapasitas {unit.capacityLabel}
+                          </p>
+                        ) : null}
                         <p className="inline-flex items-center gap-1.5">
                           <Tag size={13} className="text-blue-700" />
                           {unit.priceLabel}/bulan
@@ -1357,10 +1354,7 @@ export default function SewaPropertyDetailPage() {
                         )}
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-3">
-                        <p className="text-[11px] text-slate-500">
-                          Unit ini dapat dipilih langsung untuk pemesanan.
-                        </p>
+                      <div className="mt-4 flex justify-end">
                         <Link
                           href={
                             isTenant
@@ -1379,12 +1373,6 @@ export default function SewaPropertyDetailPage() {
                   ))}
                 </div>
               )}
-
-              <p className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                <NotebookPen size={13} className="text-blue-700" />
-                Detail ketersediaan unit disinkronkan dari data properti yang
-                diinput administrator.
-              </p>
             </div>
           </article>
         </div>

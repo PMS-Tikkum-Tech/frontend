@@ -16,6 +16,7 @@ import {
   getTenantPayments,
   type TenantPayment,
 } from "@/lib/dashboard/tenant.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
 type PaymentFilter = "all" | TenantPayment["status"];
 
@@ -430,7 +431,9 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
           <h3 className="text-base font-semibold text-slate-800">
             {payment.property.name || "-"}
           </h3>
-          <p className="mt-1 text-sm text-slate-500">{payment.unit.name || "-"}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {getTenantUnitDisplayName(payment.unit)}
+          </p>
           <p className="mt-2 text-xs text-slate-500">Faktur: {payment.invoice_id}</p>
         </div>
 
@@ -488,7 +491,7 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">
-            {payment.property.name || "-"} • {payment.unit.name || "-"}
+            {payment.property.name || "-"} • {getTenantUnitDisplayName(payment.unit)}
           </p>
           <p className="mt-1 text-xs text-slate-500">Faktur: {payment.invoice_id}</p>
         </div>

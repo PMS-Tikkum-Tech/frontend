@@ -23,6 +23,8 @@ const EXACT_ID_TO_EN: Record<string, string> = {
   "Masuk ke Akun Anda": "Sign In to Your Account",
   "Isi data singkat untuk membuat akun penyewa.":
     "Fill in a few details to create a tenant account.",
+  "Pilih metode pendaftaran dan verifikasi nomor WhatsApp atau email.":
+    "Choose a registration method and verify your WhatsApp number or email.",
   "Masukkan kode 6 digit OTP dari WhatsApp.":
     "Enter the 6-digit OTP code from WhatsApp.",
   "Gunakan email dan kata sandi untuk melanjutkan.":

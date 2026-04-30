@@ -46,7 +46,7 @@ export default function TenantBantuanPage() {
         >
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-green-700">
             <MessageCircleMore size={16} />
-            WhatsApp Administrator
+            Nomor Telepon Administrator
           </p>
           <p className="mt-2 text-sm text-slate-700">
             Kanal tercepat untuk pertanyaan umum, kendala akun, dan kebutuhan

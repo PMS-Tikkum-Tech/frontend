@@ -25,6 +25,7 @@ import {
 import {
   EMAIL_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  PHONE_INPUT_MAX_LENGTH,
   getEmailValidationMessage,
   getPasswordValidationMessage,
   getPhoneValidationMessage,
@@ -259,7 +260,7 @@ export default function AdminAccountPage() {
     setForm({
       fullName: user.full_name,
       email: isOperationalRole(user.role) ? "" : user.email,
-      phoneNumber: user.phone_number || "",
+      phoneNumber: sanitizePhoneInput(user.phone_number || ""),
       role: user.role,
       accountStatus: user.account_status,
       password: "",
@@ -434,12 +435,14 @@ export default function AdminAccountPage() {
     const inactiveCount = users.filter(
       (user) => user.account_status === "inactive"
     ).length;
-    const adminOwnerCount = users.filter(
-      (user) => user.role === "admin" || user.role === "owner"
-    ).length;
+    const adminCount = users.filter((user) => user.role === "admin").length;
+    const ownerCount = users.filter((user) => user.role === "owner").length;
     const tenantCount = users.filter((user) => user.role === "tenant").length;
-    const operationalCount = users.filter((user) =>
-      isOperationalRole(user.role)
+    const housekeeperCount = users.filter(
+      (user) => user.role === "housekeeper"
+    ).length;
+    const technicianCount = users.filter(
+      (user) => user.role === "technician"
     ).length;
 
     return {
@@ -447,9 +450,11 @@ export default function AdminAccountPage() {
       activeCount,
       pendingCount,
       inactiveCount,
-      adminOwnerCount,
+      adminCount,
+      ownerCount,
       tenantCount,
-      operationalCount,
+      housekeeperCount,
+      technicianCount,
     };
   }, [users]);
 
@@ -519,7 +524,7 @@ export default function AdminAccountPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
         <SummaryCard
           title="Total Akun"
           value={summary.total}
@@ -532,21 +537,33 @@ export default function AdminAccountPage() {
           tone="success"
         />
         <SummaryCard
-          title="Administrator & Pemilik"
-          value={summary.adminOwnerCount}
-          caption="Akun pengelola sistem"
+          title="Administrator"
+          value={summary.adminCount}
+          caption="Akses pengelola sistem"
+          tone="info"
+        />
+        <SummaryCard
+          title="Pemilik"
+          value={summary.ownerCount}
+          caption="Owner properti"
           tone="info"
         />
         <SummaryCard
           title="Penyewa"
           value={summary.tenantCount}
-          caption="Akun penyewa aktif"
+          caption="Akun tenant"
           tone="warning"
         />
         <SummaryCard
-          title="Petugas"
-          value={summary.operationalCount}
-          caption="Petugas kebersihan & teknisi"
+          title="Housekeeper"
+          value={summary.housekeeperCount}
+          caption="Petugas kebersihan"
+          tone="cyan"
+        />
+        <SummaryCard
+          title="Teknisi"
+          value={summary.technicianCount}
+          caption="Petugas perawatan"
           tone="cyan"
         />
       </section>
@@ -854,7 +871,7 @@ export default function AdminAccountPage() {
                 placeholder="Contoh: 081234567890"
                 type="tel"
                 inputMode="numeric"
-                maxLength={16}
+                maxLength={PHONE_INPUT_MAX_LENGTH}
                 error={fieldErrors.phoneNumber}
               />
 

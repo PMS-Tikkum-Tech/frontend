@@ -1,12 +1,14 @@
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_PATTERN =
+  /^(?!.*\.\.)[a-z0-9](?:[a-z0-9._%+-]{0,62}[a-z0-9])?@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+const NUMERIC_ONLY_PATTERN = /^\d+$/;
 
 export const EMAIL_MAX_LENGTH = 100;
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 100;
 export const PHONE_DIGIT_MIN_LENGTH = 10;
 export const PHONE_DIGIT_MAX_LENGTH = 14;
-export const PHONE_INPUT_MAX_LENGTH = 16;
+export const PHONE_INPUT_MAX_LENGTH = 15;
 export const OTP_CODE_LENGTH = 6;
 export const NIK_LENGTH = 16;
 
@@ -17,15 +19,7 @@ export const sanitizeEmailInput = (value: string) =>
   value.replace(/\s+/g, "").trim().toLowerCase();
 
 export const sanitizePhoneInput = (value: string) => {
-  const trimmed = value.trim();
-  const hasLeadingPlus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/\D/g, "").slice(0, 15);
-
-  if (!digits) {
-    return hasLeadingPlus ? "+" : "";
-  }
-
-  return hasLeadingPlus ? `+${digits}` : digits;
+  return value.replace(/\D/g, "").slice(0, PHONE_INPUT_MAX_LENGTH);
 };
 
 export const sanitizeOtpInput = (value: string) =>
@@ -136,8 +130,17 @@ export const getEmailValidationMessage = (
     return `${label} maksimal ${EMAIL_MAX_LENGTH} karakter.`;
   }
 
+  if (NUMERIC_ONLY_PATTERN.test(normalized)) {
+    return `${label} harus berupa alamat email yang valid.`;
+  }
+
   if (!EMAIL_PATTERN.test(normalized)) {
     return `Format ${label.toLowerCase()} tidak valid.`;
+  }
+
+  const localPart = normalized.split("@", 1)[0] || "";
+  if (NUMERIC_ONLY_PATTERN.test(localPart)) {
+    return `${label} harus berupa alamat email yang valid.`;
   }
 
   return null;
@@ -152,18 +155,23 @@ export const getPhoneValidationMessage = (
 ) => {
   const label = options?.label || "Nomor HP";
   const required = options?.required ?? false;
+  const rawValue = value.trim();
   const sanitized = sanitizePhoneInput(value);
 
-  if (!sanitized || sanitized === "+") {
+  if (!sanitized) {
     return required ? `${label} wajib diisi.` : null;
+  }
+
+  if (/\D/.test(rawValue)) {
+    return `${label} hanya boleh berisi angka.`;
   }
 
   if (
     !sanitized.startsWith("0") &&
     !sanitized.startsWith("62") &&
-    !sanitized.startsWith("+62")
+    !sanitized.startsWith("8")
   ) {
-    return `${label} harus diawali 08, 62, atau +62.`;
+    return `${label} harus diawali 08, 62, atau 8.`;
   }
 
   if (!isValidIndonesianMobileNumber(sanitized)) {

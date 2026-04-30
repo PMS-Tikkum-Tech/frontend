@@ -190,7 +190,7 @@ export default function AdminPropertiesPage() {
 
           <button
             onClick={() => setOpenModal(true)}
-            disabled={isSaving || owners.length === 0}
+            disabled={isSaving}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus size={16} />

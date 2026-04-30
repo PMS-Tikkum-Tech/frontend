@@ -96,7 +96,7 @@ export interface AdminPropertyDetailPayload {
 }
 
 export interface AdminPropertyUpsertPayload {
-  owner_id: number;
+  owner_id?: number;
   name: string;
   address: string;
   latitude?: number;
@@ -198,6 +198,10 @@ export interface AdminPropertyUnitRow {
   owner_name?: string | null;
   notes?: string | null;
   description?: string | null;
+  roomphoto_urls?: string[];
+  photo_urls?: string[];
+  video_url?: string | null;
+  video_360_url?: string | null;
   status: string;
 }
 
@@ -214,9 +218,13 @@ export interface AdminUnitCreatePayload {
   people_allowed: number;
   price: number;
   notes?: string;
+  photos?: File[];
+  video?: File | null;
+  video_360?: File | null;
 }
 
 export interface AdminUnitUpdatePayload {
+  property_id?: number;
   name?: string;
   building_id?: number;
   building_name?: string;
@@ -228,6 +236,9 @@ export interface AdminUnitUpdatePayload {
   people_allowed?: number;
   price?: number;
   notes?: string;
+  photos?: File[];
+  video?: File | null;
+  video_360?: File | null;
 }
 
 export interface AdminPropertyMaintenanceRow {
@@ -745,7 +756,9 @@ const normalizeAdminPropertyDetailPayload = (
 const toPropertyFormData = (payload: AdminPropertyUpsertPayload) => {
   const formData = new FormData();
 
-  formData.append("property[user_id]", String(payload.owner_id));
+  if (typeof payload.owner_id === "number") {
+    formData.append("property[user_id]", String(payload.owner_id));
+  }
   formData.append("property[name]", payload.name);
   formData.append("property[address]", payload.address);
   if (typeof payload.latitude === "number" && Number.isFinite(payload.latitude)) {
@@ -845,6 +858,49 @@ const toPropertyUpdateFormData = (payload: AdminPropertyUpdatePayload) => {
   const video360 = payload.video_360 || payload.photo_360 || null;
   if (video360) {
     formData.append("property[video_360]", video360);
+  }
+
+  return formData;
+};
+
+const appendUnitFormDataValue = (
+  formData: FormData,
+  key: string,
+  value: string | number | undefined | null
+) => {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  formData.append(`unit[${key}]`, String(value));
+};
+
+const toUnitFormData = (payload: AdminUnitCreatePayload | AdminUnitUpdatePayload) => {
+  const formData = new FormData();
+
+  appendUnitFormDataValue(formData, "property_id", payload.property_id);
+  appendUnitFormDataValue(formData, "name", payload.name);
+  appendUnitFormDataValue(formData, "building_id", payload.building_id);
+  appendUnitFormDataValue(formData, "building_name", payload.building_name);
+  appendUnitFormDataValue(formData, "block_id", payload.block_id);
+  appendUnitFormDataValue(formData, "block_name", payload.block_name);
+  appendUnitFormDataValue(formData, "owner_id", payload.owner_id);
+  appendUnitFormDataValue(formData, "unit_type", payload.unit_type);
+  appendUnitFormDataValue(formData, "status", payload.status);
+  appendUnitFormDataValue(formData, "people_allowed", payload.people_allowed);
+  appendUnitFormDataValue(formData, "price", payload.price);
+  appendUnitFormDataValue(formData, "notes", payload.notes);
+
+  (payload.photos || []).forEach((photo) => {
+    formData.append("unit[photos][]", photo);
+  });
+
+  if (payload.video) {
+    formData.append("unit[video]", payload.video);
+  }
+
+  if (payload.video_360) {
+    formData.append("unit[video_360]", payload.video_360);
   }
 
   return formData;
@@ -1176,20 +1232,10 @@ export const getAdminPropertyUnits = (id: number | string, params?: QueryParams)
 export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
   const response = await axiosInstance.post<ApiResponse<unknown>>(
     "/api/v1/units",
+    toUnitFormData(payload),
     {
-      unit: {
-        property_id: payload.property_id,
-        name: payload.name,
-        building_id: payload.building_id,
-        building_name: payload.building_name,
-        block_id: payload.block_id,
-        block_name: payload.block_name,
-        owner_id: payload.owner_id,
-        unit_type: payload.unit_type,
-        status: payload.status,
-        people_allowed: payload.people_allowed,
-        price: payload.price,
-        notes: payload.notes,
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
     }
   );
@@ -1206,19 +1252,10 @@ export const updateAdminUnit = async (
 ) => {
   const response = await axiosInstance.patch<ApiResponse<unknown>>(
     `/api/v1/units/${id}`,
+    toUnitFormData(payload),
     {
-      unit: {
-        name: payload.name,
-        building_id: payload.building_id,
-        building_name: payload.building_name,
-        block_id: payload.block_id,
-        block_name: payload.block_name,
-        owner_id: payload.owner_id,
-        unit_type: payload.unit_type,
-        status: payload.status,
-        people_allowed: payload.people_allowed,
-        price: payload.price,
-        notes: payload.notes,
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
     }
   );

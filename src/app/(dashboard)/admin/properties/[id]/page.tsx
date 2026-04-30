@@ -277,6 +277,16 @@ const getInitialTenantAssignmentForm = (): TenantAssignmentFormState => ({
   paymentStatus: "unpaid",
 });
 
+const getUnitPhotoUrls = (unit: AdminPropertyUnitRow) => {
+  return unit.photo_urls && unit.photo_urls.length > 0
+    ? unit.photo_urls
+    : unit.roomphoto_urls || [];
+};
+
+const getUnitVideoCount = (unit: AdminPropertyUnitRow) => {
+  return [unit.video_url, unit.video_360_url].filter(Boolean).length;
+};
+
 export default function DetailPropertiPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -311,6 +321,9 @@ export default function DetailPropertiPage() {
     getInitialTenantAssignmentForm()
   );
   const [unitForm, setUnitForm] = useState<UnitFormState>(getInitialUnitForm());
+  const [unitPhotos, setUnitPhotos] = useState<File[]>([]);
+  const [unitVideoFile, setUnitVideoFile] = useState<File | null>(null);
+  const [unitVideo360File, setUnitVideo360File] = useState<File | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTenant, setIsSavingTenant] = useState(false);
@@ -576,6 +589,12 @@ export default function DetailPropertiPage() {
       })
       .sort((a, b) => a.unit_name.localeCompare(b.unit_name));
   }, [editingTenantRow, unitRows]);
+
+  const resetUnitMediaInputs = () => {
+    setUnitPhotos([]);
+    setUnitVideoFile(null);
+    setUnitVideo360File(null);
+  };
 
   const handleDeleteProperty = async () => {
     if (!propertyId || isDeleting) {
@@ -853,6 +872,9 @@ export default function DetailPropertiPage() {
           status: unitForm.status,
           people_allowed: parsedPeopleAllowed,
           price: parsedPrice,
+          photos: unitPhotos,
+          video: unitVideoFile,
+          video_360: unitVideo360File,
         };
 
         await updateAdminUnit(editingUnitId as number, payload);
@@ -865,10 +887,14 @@ export default function DetailPropertiPage() {
           status: unitForm.status,
           people_allowed: parsedPeopleAllowed,
           price: parsedPrice,
+          photos: unitPhotos,
+          video: unitVideoFile,
+          video_360: unitVideo360File,
         });
       }
 
       setUnitForm(getInitialUnitForm(propertyDetail?.property.user?.id));
+      resetUnitMediaInputs();
       setEditingUnitId(null);
       setShowAddUnitForm(false);
       setNotice({
@@ -897,6 +923,7 @@ export default function DetailPropertiPage() {
     setError(null);
     setEditingUnitId(null);
     setUnitForm(getInitialUnitForm(propertyDetail?.property.user?.id));
+    resetUnitMediaInputs();
     setShowAddUnitForm((prev) => (prev && !editingUnitId ? false : true));
   };
 
@@ -922,6 +949,7 @@ export default function DetailPropertiPage() {
       price: String(unit.price || ""),
       notes: unit.notes || unit.description || "",
     });
+    resetUnitMediaInputs();
     setShowAddUnitForm(true);
   };
 
@@ -933,6 +961,7 @@ export default function DetailPropertiPage() {
     setShowAddUnitForm(false);
     setEditingUnitId(null);
     setUnitForm(getInitialUnitForm(propertyDetail?.property.user?.id));
+    resetUnitMediaInputs();
   };
 
   const handleDeleteUnit = async () => {
@@ -963,6 +992,12 @@ export default function DetailPropertiPage() {
       setIsDeletingUnitId(null);
     }
   };
+
+  const editingUnit = editingUnitId
+    ? unitRows.find((unit) => unit.unit_id === editingUnitId) || null
+    : null;
+  const editingUnitPhotoCount = editingUnit ? getUnitPhotoUrls(editingUnit).length : 0;
+  const editingUnitVideoCount = editingUnit ? getUnitVideoCount(editingUnit) : 0;
 
   return (
     <div className="space-y-6">
@@ -1529,7 +1564,7 @@ export default function DetailPropertiPage() {
                     <th className="p-3 text-left font-semibold">Nama</th>
                     <th className="p-3 text-left font-semibold">Bangunan / Unit</th>
                     <th className="p-3 text-left font-semibold">Check-in</th>
-                    <th className="p-3 text-left font-semibold">WhatsApp</th>
+                    <th className="p-3 text-left font-semibold">Nomor Telepon</th>
                     <th className="p-3 text-left font-semibold">Check-out</th>
                     <th className="p-3 text-left font-semibold">Lama Sewa</th>
                     <th className="p-3 text-left font-semibold">Keterangan</th>
@@ -1785,6 +1820,81 @@ export default function DetailPropertiPage() {
                   className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:col-span-2"
                 />
 
+                <div className="grid gap-3 md:col-span-2 md:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <ImageIcon size={14} />
+                      Foto Unit
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      multiple
+                      onChange={(event) =>
+                        setUnitPhotos(Array.from(event.target.files || []))
+                      }
+                      className="w-full text-xs text-slate-600"
+                    />
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      {unitPhotos.length > 0
+                        ? `${unitPhotos.length} foto baru dipilih.`
+                        : editingUnitPhotoCount > 0
+                          ? `${editingUnitPhotoCount} foto unit sudah tersimpan.`
+                          : "Belum ada foto unit."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <Video size={14} />
+                      Video Unit
+                    </label>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      onChange={(event) =>
+                        setUnitVideoFile(event.target.files?.[0] || null)
+                      }
+                      className="w-full text-xs text-slate-600"
+                    />
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      {unitVideoFile
+                        ? `Video baru: ${unitVideoFile.name}`
+                        : editingUnit?.video_url
+                          ? "Video unit sudah tersimpan."
+                          : "Belum ada video unit."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <Video size={14} />
+                      Video 360 Unit
+                    </label>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      onChange={(event) =>
+                        setUnitVideo360File(event.target.files?.[0] || null)
+                      }
+                      className="w-full text-xs text-slate-600"
+                    />
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      {unitVideo360File
+                        ? `Video 360 baru: ${unitVideo360File.name}`
+                        : editingUnit?.video_360_url
+                          ? "Video 360 unit sudah tersimpan."
+                          : "Belum ada video 360 unit."}
+                    </p>
+                  </div>
+                </div>
+
+                {editingUnit && editingUnitVideoCount > 0 && (
+                  <p className="text-xs text-slate-500 md:col-span-2">
+                    Media baru akan ditambahkan ke data unit yang sudah ada.
+                  </p>
+                )}
+
                 <div className="flex items-center justify-end md:col-span-2">
                   <button
                     type="button"
@@ -1834,7 +1944,7 @@ export default function DetailPropertiPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-[1120px] w-full text-sm">
+              <table className="min-w-[1240px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
                     <th className="p-3 text-left font-semibold">Bangunan/Blok</th>
@@ -1843,6 +1953,7 @@ export default function DetailPropertiPage() {
                     <th className="p-3 text-left font-semibold">Owner</th>
                     <th className="p-3 text-left font-semibold">Kapasitas</th>
                     <th className="p-3 text-left font-semibold">Harga / Bulan</th>
+                    <th className="p-3 text-left font-semibold">Media</th>
                     <th className="p-3 text-left font-semibold">Penyewa</th>
                     <th className="p-3 text-left font-semibold">Status</th>
                     <th className="p-3 text-right font-semibold">Aksi</th>
@@ -1852,13 +1963,15 @@ export default function DetailPropertiPage() {
                 <tbody>
                   {unitFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-4 text-center text-slate-500">
+                      <td colSpan={10} className="p-4 text-center text-slate-500">
                         Tidak ada data unit.
                       </td>
                     </tr>
                   ) : (
                     unitFiltered.map((unit) => {
                       const structuredUnit = unitStructureLookup.get(unit.unit_id);
+                      const photoCount = getUnitPhotoUrls(unit).length;
+                      const videoCount = getUnitVideoCount(unit);
 
                       return (
                         <tr
@@ -1886,6 +1999,20 @@ export default function DetailPropertiPage() {
                           </td>
                           <td className="p-3 text-slate-700">
                             Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+                          </td>
+                          <td className="p-3 text-slate-700">
+                            <div className="space-y-1 text-xs">
+                              <span className="inline-flex items-center gap-1">
+                                <ImageIcon size={13} className="text-slate-500" />
+                                {photoCount} foto
+                              </span>
+                              <span className="block">
+                                <span className="inline-flex items-center gap-1">
+                                  <Video size={13} className="text-slate-500" />
+                                  {videoCount} video
+                                </span>
+                              </span>
+                            </div>
                           </td>
                           <td className="p-3 text-slate-700">{unit.tenant_name || "-"}</td>
                           <td className="p-3">
@@ -2245,14 +2372,14 @@ function PropertyMappingSection({ structure }: { structure: PropertyStructure })
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Mapping Operasional
+            Ringkasan Operasional
           </p>
           <h2 className="mt-1 text-lg font-semibold text-slate-800">
-            Properti → Bangunan → Owner → Unit → Tenant
+            Data Unit dan Penghuni
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
-            Satu properti utama tetap bisa memuat banyak bangunan/blok dengan
-            owner, unit, status hunian, dan data tenant yang berbeda.
+            Lihat daftar bangunan, unit, status hunian, dan penghuni dalam satu
+            tampilan.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -2301,7 +2428,7 @@ function PropertyMappingSection({ structure }: { structure: PropertyStructure })
                       <th className="p-3 text-left font-semibold">Harga</th>
                       <th className="p-3 text-left font-semibold">Status</th>
                       <th className="p-3 text-left font-semibold">Tenant</th>
-                      <th className="p-3 text-left font-semibold">WhatsApp</th>
+                      <th className="p-3 text-left font-semibold">Nomor Telepon</th>
                       <th className="p-3 text-left font-semibold">Check-in</th>
                       <th className="p-3 text-left font-semibold">Check-out</th>
                       <th className="p-3 text-left font-semibold">Lama Sewa</th>

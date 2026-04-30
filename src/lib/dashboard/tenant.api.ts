@@ -27,6 +27,10 @@ type ItemResult<T> = {
 type ApiErrorPayload = {
   message?: string;
   errors?: string[];
+  data?: {
+    code?: string;
+    missing_fields?: string[];
+  };
 };
 
 export interface TenantPayment {
@@ -40,6 +44,11 @@ export interface TenantPayment {
   unit: {
     id: number;
     name?: string | null;
+    unit_number?: string | number | null;
+    room_number?: string | number | null;
+    number?: string | number | null;
+    building_name?: string | null;
+    block_name?: string | null;
   };
   tenant: {
     id: number;
@@ -67,6 +76,11 @@ export interface TenantMaintenanceRequest {
     id: number;
     name?: string | null;
     unit_type?: string | null;
+    unit_number?: string | number | null;
+    room_number?: string | number | null;
+    number?: string | number | null;
+    building_name?: string | null;
+    block_name?: string | null;
   };
   tenant: {
     id: number;
@@ -185,6 +199,11 @@ export interface TenantCurrentStay {
   unit: {
     id: number;
     name?: string | null;
+    unit_number?: string | number | null;
+    room_number?: string | number | null;
+    number?: string | number | null;
+    building_name?: string | null;
+    block_name?: string | null;
     unit_type?: string | null;
     status?: string | null;
     people_allowed?: number | null;
@@ -211,6 +230,10 @@ export interface TenantStaySummary {
   status_label?: string | null;
   property_name?: string | null;
   unit_name?: string | null;
+  unit_number?: string | number | null;
+  room_number?: string | number | null;
+  building_name?: string | null;
+  block_name?: string | null;
   monthly_rent_amount?: number | null;
   start_date?: string | null;
   end_date?: string | null;
@@ -276,6 +299,10 @@ export interface PublicPropertyUnitSummary {
   price?: number | null;
   photo_url?: string | null;
   photo_urls?: string[];
+  roomphoto_urls?: string[];
+  video_urls?: string[];
+  video_url?: string | null;
+  video_360_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -318,6 +345,10 @@ type ManualRentalCatalogUnit = {
   people_allowed?: number | null;
   monthly_rent_amount?: number | null;
   roomphoto_urls?: string[];
+  photo_urls?: string[];
+  video_urls?: string[];
+  video_url?: string | null;
+  video_360_url?: string | null;
   property?: {
     id: number;
     name?: string | null;
@@ -431,6 +462,11 @@ type ManualRentalBooking = {
   unit?: {
     id?: number | null;
     name?: string | null;
+    unit_number?: string | number | null;
+    room_number?: string | number | null;
+    number?: string | number | null;
+    building_name?: string | null;
+    block_name?: string | null;
   } | null;
   tenant?: {
     id?: number | null;
@@ -1025,8 +1061,11 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
 };
 
 const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitSummary => {
-  const photoUrls = Array.from(
-    new Set([...(unit.roomphoto_urls || []), ...(unit.property?.roomphoto_urls || [])])
+  const photoUrls = dedupeMediaPaths(unit.photo_urls, unit.roomphoto_urls);
+  const videoUrls = dedupeMediaPaths(
+    unit.video_urls,
+    unit.video_url,
+    unit.video_360_url
   );
 
   return {
@@ -1045,6 +1084,10 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
     price: unit.monthly_rent_amount || null,
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,
+    roomphoto_urls: photoUrls,
+    video_urls: videoUrls,
+    video_url: unit.video_url || videoUrls[0] || null,
+    video_360_url: unit.video_360_url || null,
     created_at: unit.created_at || null,
     updated_at: unit.updated_at || null,
   };
@@ -1228,6 +1271,11 @@ const mapManualBookingToTenantPayment = (
     unit: {
       id: booking.unit?.id || 0,
       name: booking.unit?.name || null,
+      unit_number: booking.unit?.unit_number ?? booking.unit?.room_number ?? booking.unit?.number ?? null,
+      room_number: booking.unit?.room_number ?? null,
+      number: booking.unit?.number ?? null,
+      building_name: booking.unit?.building_name || booking.unit?.block_name || null,
+      block_name: booking.unit?.block_name || booking.unit?.building_name || null,
     },
     tenant: {
       id: booking.tenant?.id || 0,
@@ -1253,6 +1301,42 @@ export const PUBLIC_PROPERTY_UNITS_LOGIN_REQUIRED_MESSAGE =
   "Unit properti tersedia setelah login.";
 export const TENANT_NOTIFICATIONS_UNAVAILABLE_MESSAGE =
   "Notifikasi tenant belum tersedia pada backend terbaru.";
+export const BASIC_PROFILE_REQUIRED_ERROR_CODE = "BASIC_PROFILE_REQUIRED";
+
+export class BasicProfileRequiredError extends Error {
+  code = BASIC_PROFILE_REQUIRED_ERROR_CODE;
+  missingFields: string[];
+
+  constructor(missingFields: string[]) {
+    super(
+      `Lengkapi data dasar profil sebelum booking: ${missingFields.join(", ")}.`
+    );
+    this.name = "BasicProfileRequiredError";
+    this.missingFields = missingFields;
+  }
+}
+
+export const getBasicProfileRequiredFields = (error: unknown) => {
+  if (error instanceof BasicProfileRequiredError) {
+    return error.missingFields;
+  }
+
+  if (axios.isAxiosError(error)) {
+    const payload = error.response?.data as ApiErrorPayload | undefined;
+    if (payload?.data?.code === BASIC_PROFILE_REQUIRED_ERROR_CODE) {
+      return payload.data.missing_fields || payload.errors || [];
+    }
+
+    if (payload?.message === "Basic profile required") {
+      return payload.errors || [];
+    }
+  }
+
+  return null;
+};
+
+export const isBasicProfileRequiredError = (error: unknown) =>
+  getBasicProfileRequiredFields(error) !== null;
 
 const VISIT_REQUEST_SUBJECT_PREFIX = "Permintaan jadwal kunjungan";
 const VISIT_REQUEST_CANCELLED_VALUE = "dibatalkan";
@@ -1564,17 +1648,28 @@ export const getTenantProfile = () =>
 export const updateTenantProfile = async (payload: {
   user_id: number;
   full_name?: string;
+  email?: string;
   phone_number?: string;
   emergency_contact_name?: string;
   emergency_contact_number?: string;
   relationship?: string;
   nik?: string;
+  date_of_birth?: string;
+  domicile_address?: string;
+  occupation?: string;
+  institution_name?: string;
   profile_picture?: File | null;
+  identity_document?: File | null;
+  selfie_photo?: File | null;
 }) => {
   const formData = new FormData();
 
   if (payload.full_name !== undefined) {
     formData.append("user[full_name]", payload.full_name);
+  }
+
+  if (payload.email !== undefined) {
+    formData.append("user[email]", payload.email);
   }
 
   if (payload.phone_number !== undefined) {
@@ -1603,8 +1698,32 @@ export const updateTenantProfile = async (payload: {
     formData.append("user[nik]", payload.nik);
   }
 
+  if (payload.date_of_birth !== undefined) {
+    formData.append("user[date_of_birth]", payload.date_of_birth);
+  }
+
+  if (payload.domicile_address !== undefined) {
+    formData.append("user[domicile_address]", payload.domicile_address);
+  }
+
+  if (payload.occupation !== undefined) {
+    formData.append("user[occupation]", payload.occupation);
+  }
+
+  if (payload.institution_name !== undefined) {
+    formData.append("user[institution_name]", payload.institution_name);
+  }
+
   if (payload.profile_picture) {
     formData.append("user[profile_picture]", payload.profile_picture);
+  }
+
+  if (payload.identity_document) {
+    formData.append("user[identity_document]", payload.identity_document);
+  }
+
+  if (payload.selfie_photo) {
+    formData.append("user[selfie_photo]", payload.selfie_photo);
   }
 
   const response = await axiosInstance.patch<ApiResponse<BackendUser>>(
@@ -1626,17 +1745,11 @@ export const updateTenantProfile = async (payload: {
 export const getIncompleteTenantProfileFields = (profile: BackendUser) => {
   const required: Array<{ value: unknown; label: string }> = [
     { value: profile.full_name, label: "Nama Lengkap" },
-    { value: profile.phone_number, label: "Nomor HP" },
-    { value: profile.nik, label: "NIK" },
-    {
-      value: profile.emergency_contact_name,
-      label: "Nama Kontak Darurat",
-    },
-    {
-      value: profile.emergency_contact_number,
-      label: "Nomor Kontak Darurat",
-    },
-    { value: profile.relationship, label: "Hubungan Kontak Darurat" },
+    { value: profile.email, label: "Email" },
+    { value: profile.phone_number, label: "Nomor Telepon" },
+    { value: profile.nik, label: "NIK / Nomor Identitas" },
+    { value: profile.date_of_birth, label: "Tanggal Lahir" },
+    { value: profile.domicile_address, label: "Alamat Domisili" },
   ];
 
   return required
@@ -2024,6 +2137,12 @@ export const createTenantBookingPayment = async (
 
   const profileResponse = await getTenantProfile();
   const profile = profileResponse.data;
+  const missingProfileFields = getIncompleteTenantProfileFields(profile);
+
+  if (missingProfileFields.length > 0) {
+    throw new BasicProfileRequiredError(missingProfileFields);
+  }
+
   const tenantName = profile.full_name?.trim() || "Tenant Kyra Stay";
   const tenantEmail = profile.email?.trim();
   const tenantPhone = profile.phone_number?.toString().trim();

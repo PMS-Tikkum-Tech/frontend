@@ -28,6 +28,7 @@ import {
   type TenantPayment,
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
@@ -158,6 +159,10 @@ const mapCurrentStayToSummary = (
     status_label: stay.status_label || null,
     property_name: stay.property?.name || null,
     unit_name: stay.unit?.name || null,
+    unit_number: stay.unit?.unit_number ?? stay.unit?.room_number ?? stay.unit?.number ?? null,
+    room_number: stay.unit?.room_number ?? null,
+    building_name: stay.unit?.building_name || stay.unit?.block_name || null,
+    block_name: stay.unit?.block_name || stay.unit?.building_name || null,
     monthly_rent_amount:
       stay.monthly_rent_amount ?? stay.unit?.monthly_rent_amount ?? null,
     start_date: stay.start_date || null,
@@ -207,6 +212,11 @@ const mapCurrentStayUnit = (
   return {
     id: unit.id,
     name: unit.name || `Unit ${unit.id}`,
+    unit_number: unit.unit_number ?? unit.room_number ?? unit.number ?? null,
+    room_number: unit.room_number ?? null,
+    number: unit.number ?? null,
+    building_name: unit.building_name || unit.block_name || null,
+    block_name: unit.block_name || unit.building_name || null,
     unit_type: unit.unit_type || null,
     status: unit.status || null,
     people_allowed: unit.people_allowed ?? null,
@@ -345,7 +355,13 @@ function TenantKostDetailContent() {
   const displayedPropertyName =
     property?.name || currentStay?.property?.name || latestPayment?.property.name || "-";
   const displayedUnitName =
-    unit?.name || currentStay?.unit?.name || latestPayment?.unit.name || "-";
+    unit
+      ? getTenantUnitDisplayName(unit)
+      : currentStay?.unit
+        ? getTenantUnitDisplayName(currentStay.unit)
+        : latestPayment?.unit
+          ? getTenantUnitDisplayName(latestPayment.unit)
+          : "-";
   const displayStatus = latestPayment
     ? getPaymentDisplayStatus(latestPayment)
     : "paid";
@@ -457,7 +473,15 @@ function TenantKostDetailContent() {
                           : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
                       }`}
                     >
-                      {stay.property_name || "-"} • {stay.unit_name || "-"}
+                      {stay.property_name || "-"} •{" "}
+                      {getTenantUnitDisplayName({
+                        name: stay.unit_name,
+                        unit_name: stay.unit_name,
+                        unit_number: stay.unit_number,
+                        room_number: stay.room_number,
+                        building_name: stay.building_name,
+                        block_name: stay.block_name,
+                      })}
                     </Link>
                   );
                 })}

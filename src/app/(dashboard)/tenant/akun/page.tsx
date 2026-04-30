@@ -2,15 +2,23 @@
 
 import Image from "next/image";
 import {
+  Suspense,
   useEffect,
   useMemo,
   useState,
   type InputHTMLAttributes,
   type ReactNode,
 } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
+  BriefcaseBusiness,
+  Building2,
+  Calendar,
+  Camera,
   CheckCircle2,
+  FileText,
+  Home,
   IdCard,
   Mail,
   Phone,
@@ -30,10 +38,14 @@ import {
 } from "@/lib/dashboard/tenant.api";
 import {
   NIK_LENGTH,
+  PHONE_INPUT_MAX_LENGTH,
+  getEmailValidationMessage,
   getNikValidationMessage,
   getPhoneValidationMessage,
   getTextValidationMessage,
+  normalizePhoneNumber,
   normalizeTextInput,
+  sanitizeEmailInput,
   sanitizeNikInput,
   sanitizePhoneInput,
 } from "@/lib/form-validation";
@@ -68,10 +80,66 @@ const toDisplayValue = (value?: string | number | null) => {
   return trimmed ? trimmed : "-";
 };
 
+const OPTIONAL_DOCUMENT_ACCEPT =
+  ".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf";
+const SELFIE_ACCEPT = PROFILE_PICTURE_ACCEPT;
+const OPTIONAL_UPLOAD_MAX_SIZE = 5 * 1024 * 1024;
+
+const isSafeTenantNextPath = (value?: string | null) =>
+  Boolean(value?.startsWith("/tenant/") && !value.startsWith("//"));
+
+const getDateValidationMessage = (value: string, label: string) => {
+  if (!value.trim()) {
+    return `${label} wajib diisi.`;
+  }
+
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return `${label} tidak valid.`;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (parsed > today) {
+    return `${label} tidak boleh melebihi hari ini.`;
+  }
+
+  return null;
+};
+
+const getUploadValidationError = (
+  file: File,
+  options: {
+    label: string;
+    allowPdf?: boolean;
+  }
+) => {
+  const allowedTypes = options.allowPdf
+    ? ["application/pdf", "image/jpeg", "image/jpg", "image/png"]
+    : ["image/jpeg", "image/jpg", "image/png"];
+
+  if (!allowedTypes.includes(file.type)) {
+    return options.allowPdf
+      ? `${options.label} harus PDF, PNG, JPG, atau JPEG.`
+      : `${options.label} harus PNG, JPG, atau JPEG.`;
+  }
+
+  if (file.size > OPTIONAL_UPLOAD_MAX_SIZE) {
+    return `${options.label} maksimal 5 MB.`;
+  }
+
+  return null;
+};
+
 type ProfileFormState = {
   fullName: string;
+  email: string;
   phoneNumber: string;
   nik: string;
+  dateOfBirth: string;
+  domicileAddress: string;
+  occupation: string;
+  institutionName: string;
   emergencyContactName: string;
   emergencyContactNumber: string;
   relationship: string;
@@ -81,8 +149,13 @@ type ProfileFormErrors = Partial<Record<keyof ProfileFormState, string>>;
 
 const getInitialFormState = (): ProfileFormState => ({
   fullName: "",
+  email: "",
   phoneNumber: "",
   nik: "",
+  dateOfBirth: "",
+  domicileAddress: "",
+  occupation: "",
+  institutionName: "",
   emergencyContactName: "",
   emergencyContactNumber: "",
   relationship: "",
@@ -101,18 +174,64 @@ const getProfileFormErrors = (
     errors.fullName = fullNameError;
   }
 
+  const emailError = getEmailValidationMessage(form.email, {
+    label: "Email",
+    required: true,
+  });
+  if (emailError) {
+    errors.email = emailError;
+  }
+
   const phoneError = getPhoneValidationMessage(form.phoneNumber, {
-    label: "Nomor HP",
+    label: "Nomor Telepon",
+    required: true,
   });
   if (phoneError) {
     errors.phoneNumber = phoneError;
   }
 
   const nikError = getNikValidationMessage(form.nik, {
-    label: "NIK",
+    label: "NIK / Nomor Identitas",
+    required: true,
   });
   if (nikError) {
     errors.nik = nikError;
+  }
+
+  const dateOfBirthError = getDateValidationMessage(
+    form.dateOfBirth,
+    "Tanggal lahir"
+  );
+  if (dateOfBirthError) {
+    errors.dateOfBirth = dateOfBirthError;
+  }
+
+  const domicileAddressError = getTextValidationMessage(
+    form.domicileAddress,
+    {
+      label: "Alamat domisili",
+      required: true,
+      maxLength: 300,
+    }
+  );
+  if (domicileAddressError) {
+    errors.domicileAddress = domicileAddressError;
+  }
+
+  const occupationError = getTextValidationMessage(form.occupation, {
+    label: "Pekerjaan / status",
+    required: false,
+  });
+  if (occupationError) {
+    errors.occupation = occupationError;
+  }
+
+  const institutionError = getTextValidationMessage(form.institutionName, {
+    label: "Kampus / perusahaan",
+    required: false,
+  });
+  if (institutionError) {
+    errors.institutionName = institutionError;
   }
 
   const emergencyContactName = normalizeTextInput(form.emergencyContactName);
@@ -159,6 +278,22 @@ const getProfileFormErrors = (
 };
 
 export default function TenantAccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
+          Memuat profil akun...
+        </div>
+      }
+    >
+      <TenantAccountPageContent />
+    </Suspense>
+  );
+}
+
+function TenantAccountPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [profile, setProfile] = useState<BackendUser | null>(null);
   const [form, setForm] = useState<ProfileFormState>(getInitialFormState());
@@ -176,6 +311,12 @@ export default function TenantAccountPage() {
     useState<File | null>(null);
   const [isProfilePictureCropOpen, setIsProfilePictureCropOpen] =
     useState(false);
+  const [identityDocument, setIdentityDocument] = useState<File | null>(null);
+  const [selfiePhoto, setSelfiePhoto] = useState<File | null>(null);
+  const [identityDocumentInputKey, setIdentityDocumentInputKey] = useState(0);
+  const [selfiePhotoInputKey, setSelfiePhotoInputKey] = useState(0);
+  const isBookingProfileRequired = searchParams.get("required") === "booking";
+  const nextPath = searchParams.get("next");
 
   useEffect(() => {
     return () => {
@@ -201,10 +342,17 @@ export default function TenantAccountPage() {
         setProfile(response.data);
         setForm({
           fullName: toFormValue(response.data.full_name),
-          phoneNumber: toFormValue(response.data.phone_number),
+          email: toFormValue(response.data.email),
+          phoneNumber: sanitizePhoneInput(toFormValue(response.data.phone_number)),
           nik: toFormValue(response.data.nik),
+          dateOfBirth: toFormValue(response.data.date_of_birth),
+          domicileAddress: toFormValue(response.data.domicile_address),
+          occupation: toFormValue(response.data.occupation),
+          institutionName: toFormValue(response.data.institution_name),
           emergencyContactName: toFormValue(response.data.emergency_contact_name),
-          emergencyContactNumber: toFormValue(response.data.emergency_contact_number),
+          emergencyContactNumber: sanitizePhoneInput(
+            toFormValue(response.data.emergency_contact_number)
+          ),
           relationship: toFormValue(response.data.relationship),
         });
         setProfilePicture(null);
@@ -216,6 +364,10 @@ export default function TenantAccountPage() {
           return null;
         });
         setProfilePictureInputKey((prev) => prev + 1);
+        setIdentityDocument(null);
+        setSelfiePhoto(null);
+        setIdentityDocumentInputKey((prev) => prev + 1);
+        setSelfiePhotoInputKey((prev) => prev + 1);
         setPendingProfilePictureFile(null);
         setIsProfilePictureCropOpen(false);
         setFieldErrors({});
@@ -256,6 +408,10 @@ export default function TenantAccountPage() {
       role: "tenant",
       phone_number: "",
       nik: "",
+      date_of_birth: "",
+      domicile_address: "",
+      occupation: "",
+      institution_name: "",
       emergency_contact_name: "",
       emergency_contact_number: "",
       relationship: "",
@@ -343,6 +499,55 @@ export default function TenantAccountPage() {
     setSuccessMessage(null);
   };
 
+  const handleIdentityDocumentChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0] || null;
+    event.currentTarget.value = "";
+    if (!file) {
+      return;
+    }
+
+    const validationError = getUploadValidationError(file, {
+      label: "Dokumen KTP",
+      allowPdf: true,
+    });
+    if (validationError) {
+      setError(validationError);
+      setIdentityDocument(null);
+      setIdentityDocumentInputKey((prev) => prev + 1);
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+    setIdentityDocument(file);
+  };
+
+  const handleSelfiePhotoChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0] || null;
+    event.currentTarget.value = "";
+    if (!file) {
+      return;
+    }
+
+    const validationError = getUploadValidationError(file, {
+      label: "Foto selfie",
+    });
+    if (validationError) {
+      setError(validationError);
+      setSelfiePhoto(null);
+      setSelfiePhotoInputKey((prev) => prev + 1);
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+    setSelfiePhoto(file);
+  };
+
   const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -367,21 +572,35 @@ export default function TenantAccountPage() {
       const response = await updateTenantProfile({
         user_id: userId,
         full_name: normalizeTextInput(form.fullName),
-        phone_number: sanitizePhoneInput(form.phoneNumber),
+        email: sanitizeEmailInput(form.email),
+        phone_number: normalizePhoneNumber(form.phoneNumber),
         nik: sanitizeNikInput(form.nik),
+        date_of_birth: form.dateOfBirth,
+        domicile_address: normalizeTextInput(form.domicileAddress),
+        occupation: normalizeTextInput(form.occupation),
+        institution_name: normalizeTextInput(form.institutionName),
         emergency_contact_name: normalizeTextInput(form.emergencyContactName),
         emergency_contact_number: sanitizePhoneInput(form.emergencyContactNumber),
         relationship: normalizeTextInput(form.relationship),
         profile_picture: profilePicture,
+        identity_document: identityDocument,
+        selfie_photo: selfiePhoto,
       });
 
       setProfile(response.data);
       setForm({
         fullName: toFormValue(response.data.full_name),
-        phoneNumber: toFormValue(response.data.phone_number),
+        email: toFormValue(response.data.email),
+        phoneNumber: sanitizePhoneInput(toFormValue(response.data.phone_number)),
         nik: toFormValue(response.data.nik),
+        dateOfBirth: toFormValue(response.data.date_of_birth),
+        domicileAddress: toFormValue(response.data.domicile_address),
+        occupation: toFormValue(response.data.occupation),
+        institutionName: toFormValue(response.data.institution_name),
         emergencyContactName: toFormValue(response.data.emergency_contact_name),
-        emergencyContactNumber: toFormValue(response.data.emergency_contact_number),
+        emergencyContactNumber: sanitizePhoneInput(
+          toFormValue(response.data.emergency_contact_number)
+        ),
         relationship: toFormValue(response.data.relationship),
       });
       setProfilePicture(null);
@@ -393,10 +612,23 @@ export default function TenantAccountPage() {
         return null;
       });
       setProfilePictureInputKey((prev) => prev + 1);
+      setIdentityDocument(null);
+      setSelfiePhoto(null);
+      setIdentityDocumentInputKey((prev) => prev + 1);
+      setSelfiePhotoInputKey((prev) => prev + 1);
       setPendingProfilePictureFile(null);
       setIsProfilePictureCropOpen(false);
       setFieldErrors({});
       setSuccessMessage(response.message || "Profil berhasil diperbarui.");
+
+      if (
+        isBookingProfileRequired &&
+        getIncompleteTenantProfileFields(response.data).length === 0 &&
+        isSafeTenantNextPath(nextPath)
+      ) {
+        router.push(nextPath as string);
+        router.refresh();
+      }
     } catch (saveError) {
       setError(
         getApiErrorMessage(saveError, "Gagal memperbarui profil. Silakan coba lagi.")
@@ -416,7 +648,8 @@ export default function TenantAccountPage() {
           <div>
             <h1 className="text-3xl font-semibold">Profil</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/90">
-              Lengkapi data diri untuk bisa mengajukan jadwal kunjungan properti.
+              Lengkapi data dasar hanya saat diperlukan untuk booking atau sewa.
+              Data lanjutan tetap opsional dan bisa disusulkan.
             </p>
           </div>
 
@@ -431,7 +664,7 @@ export default function TenantAccountPage() {
           <StatChip
             icon={<Mail size={15} />}
             label="Email"
-            value={toDisplayValue(profile?.email || user?.email)}
+            value={toDisplayValue(savedProfile.email || user?.email)}
           />
           <StatChip
             icon={savedCompleteness.isComplete ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
@@ -440,6 +673,13 @@ export default function TenantAccountPage() {
           />
         </div>
       </section>
+
+      {isBookingProfileRequired ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          Lengkapi data dasar terlebih dahulu untuk melanjutkan proses booking
+          unit. Setelah tersimpan, kamu akan diarahkan kembali ke halaman booking.
+        </section>
+      ) : null}
 
       {isLoading ? (
         <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
@@ -460,7 +700,7 @@ export default function TenantAccountPage() {
               {toDisplayValue(savedProfile.full_name)}
             </p>
             <p className="mt-1 text-sm text-slate-500">
-              {toDisplayValue(profile?.email || user?.email)}
+              {toDisplayValue(savedProfile.email || user?.email)}
             </p>
 
             <div className="mt-4 space-y-2">
@@ -507,10 +747,10 @@ export default function TenantAccountPage() {
               }`}
             >
               {savedCompleteness.isComplete ? (
-                <p>Profil sudah lengkap. Kamu bisa mengajukan jadwal kunjungan.</p>
+                <p>Data dasar sudah lengkap. Kamu bisa melanjutkan booking.</p>
               ) : (
                 <p>
-                  Profil belum lengkap.
+                  Data dasar belum lengkap.
                   <br />
                   Lengkapi: {savedCompleteness.missingFields.join(", ")}.
                 </p>
@@ -524,6 +764,12 @@ export default function TenantAccountPage() {
             </h2>
 
             <form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-relaxed text-blue-800">
+                Data dasar wajib untuk booking: nama, email, nomor telepon,
+                NIK, tanggal lahir, dan alamat domisili. Kontak darurat,
+                pekerjaan, dan dokumen bisa dilengkapi kapan saja.
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <InputField
                   label="Nama Lengkap"
@@ -538,12 +784,20 @@ export default function TenantAccountPage() {
                 <InputField
                   label="Email"
                   icon={<Mail size={14} />}
-                  value={toDisplayValue(profile?.email || user?.email)}
-                  readOnly
-                  placeholder="-"
+                  value={form.email}
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      email: sanitizeEmailInput(value),
+                    }))
+                  }
+                  placeholder="nama@email.com"
+                  type="email"
+                  inputMode="email"
+                  error={fieldErrors.email}
                 />
                 <InputField
-                  label="No. HP"
+                  label="Nomor Telepon"
                   icon={<Phone size={14} />}
                   value={form.phoneNumber}
                   onChange={(value) =>
@@ -555,11 +809,11 @@ export default function TenantAccountPage() {
                   placeholder="Contoh: 081234567890"
                   type="tel"
                   inputMode="numeric"
-                  maxLength={16}
+                  maxLength={PHONE_INPUT_MAX_LENGTH}
                   error={fieldErrors.phoneNumber}
                 />
                 <InputField
-                  label="NIK"
+                  label="NIK / Nomor Identitas"
                   icon={<IdCard size={14} />}
                   value={form.nik}
                   onChange={(value) =>
@@ -572,6 +826,61 @@ export default function TenantAccountPage() {
                   inputMode="numeric"
                   maxLength={NIK_LENGTH}
                   error={fieldErrors.nik}
+                />
+                <InputField
+                  label="Tanggal Lahir"
+                  icon={<Calendar size={14} />}
+                  value={form.dateOfBirth}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, dateOfBirth: value }))
+                  }
+                  placeholder="YYYY-MM-DD"
+                  type="date"
+                  error={fieldErrors.dateOfBirth}
+                />
+                <InputField
+                  label="Pekerjaan / Status"
+                  icon={<BriefcaseBusiness size={14} />}
+                  value={form.occupation}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, occupation: value }))
+                  }
+                  placeholder="Opsional: karyawan, mahasiswa, freelancer"
+                  error={fieldErrors.occupation}
+                />
+              </div>
+
+              <TextAreaField
+                label="Alamat Domisili"
+                icon={<Home size={14} />}
+                value={form.domicileAddress}
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, domicileAddress: value }))
+                }
+                placeholder="Alamat tempat tinggal saat ini"
+                error={fieldErrors.domicileAddress}
+              />
+
+              <div className="border-t border-slate-100 pt-4">
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Data Lanjutan Opsional
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Bagian ini tidak menghambat booking, tetapi bisa diminta admin
+                  saat verifikasi lanjutan.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <InputField
+                  label="Kampus / Perusahaan"
+                  icon={<Building2 size={14} />}
+                  value={form.institutionName}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, institutionName: value }))
+                  }
+                  placeholder="Opsional"
+                  error={fieldErrors.institutionName}
                 />
                 <InputField
                   label="Nama Kontak Darurat"
@@ -596,21 +905,51 @@ export default function TenantAccountPage() {
                   placeholder="Nomor yang bisa dihubungi"
                   type="tel"
                   inputMode="numeric"
-                  maxLength={16}
+                  maxLength={PHONE_INPUT_MAX_LENGTH}
                   error={fieldErrors.emergencyContactNumber}
+                />
+                <InputField
+                  label="Hubungan Kontak Darurat"
+                  icon={<ShieldCheck size={14} />}
+                  value={form.relationship}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, relationship: value }))
+                  }
+                  placeholder="Contoh: Orang Tua, Kakak, Wali"
+                  error={fieldErrors.relationship}
                 />
               </div>
 
-              <InputField
-                label="Hubungan Kontak Darurat"
-                icon={<ShieldCheck size={14} />}
-                value={form.relationship}
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, relationship: value }))
-                }
-                placeholder="Contoh: Orang Tua, Kakak, Wali"
-                error={fieldErrors.relationship}
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <UploadField
+                  label="Upload KTP"
+                  icon={<FileText size={14} />}
+                  accept={OPTIONAL_DOCUMENT_ACCEPT}
+                  inputKey={identityDocumentInputKey}
+                  selectedFile={identityDocument}
+                  savedUrl={profile?.identity_document_url}
+                  onChange={handleIdentityDocumentChange}
+                  onClear={() => {
+                    setIdentityDocument(null);
+                    setIdentityDocumentInputKey((prev) => prev + 1);
+                  }}
+                  note="Opsional. PDF/PNG/JPG/JPEG, maksimal 5 MB."
+                />
+                <UploadField
+                  label="Upload Selfie"
+                  icon={<Camera size={14} />}
+                  accept={SELFIE_ACCEPT}
+                  inputKey={selfiePhotoInputKey}
+                  selectedFile={selfiePhoto}
+                  savedUrl={profile?.selfie_photo_url}
+                  onChange={handleSelfiePhotoChange}
+                  onClear={() => {
+                    setSelfiePhoto(null);
+                    setSelfiePhotoInputKey((prev) => prev + 1);
+                  }}
+                  note="Opsional. PNG/JPG/JPEG, maksimal 5 MB."
+                />
+              </div>
 
               {error ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -724,5 +1063,109 @@ function InputField({
       />
       {error ? <p className="text-xs text-red-500">{error}</p> : null}
     </label>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  placeholder,
+  icon,
+  onChange,
+  error,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  icon: ReactNode;
+  onChange: (value: string) => void;
+  error?: string;
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+        <span className="text-blue-700">{icon}</span>
+        {label}
+      </span>
+      <textarea
+        value={value}
+        rows={3}
+        maxLength={300}
+        aria-invalid={Boolean(error)}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition ${
+          error
+            ? "border-red-300 bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500"
+            : "bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        }`}
+      />
+      {error ? <p className="text-xs text-red-500">{error}</p> : null}
+    </label>
+  );
+}
+
+function UploadField({
+  label,
+  icon,
+  accept,
+  inputKey,
+  selectedFile,
+  savedUrl,
+  onChange,
+  onClear,
+  note,
+}: {
+  label: string;
+  icon: ReactNode;
+  accept: string;
+  inputKey: number;
+  selectedFile: File | null;
+  savedUrl?: string | null;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+  note: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <p className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+        <span className="text-blue-700">{icon}</span>
+        {label}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100">
+          <Upload size={13} className="text-blue-700" />
+          Pilih File
+          <input
+            key={inputKey}
+            type="file"
+            accept={accept}
+            className="hidden"
+            onChange={onChange}
+          />
+        </label>
+        {savedUrl ? (
+          <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
+            Sudah tersimpan
+          </span>
+        ) : null}
+      </div>
+      {selectedFile ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="max-w-full truncate rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
+            {selectedFile.name}
+          </span>
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-600 transition hover:bg-slate-100"
+          >
+            <XCircle size={12} />
+            Batalkan
+          </button>
+        </div>
+      ) : null}
+      <p className="mt-2 text-xs text-slate-500">{note}</p>
+    </div>
   );
 }

@@ -46,7 +46,7 @@ const getDefaultRouteByRole = (role: string) => {
     return "/owner";
   }
 
-  return "/tenant";
+  return "/";
 };
 
 const getRequiredRole = (pathname: string) => {
@@ -71,6 +71,10 @@ const resolveRoleRoute = (role: SessionRole, nextPath?: string | null) => {
   }
 
   const pathWithoutQuery = nextPath.split("?")[0]?.split("#")[0] || nextPath;
+  if (pathWithoutQuery === "/tenant") {
+    return "/";
+  }
+
   const requiredRole = getRequiredRole(pathWithoutQuery);
 
   if (!requiredRole || requiredRole === role) {
@@ -264,6 +268,11 @@ const getValidatedSession = async (
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const search = req.nextUrl.search;
+
+  if (pathname === "/tenant") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   const requiredRole = getRequiredRole(pathname);
   const validatedSession = await getValidatedSession(req);
   const validatedRole = validatedSession.role;

@@ -21,20 +21,46 @@ import {
   Clock3,
   CreditCard,
   FileUp,
+  IdCard,
   Landmark,
   LoaderCircle,
+  Mail,
+  MapPin,
+  Phone,
   ReceiptText,
+  Save,
   ShieldCheck,
+  UserRound,
   WalletCards,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import {
   createTenantBookingPayment,
+  getBasicProfileRequiredFields,
   getApiErrorMessage,
+  getIncompleteTenantProfileFields,
   getPublicProperties,
   getPublicPropertyUnits,
+  getTenantProfile,
+  updateTenantProfile,
   type PublicPropertySummary,
   type PublicPropertyUnitSummary,
 } from "@/lib/dashboard/tenant.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
+import {
+  NIK_LENGTH,
+  PHONE_INPUT_MAX_LENGTH,
+  getEmailValidationMessage,
+  getNikValidationMessage,
+  getPhoneValidationMessage,
+  getTextValidationMessage,
+  normalizePhoneNumber,
+  normalizeTextInput,
+  sanitizeEmailInput,
+  sanitizeNikInput,
+  sanitizePhoneInput,
+} from "@/lib/form-validation";
+import type { BackendUser, SessionUser } from "@/types/auth";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
@@ -86,6 +112,128 @@ const PAYMENT_METHODS = [
 ] as const;
 
 type PaymentMethodValue = (typeof PAYMENT_METHODS)[number]["value"];
+
+type BasicProfileFormState = {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  nik: string;
+  dateOfBirth: string;
+  domicileAddress: string;
+};
+
+type BasicProfileFormErrors = Partial<
+  Record<keyof BasicProfileFormState, string>
+>;
+
+type ProfileMessage = {
+  type: "success" | "error";
+  text: string;
+};
+
+const getInitialBasicProfileForm = (): BasicProfileFormState => ({
+  fullName: "",
+  email: "",
+  phoneNumber: "",
+  nik: "",
+  dateOfBirth: "",
+  domicileAddress: "",
+});
+
+const toFormValue = (value?: string | number | null) => {
+  return value?.toString().trim() || "";
+};
+
+const getDateValidationMessage = (value: string, label: string) => {
+  if (!value.trim()) {
+    return `${label} wajib diisi.`;
+  }
+
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return `${label} tidak valid.`;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (parsed > today) {
+    return `${label} tidak boleh melebihi hari ini.`;
+  }
+
+  return null;
+};
+
+const getBasicProfileFormErrors = (
+  form: BasicProfileFormState
+): BasicProfileFormErrors => {
+  const errors: BasicProfileFormErrors = {};
+
+  const fullNameError = getTextValidationMessage(form.fullName, {
+    label: "Nama lengkap",
+    required: true,
+  });
+  if (fullNameError) {
+    errors.fullName = fullNameError;
+  }
+
+  const emailError = getEmailValidationMessage(form.email, {
+    label: "Email",
+    required: true,
+  });
+  if (emailError) {
+    errors.email = emailError;
+  }
+
+  const phoneError = getPhoneValidationMessage(form.phoneNumber, {
+    label: "Nomor Telepon",
+    required: true,
+  });
+  if (phoneError) {
+    errors.phoneNumber = phoneError;
+  }
+
+  const nikError = getNikValidationMessage(form.nik, {
+    label: "NIK / Nomor Identitas",
+    required: true,
+  });
+  if (nikError) {
+    errors.nik = nikError;
+  }
+
+  const dateOfBirthError = getDateValidationMessage(
+    form.dateOfBirth,
+    "Tanggal lahir"
+  );
+  if (dateOfBirthError) {
+    errors.dateOfBirth = dateOfBirthError;
+  }
+
+  const domicileAddressError = getTextValidationMessage(
+    form.domicileAddress,
+    {
+      label: "Alamat domisili",
+      required: true,
+      maxLength: 300,
+    }
+  );
+  if (domicileAddressError) {
+    errors.domicileAddress = domicileAddressError;
+  }
+
+  return errors;
+};
+
+const mapProfileToBasicForm = (
+  profile: BackendUser,
+  user?: SessionUser | null
+): BasicProfileFormState => ({
+  fullName: toFormValue(profile.full_name || user?.name),
+  email: toFormValue(profile.email || user?.email),
+  phoneNumber: sanitizePhoneInput(toFormValue(profile.phone_number)),
+  nik: sanitizeNikInput(toFormValue(profile.nik)),
+  dateOfBirth: toFormValue(profile.date_of_birth),
+  domicileAddress: toFormValue(profile.domicile_address),
+});
 
 const formatCurrency = (value?: number | null) => {
   if (!value || value <= 0) {
@@ -223,6 +371,7 @@ export default function TenantCreatePaymentPage() {
 }
 
 function TenantCreatePaymentPageContent() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const propertyId = Number(searchParams.get("property_id"));
   const unitId = Number(searchParams.get("unit_id"));
@@ -246,6 +395,16 @@ function TenantCreatePaymentPageContent() {
   const [senderSource, setSenderSource] = useState("");
   const [transferProof, setTransferProof] = useState<File | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [tenantProfile, setTenantProfile] = useState<BackendUser | null>(null);
+  const [basicProfileForm, setBasicProfileForm] =
+    useState<BasicProfileFormState>(getInitialBasicProfileForm);
+  const [basicProfileErrors, setBasicProfileErrors] =
+    useState<BasicProfileFormErrors>({});
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<ProfileMessage | null>(
+    null
+  );
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -272,6 +431,14 @@ function TenantCreatePaymentPageContent() {
     return Math.ceil(monthlyPrice / DAYS_IN_MONTH_FOR_DAILY_RATE);
   }, [monthlyPrice]);
   const displayedBasePrice = isDailyRent ? dailyPrice : monthlyPrice;
+  const displayedUnitName = useMemo(() => {
+    return getTenantUnitDisplayName(unit);
+  }, [unit]);
+  const incompleteProfileFields = useMemo(() => {
+    return tenantProfile ? getIncompleteTenantProfileFields(tenantProfile) : [];
+  }, [tenantProfile]);
+  const isBasicProfileComplete =
+    Boolean(tenantProfile) && incompleteProfileFields.length === 0;
 
   const estimatedTotal = useMemo(() => {
     if (isDailyRent) {
@@ -384,6 +551,150 @@ function TenantCreatePaymentPageContent() {
     };
   }, [propertyId, unitId]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadProfile = async () => {
+      setIsLoadingProfile(true);
+      setProfileMessage(null);
+
+      try {
+        const response = await getTenantProfile();
+        if (!active) {
+          return;
+        }
+
+        setTenantProfile(response.data);
+        setBasicProfileForm(mapProfileToBasicForm(response.data, user));
+        setBasicProfileErrors({});
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setTenantProfile(null);
+        setBasicProfileForm({
+          ...getInitialBasicProfileForm(),
+          fullName: toFormValue(user?.name),
+          email: toFormValue(user?.email),
+        });
+        setProfileMessage({
+          type: "error",
+          text: getApiErrorMessage(
+            error,
+            "Gagal memuat data diri penyewa. Silakan coba lagi."
+          ),
+        });
+      } finally {
+        if (active) {
+          setIsLoadingProfile(false);
+        }
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const updateBasicProfileField = (
+    field: keyof BasicProfileFormState,
+    value: string
+  ) => {
+    const nextValue =
+      field === "phoneNumber"
+        ? sanitizePhoneInput(value)
+        : field === "nik"
+          ? sanitizeNikInput(value)
+          : field === "email"
+            ? sanitizeEmailInput(value)
+            : value;
+
+    setBasicProfileForm((current) => ({
+      ...current,
+      [field]: nextValue,
+    }));
+    setBasicProfileErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const remaining = { ...current };
+      delete remaining[field];
+      return remaining;
+    });
+    setProfileMessage(null);
+    setSubmitError(null);
+  };
+
+  const saveBasicProfile = async (
+    options: { showSuccessMessage?: boolean } = {}
+  ) => {
+    const { showSuccessMessage = true } = options;
+    const nextErrors = getBasicProfileFormErrors(basicProfileForm);
+    setBasicProfileErrors(nextErrors);
+
+    const firstError = Object.values(nextErrors)[0];
+    if (firstError) {
+      if (showSuccessMessage) {
+        setProfileMessage({ type: "error", text: firstError });
+      }
+      throw new Error(firstError);
+    }
+
+    const userId = tenantProfile?.id ?? user?.id;
+    if (!userId) {
+      const message = "Data akun penyewa belum siap. Silakan muat ulang halaman.";
+      if (showSuccessMessage) {
+        setProfileMessage({ type: "error", text: message });
+      }
+      throw new Error(message);
+    }
+
+    setIsSavingProfile(true);
+    if (showSuccessMessage) {
+      setProfileMessage(null);
+    }
+
+    try {
+      const response = await updateTenantProfile({
+        user_id: userId,
+        full_name: normalizeTextInput(basicProfileForm.fullName),
+        email: sanitizeEmailInput(basicProfileForm.email),
+        phone_number: normalizePhoneNumber(basicProfileForm.phoneNumber),
+        nik: sanitizeNikInput(basicProfileForm.nik),
+        date_of_birth: basicProfileForm.dateOfBirth,
+        domicile_address: normalizeTextInput(basicProfileForm.domicileAddress),
+      });
+
+      setTenantProfile(response.data);
+      setBasicProfileForm(mapProfileToBasicForm(response.data, user));
+      setBasicProfileErrors({});
+
+      if (showSuccessMessage) {
+        setProfileMessage({
+          type: "success",
+          text: response.message || "Data diri penyewa tersimpan.",
+        });
+      }
+
+      return response.data;
+    } catch (error) {
+      const message = getApiErrorMessage(
+        error,
+        "Data diri penyewa gagal disimpan. Silakan cek kembali isian."
+      );
+      if (showSuccessMessage) {
+        setProfileMessage({ type: "error", text: message });
+      }
+      throw new Error(message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const handleProofChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     setSubmitError(null);
@@ -429,6 +740,19 @@ function TenantCreatePaymentPageContent() {
       return;
     }
 
+    if (isLoadingProfile) {
+      setSubmitError("Data diri penyewa sedang dimuat. Silakan tunggu sebentar.");
+      return;
+    }
+
+    const nextProfileErrors = getBasicProfileFormErrors(basicProfileForm);
+    setBasicProfileErrors(nextProfileErrors);
+    const firstProfileError = Object.values(nextProfileErrors)[0];
+    if (firstProfileError) {
+      setSubmitError(firstProfileError);
+      return;
+    }
+
     if (!transferProof) {
       setSubmitError("Unggah bukti transfer terlebih dahulu.");
       return;
@@ -441,6 +765,8 @@ function TenantCreatePaymentPageContent() {
 
     setIsSubmitting(true);
     try {
+      await saveBasicProfile({ showSuccessMessage: false });
+
       const response = await createTenantBookingPayment({
         property_id: property.id,
         unit_id: unit.id,
@@ -459,6 +785,16 @@ function TenantCreatePaymentPageContent() {
         dueDate: response.data.due_date || null,
       });
     } catch (error) {
+      const missingProfileFields = getBasicProfileRequiredFields(error);
+      if (missingProfileFields) {
+        setSubmitError(
+          missingProfileFields.length > 0
+            ? `Lengkapi data diri penyewa: ${missingProfileFields.join(", ")}.`
+            : "Lengkapi data diri penyewa pada Detail Informasi Sewa."
+        );
+        return;
+      }
+
       setSubmitError(
         getApiErrorMessage(
           error,
@@ -622,6 +958,193 @@ function TenantCreatePaymentPageContent() {
               </LabelField>
             </div>
 
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Data Diri Penyewa
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Data ini diperlukan untuk memproses booking dan sewa unit.
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    isBasicProfileComplete
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {isBasicProfileComplete ? "Data lengkap" : "Perlu dilengkapi"}
+                </span>
+              </div>
+
+              {isLoadingProfile ? (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-blue-700">
+                  <LoaderCircle size={14} className="animate-spin" />
+                  Memuat data diri penyewa...
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <ProfileField
+                      label="Nama Lengkap"
+                      icon={<UserRound size={14} />}
+                      error={basicProfileErrors.fullName}
+                    >
+                      <input
+                        type="text"
+                        value={basicProfileForm.fullName}
+                        onChange={(event) =>
+                          updateBasicProfileField("fullName", event.target.value)
+                        }
+                        placeholder="Nama sesuai identitas"
+                        aria-invalid={Boolean(basicProfileErrors.fullName)}
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                      />
+                    </ProfileField>
+
+                    <ProfileField
+                      label="Email"
+                      icon={<Mail size={14} />}
+                      error={basicProfileErrors.email}
+                    >
+                      <input
+                        type="email"
+                        inputMode="email"
+                        value={basicProfileForm.email}
+                        onChange={(event) =>
+                          updateBasicProfileField("email", event.target.value)
+                        }
+                        placeholder="nama@email.com"
+                        aria-invalid={Boolean(basicProfileErrors.email)}
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                      />
+                    </ProfileField>
+
+                    <ProfileField
+                      label="Nomor Telepon"
+                      icon={<Phone size={14} />}
+                      error={basicProfileErrors.phoneNumber}
+                    >
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={PHONE_INPUT_MAX_LENGTH}
+                        value={basicProfileForm.phoneNumber}
+                        onChange={(event) =>
+                          updateBasicProfileField(
+                            "phoneNumber",
+                            event.target.value
+                          )
+                        }
+                        placeholder="081234567890"
+                        aria-invalid={Boolean(basicProfileErrors.phoneNumber)}
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                      />
+                    </ProfileField>
+
+                    <ProfileField
+                      label="NIK / Nomor Identitas"
+                      icon={<IdCard size={14} />}
+                      error={basicProfileErrors.nik}
+                    >
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={NIK_LENGTH}
+                        value={basicProfileForm.nik}
+                        onChange={(event) =>
+                          updateBasicProfileField("nik", event.target.value)
+                        }
+                        placeholder="16 digit nomor identitas"
+                        aria-invalid={Boolean(basicProfileErrors.nik)}
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                      />
+                    </ProfileField>
+
+                    <ProfileField
+                      label="Tanggal Lahir"
+                      icon={<CalendarClock size={14} />}
+                      error={basicProfileErrors.dateOfBirth}
+                    >
+                      <input
+                        type="date"
+                        max={minCheckInDate}
+                        value={basicProfileForm.dateOfBirth}
+                        onChange={(event) =>
+                          updateBasicProfileField(
+                            "dateOfBirth",
+                            event.target.value
+                          )
+                        }
+                        aria-invalid={Boolean(basicProfileErrors.dateOfBirth)}
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                      />
+                    </ProfileField>
+
+                    <ProfileField
+                      label="Alamat Domisili"
+                      icon={<MapPin size={14} />}
+                      error={basicProfileErrors.domicileAddress}
+                      className="md:col-span-2"
+                    >
+                      <textarea
+                        rows={3}
+                        value={basicProfileForm.domicileAddress}
+                        onChange={(event) =>
+                          updateBasicProfileField(
+                            "domicileAddress",
+                            event.target.value
+                          )
+                        }
+                        placeholder="Alamat tempat tinggal saat ini"
+                        aria-invalid={Boolean(
+                          basicProfileErrors.domicileAddress
+                        )}
+                        className="min-h-24 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                      />
+                    </ProfileField>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void saveBasicProfile().catch(() => {});
+                      }}
+                      disabled={isSavingProfile || isSubmitting}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingProfile ? (
+                        <>
+                          <LoaderCircle size={15} className="animate-spin" />
+                          Menyimpan...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={15} />
+                          Simpan Data Diri
+                        </>
+                      )}
+                    </button>
+
+                    {profileMessage ? (
+                      <p
+                        className={`rounded-lg px-3 py-2 text-xs ${
+                          profileMessage.type === "success"
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border border-red-200 bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {profileMessage.text}
+                      </p>
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </div>
+
             <LabelField label="Asal Transfer (Opsional)" className="mt-4">
               <input
                 type="text"
@@ -747,7 +1270,7 @@ function TenantCreatePaymentPageContent() {
               <SummaryRow
                 icon={<Building2 size={14} />}
                 label="Unit"
-                value={unit.name || `Unit ${unit.id}`}
+                value={displayedUnitName}
               />
               <SummaryRow
                 icon={<ReceiptText size={14} />}
@@ -832,6 +1355,31 @@ function LabelField({
     <label className={`block ${className}`}>
       <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
       {children}
+    </label>
+  );
+}
+
+function ProfileField({
+  label,
+  icon,
+  error,
+  children,
+  className = "",
+}: {
+  label: string;
+  icon: React.ReactNode;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
+        <span className="text-blue-700">{icon}</span>
+        {label}
+      </span>
+      {children}
+      {error ? <span className="mt-1 block text-xs text-red-600">{error}</span> : null}
     </label>
   );
 }

@@ -379,7 +379,7 @@ export default function LoginForm() {
       const otpResult = await requestTenantRegistrationOtp(normalizedPhone);
 
       updatePendingGoogleVerification({
-        phoneNumber: otpResult.phoneNumber,
+        phoneNumber: sanitizePhoneInput(otpResult.phoneNumber),
         otpCode: "",
         otpRequested: true,
         debugCode: otpResult.debugCode ?? null,
@@ -411,7 +411,7 @@ export default function LoginForm() {
       );
 
       updatePendingGoogleVerification({
-        phoneNumber: otpResult.phoneNumber,
+        phoneNumber: sanitizePhoneInput(otpResult.phoneNumber),
         debugCode: otpResult.debugCode ?? null,
         otpCode: "",
       });
