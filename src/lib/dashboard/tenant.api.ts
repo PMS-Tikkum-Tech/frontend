@@ -846,8 +846,8 @@ const normalizePublicProperty = (
     property.available_units_preview?.map((unit) => unit.monthly_rent_amount) || []
   );
   const photoUrls = dedupeMediaPaths(
-    property.photo_urls,
     property.roomphoto_urls,
+    property.photo_urls,
     property.photo_url,
     property.available_units_preview?.flatMap((unit) => unit.roomphoto_urls || [])
   );
@@ -1025,8 +1025,8 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
     const existing = propertyMap.get(property.id);
     const unitPrice = getCatalogUnitPrice(unit);
     const propertyPhotoUrls = dedupeMediaPaths(
-      property.photo_urls,
       property.roomphoto_urls,
+      property.photo_urls,
       unit.roomphoto_urls
     );
     const propertyVideoUrls = dedupeMediaPaths(
@@ -1181,7 +1181,11 @@ const fetchAdminPropertiesForPublic = async (
 
 const mergePublicProperties = (
   source: PublicPropertySummary[],
-  fallback: PublicPropertySummary[]
+  fallback: PublicPropertySummary[],
+  options?: {
+    preferFallbackMedia?: boolean;
+    preferFallbackPrice?: boolean;
+  }
 ) => {
   const fallbackMap = new Map<number, PublicPropertySummary>();
   fallback.forEach((item) => {
@@ -1207,25 +1211,43 @@ const mergePublicProperties = (
       availability_status:
         item.availability_status ?? fallbackItem.availability_status ?? null,
       price_min:
-        fallbackItem.price_min != null && fallbackItem.price_min > 0
+        options?.preferFallbackPrice &&
+        fallbackItem.price_min != null &&
+        fallbackItem.price_min > 0
           ? fallbackItem.price_min
           : item.price_min,
       price_max:
-        fallbackItem.price_max != null && fallbackItem.price_max > 0
+        options?.preferFallbackPrice &&
+        fallbackItem.price_max != null &&
+        fallbackItem.price_max > 0
           ? fallbackItem.price_max
           : item.price_max,
-      photo_url: item.photo_url || fallbackItem.photo_url || null,
-      photo_urls:
-        item.photo_urls && item.photo_urls.length > 0
+      photo_url: options?.preferFallbackMedia
+        ? fallbackItem.photo_url || item.photo_url || null
+        : item.photo_url || fallbackItem.photo_url || null,
+      photo_urls: options?.preferFallbackMedia
+        ? fallbackItem.photo_urls && fallbackItem.photo_urls.length > 0
+          ? fallbackItem.photo_urls
+          : item.photo_urls || []
+        : item.photo_urls && item.photo_urls.length > 0
           ? item.photo_urls
           : fallbackItem.photo_urls || [],
-      video_urls:
-        item.video_urls && item.video_urls.length > 0
+      video_urls: options?.preferFallbackMedia
+        ? fallbackItem.video_urls && fallbackItem.video_urls.length > 0
+          ? fallbackItem.video_urls
+          : item.video_urls || []
+        : item.video_urls && item.video_urls.length > 0
           ? item.video_urls
           : fallbackItem.video_urls || [],
-      video_url: item.video_url || fallbackItem.video_url || null,
-      video_360_url: item.video_360_url || fallbackItem.video_360_url || null,
-      photo_360_url: item.photo_360_url || fallbackItem.photo_360_url || null,
+      video_url: options?.preferFallbackMedia
+        ? fallbackItem.video_url || item.video_url || null
+        : item.video_url || fallbackItem.video_url || null,
+      video_360_url: options?.preferFallbackMedia
+        ? fallbackItem.video_360_url || item.video_360_url || null
+        : item.video_360_url || fallbackItem.video_360_url || null,
+      photo_360_url: options?.preferFallbackMedia
+        ? fallbackItem.photo_360_url || item.photo_360_url || null
+        : item.photo_360_url || fallbackItem.photo_360_url || null,
     };
   });
 };
@@ -2015,7 +2037,9 @@ export const getPublicProperties = async (
       try {
         const catalogResponse = await getPublicPropertiesFromCatalog(params);
         return {
-          data: mergePublicProperties(adminResponse.data, catalogResponse.data),
+          data: mergePublicProperties(adminResponse.data, catalogResponse.data, {
+            preferFallbackPrice: true,
+          }),
           meta: adminResponse.meta,
           message: adminResponse.message,
         };
@@ -2030,7 +2054,24 @@ export const getPublicProperties = async (
   }
 
   try {
-    return await getPublicPropertiesFromCatalog(params);
+    const catalogResponse = await getPublicPropertiesFromCatalog(params);
+
+    try {
+      const adminResponse = await fetchAdminPropertiesForPublic(params);
+      return {
+        data: mergePublicProperties(catalogResponse.data, adminResponse.data, {
+          preferFallbackMedia: true,
+        }),
+        meta: catalogResponse.meta,
+        message: catalogResponse.message,
+      };
+    } catch (adminError) {
+      if (!isStatusError(adminError, [401, 403, 404, 405])) {
+        throw adminError;
+      }
+
+      return catalogResponse;
+    }
   } catch (error) {
     if (isStatusError(error, [401, 403, 404, 405])) {
       return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
