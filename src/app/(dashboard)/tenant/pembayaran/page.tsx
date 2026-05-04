@@ -16,7 +16,9 @@ import {
   getTenantPayments,
   type TenantPayment,
 } from "@/lib/dashboard/tenant.api";
+import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
+import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 
 type PaymentFilter = "all" | TenantPayment["status"];
 
@@ -25,7 +27,7 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 const statusLabelMap: Record<TenantPayment["status"], string> = {
   waiting: "Menunggu Pembayaran",
   paid: "Lunas",
-  overdue: "Jatuh Tempo",
+  overdue: "Melewati Batas Pembayaran",
   cancelled: "Dibatalkan",
 };
 
@@ -47,23 +49,6 @@ const formatCurrency = (value: number) => {
   return `Rp ${CURRENCY_FORMATTER.format(value || 0)}`;
 };
 
-const formatDate = (value?: string | null) => {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
 const formatDateTime = (value?: string | null) => {
   if (!value) {
     return "-";
@@ -83,25 +68,6 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
-const isDueDateReached = (value?: string | null) => {
-  if (!value) {
-    return false;
-  }
-
-  const dueDate = new Date(value);
-  if (Number.isNaN(dueDate.getTime())) {
-    return false;
-  }
-
-  const dueDay = new Date(dueDate);
-  dueDay.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return dueDay.getTime() <= today.getTime();
-};
-
 const getPaymentDisplayStatus = (payment: TenantPayment): TenantPayment["status"] => {
   if (isAutoCancelledByDueDate(payment)) {
     return "cancelled";
@@ -111,9 +77,14 @@ const getPaymentDisplayStatus = (payment: TenantPayment): TenantPayment["status"
 };
 
 const isAutoCancelledByDueDate = (payment: TenantPayment) => {
+  const canAutoCancelByDueDate =
+    !payment.booking_status || payment.booking_status === "awaiting_payment";
+
   return (
     payment.status === "overdue" ||
-    (payment.status === "waiting" && isDueDateReached(payment.due_date))
+    (canAutoCancelByDueDate &&
+      payment.status === "waiting" &&
+      isDueDateReached(payment.due_date))
   );
 };
 
@@ -260,13 +231,21 @@ export default function TenantPaymentsPage() {
           </div>
 
           <div className="mt-4 rounded-xl border border-white/25 bg-white/10 p-4 backdrop-blur-sm">
-            <p className="text-xs text-white/80">Jatuh tempo terdekat</p>
+            <p className="text-xs text-white/80">Batas pembayaran terdekat</p>
             <p className="mt-1 text-sm font-semibold">
-              {nextDuePayment
-                ? `${nextDuePayment.property.name || "-"} • ${formatDate(
-                    nextDuePayment.due_date
-                  )}`
-                : "Tidak ada tagihan aktif saat ini"}
+              {nextDuePayment ? (
+                <>
+                  {nextDuePayment.property.name || "-"} •{" "}
+                  {formatDueDate(nextDuePayment.due_date)}
+                  <DeadlineCountdown
+                    value={nextDuePayment.due_date}
+                    variant="light"
+                    className="mt-2"
+                  />
+                </>
+              ) : (
+                "Tidak ada tagihan aktif saat ini"
+              )}
             </p>
           </div>
         </div>
@@ -454,15 +433,18 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
       >
         <div>
           <p className={isDue ? "text-xs text-red-600" : "text-xs text-slate-500"}>
-            Jatuh Tempo
+            Batas Pembayaran
           </p>
           <p
             className={`mt-1 font-medium ${
               isDue ? "text-red-700" : "text-slate-900"
             }`}
           >
-            {formatDate(payment.due_date)}
+            {formatDueDate(payment.due_date)}
           </p>
+          {displayStatus === "waiting" ? (
+            <DeadlineCountdown value={payment.due_date} className="mt-2" />
+          ) : null}
         </div>
         <div>
           <p className="text-xs text-slate-500">Nominal</p>
@@ -510,7 +492,8 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
           <p className="inline-flex items-start gap-1.5">
             <CircleAlert size={13} className="mt-0.5 shrink-0" />
             <span>
-              Dibatalkan otomatis karena pembayaran sudah melewati tanggal jatuh tempo.
+              Pembayaran dibatalkan otomatis karena melewati batas pembayaran
+              {payment.due_date ? ` (${formatDueDate(payment.due_date)}).` : "."}
             </span>
           </p>
         </div>
@@ -527,7 +510,7 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
           }`}
         >
           <CalendarClock size={12} />
-          Jatuh tempo: {formatDate(payment.due_date)}
+          Batas pembayaran: {formatDueDate(payment.due_date)}
         </p>
         <p className="inline-flex items-center gap-1">
           <Clock3 size={12} />

@@ -43,7 +43,7 @@ const faqs: Record<string, FaqItem[]> = {
     },
     {
       q: "Di mana saya melihat status tagihan?",
-      a: "Buka menu Tagihan & Pembayaran untuk melihat tagihan aktif, jatuh tempo, dan riwayat pembayaran.",
+      a: "Buka menu Tagihan & Pembayaran untuk melihat tagihan aktif, batas pembayaran, dan riwayat pembayaran.",
     },
   ],
   "Tinggal di Kost": [

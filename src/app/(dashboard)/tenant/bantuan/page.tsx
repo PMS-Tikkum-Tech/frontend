@@ -86,7 +86,7 @@ export default function TenantBantuanPage() {
           <GuideCard
             icon={<CreditCard size={16} />}
             title="Tagihan & Pembayaran"
-            desc="Lihat nominal, jatuh tempo, dan status pembayaran di menu Tagihan."
+            desc="Lihat nominal, batas pembayaran, dan status pembayaran di menu Tagihan."
           />
           <GuideCard
             icon={<ShieldCheck size={16} />}

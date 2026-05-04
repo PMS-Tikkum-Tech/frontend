@@ -67,6 +67,52 @@ const FACILITY_OPTION_VALUES = new Set(
   FACILITY_OPTIONS.map((facility) => facility.value)
 );
 
+const normalizeOptionKey = (value: string) =>
+  value
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const FACILITY_VALUE_ALIASES: Record<string, string> = {
+  wifi: "wifi",
+  wi_fi: "wifi",
+  parking_area: "parking_area",
+  parking: "parking_area",
+  area_parkir: "parking_area",
+  parkir: "parking_area",
+  kitchen: "kitchen",
+  dapur: "kitchen",
+  pet_friendly: "pet_friendly",
+  ramah_hewan: "pet_friendly",
+  cctv: "cctv",
+  ac: "ac",
+  air_conditioner: "ac",
+  laundry: "laundry",
+  swimming_pool: "swimming_pool",
+  kolam_renang: "swimming_pool",
+  gym: "gym",
+  pusat_kebugaran: "gym",
+  security_24h: "security_24h",
+  security_24_jam: "security_24h",
+  keamanan_24_jam: "security_24h",
+  keamanan_24h: "security_24h",
+  elevator: "elevator",
+  lift: "elevator",
+  generator_backup: "generator_backup",
+  genset: "generator_backup",
+  balcony: "balcony",
+  balkon: "balcony",
+  furnished: "furnished",
+  berperabot: "furnished",
+  garden: "garden",
+  taman: "garden",
+  rooftop_access: "rooftop_access",
+  akses_rooftop: "rooftop_access",
+};
+
 const PROPERTY_TYPE_OPTIONS = [
   { value: "kost", label: "Kost" },
   { value: "apartment", label: "Apartemen" },
@@ -82,6 +128,54 @@ const CONDITION_OPTIONS = [
   { value: "fair", label: "Cukup" },
   { value: "maintenance", label: "Butuh Perawatan" },
 ];
+
+const PROPERTY_TYPE_ALIASES: Record<string, string> = {
+  kost: "kost",
+  kos: "kost",
+  rumah_kost: "kost",
+  boarding_house: "kost",
+  apartment: "apartment",
+  apartemen: "apartment",
+  house: "house",
+  rumah: "house",
+  villa: "villa",
+  vila: "villa",
+  studio_apartment: "studio_apartment",
+  apartemen_studio: "studio_apartment",
+  studio_apartemen: "studio_apartment",
+  townhouse: "townhouse",
+  rumah_deret: "townhouse",
+};
+
+const CONDITION_ALIASES: Record<string, string> = {
+  excellent: "excellent",
+  sangat_baik: "excellent",
+  baik_sekali: "excellent",
+  good: "good",
+  baik: "good",
+  fair: "fair",
+  cukup: "fair",
+  maintenance: "maintenance",
+  butuh_perawatan: "maintenance",
+  perlu_perawatan: "maintenance",
+  perawatan: "maintenance",
+};
+
+const normalizePropertyTypeValue = (value?: string) => {
+  if (!value) {
+    return "";
+  }
+
+  return PROPERTY_TYPE_ALIASES[normalizeOptionKey(value)] || value;
+};
+
+const normalizeConditionValue = (value?: string) => {
+  if (!value) {
+    return "";
+  }
+
+  return CONDITION_ALIASES[normalizeOptionKey(value)] || value;
+};
 
 const getInitialFormState = (
   _owners: AdminUser[],
@@ -99,8 +193,8 @@ const getInitialFormState = (
     Number.isFinite(initialValue.longitude)
       ? String(initialValue.longitude)
       : "",
-  propertyType: initialValue?.property_type || "kost",
-  condition: initialValue?.condition || "good",
+  propertyType: normalizePropertyTypeValue(initialValue?.property_type) || "kost",
+  condition: normalizeConditionValue(initialValue?.condition) || "good",
   description: initialValue?.description || "",
   rules: initialValue?.rules || "",
 });
@@ -143,6 +237,11 @@ const formatCoordinateInputValue = (value: number) =>
 const normalizeFacilityInput = (value: string) =>
   value.replace(/\s+/g, " ").trim();
 
+const normalizeFacilityValue = (value: string) => {
+  const normalized = normalizeFacilityInput(value);
+  return FACILITY_VALUE_ALIASES[normalizeOptionKey(normalized)] || normalized;
+};
+
 const getFacilityLabel = (value: string) => {
   const matchedOption = FACILITY_OPTIONS.find((facility) => facility.value === value);
 
@@ -172,7 +271,7 @@ const facilityAlreadyExists = (facility: string, facilities: string[]) => {
 
 const normalizeFacilities = (facilities: string[] = []) => {
   return facilities.reduce<string[]>((result, facility) => {
-    const normalized = normalizeFacilityInput(facility);
+    const normalized = normalizeFacilityValue(facility);
     if (!normalized || facilityAlreadyExists(normalized, result)) {
       return result;
     }
@@ -320,7 +419,7 @@ export default function AddPropertyModal({
 
     setSelectedFacilities((prev) => [
       ...prev,
-      normalizeFacilityInput(manualFacilityInput),
+      normalizeFacilityValue(manualFacilityInput),
     ]);
     setManualFacilityInput("");
     setErrorMessage(null);
@@ -345,7 +444,7 @@ export default function AddPropertyModal({
     }
 
     let facilitiesForSubmit = selectedFacilities;
-    const pendingManualFacility = normalizeFacilityInput(manualFacilityInput);
+    const pendingManualFacility = normalizeFacilityValue(manualFacilityInput);
     if (pendingManualFacility) {
       const validationError = getManualFacilityValidationError(
         pendingManualFacility,

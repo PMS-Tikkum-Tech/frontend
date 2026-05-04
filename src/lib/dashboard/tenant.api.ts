@@ -62,6 +62,16 @@ export interface TenantPayment {
   payment_method?: string | null;
   description?: string | null;
   transfer_proof_url?: string | null;
+  booking_status?:
+    | "awaiting_payment"
+    | "pending_review"
+    | "approved"
+    | "denied"
+    | "cancelled"
+    | "expired"
+    | string
+    | null;
+  booking_status_label?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -1289,6 +1299,8 @@ const mapManualBookingToTenantPayment = (
     payment_method: booking.payment_channel || null,
     description: booking.status_label || null,
     transfer_proof_url: toAbsoluteAssetUrl(booking.transfer_proof_url),
+    booking_status: booking.status || null,
+    booking_status_label: booking.status_label || null,
     created_at: booking.created_at || null,
     updated_at: booking.updated_at || null,
   };

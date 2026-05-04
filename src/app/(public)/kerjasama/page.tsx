@@ -39,7 +39,7 @@ const SERVICE_ITEMS: Array<{
   },
   {
     title: "Pengelolaan Pembayaran",
-    desc: "Pemantauan tagihan, pengingat jatuh tempo, dan rekap pembayaran berkala.",
+    desc: "Pemantauan tagihan, pengingat batas pembayaran, dan rekap pembayaran berkala.",
     icon: <WalletCards size={17} />,
   },
   {

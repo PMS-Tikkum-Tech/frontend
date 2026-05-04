@@ -28,7 +28,9 @@ import {
   type TenantPayment,
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
+import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
+import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
@@ -95,33 +97,21 @@ const getTimestamp = (value?: string | null) => {
   return date.getTime();
 };
 
-const isDueDateReached = (value?: string | null) => {
-  if (!value) {
-    return false;
-  }
-
-  const dueDate = new Date(value);
-  if (Number.isNaN(dueDate.getTime())) {
-    return false;
-  }
-
-  const dueDay = new Date(dueDate);
-  dueDay.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return dueDay.getTime() <= today.getTime();
-};
-
 const getPaymentDisplayStatus = (
-  payment: Pick<TenantPayment, "status" | "due_date">
+  payment: Pick<TenantPayment, "status" | "due_date" | "booking_status">
 ): TenantPayment["status"] => {
   if (payment.status === "overdue") {
     return "cancelled";
   }
 
-  if (payment.status === "waiting" && isDueDateReached(payment.due_date)) {
+  const canAutoCancelByDueDate =
+    !payment.booking_status || payment.booking_status === "awaiting_payment";
+
+  if (
+    canAutoCancelByDueDate &&
+    payment.status === "waiting" &&
+    isDueDateReached(payment.due_date)
+  ) {
     return "cancelled";
   }
 
@@ -528,13 +518,22 @@ function TenantKostDetailContent() {
             />
             <SummaryCard
               icon={<CalendarClock size={16} />}
-              label="Jatuh Tempo"
-              value={formatDate(latestPayment?.due_date || currentStay?.end_date)}
+              label="Batas Pembayaran"
+              value={
+                latestPayment?.due_date
+                  ? formatDueDate(latestPayment.due_date)
+                  : formatDate(currentStay?.end_date)
+              }
               helper={
                 latestPayment
                   ? getPaymentDisplayStatus(latestPayment) === "paid"
                     ? "Sudah dibayar"
-                    : "Perhatikan tanggal bayar"
+                    : (
+                      <DeadlineCountdown
+                        value={latestPayment.due_date}
+                        variant="text"
+                      />
+                    )
                   : currentStay?.end_date
                     ? "Akhir periode hunian saat ini"
                     : "Tanggal belum tersedia"
@@ -693,7 +692,7 @@ function SummaryCard({
   icon: React.ReactNode;
   label: string;
   value: string;
-  helper: string;
+  helper: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

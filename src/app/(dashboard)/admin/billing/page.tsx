@@ -31,6 +31,8 @@ import {
   type AdminPropertyUnitRow,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
+import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
 const formatDate = (value?: string | null) => {
@@ -67,25 +69,6 @@ const formatDateTime = (value?: string | null) => {
     hour: "2-digit",
     minute: "2-digit",
   });
-};
-
-const isDueDateReached = (value?: string | null) => {
-  if (!value) {
-    return false;
-  }
-
-  const dueDate = new Date(value);
-  if (Number.isNaN(dueDate.getTime())) {
-    return false;
-  }
-
-  const dueDay = new Date(dueDate);
-  dueDay.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return dueDay.getTime() <= today.getTime();
 };
 
 const toInputDate = (value?: string | null) => {
@@ -195,16 +178,21 @@ const getInitialForm = (): BillingFormState => ({
 });
 
 const isPaymentAutoCancelledByDueDate = (
-  payment: Pick<AdminPayment, "status" | "due_date">
+  payment: Pick<AdminPayment, "status" | "due_date" | "booking_status">
 ) => {
+  const canAutoCancelByDueDate =
+    !payment.booking_status || payment.booking_status === "awaiting_payment";
+
   return (
     payment.status === "overdue" ||
-    (payment.status === "waiting" && isDueDateReached(payment.due_date))
+    (canAutoCancelByDueDate &&
+      payment.status === "waiting" &&
+      isDueDateReached(payment.due_date))
   );
 };
 
 const getPaymentDisplayStatus = (
-  payment: Pick<AdminPayment, "status" | "due_date">
+  payment: Pick<AdminPayment, "status" | "due_date" | "booking_status">
 ): AdminPayment["status"] => {
   if (isPaymentAutoCancelledByDueDate(payment)) {
     return "cancelled";
@@ -576,7 +564,7 @@ export default function AdminBillingPage() {
     }
 
     if (!form.dueDate) {
-      setFormError("Tanggal jatuh tempo wajib diisi.");
+      setFormError("Tanggal batas pembayaran wajib diisi.");
       return;
     }
 
@@ -725,7 +713,7 @@ export default function AdminBillingPage() {
     if (displayStatus === "cancelled") {
       setNotice({
         variant: "error",
-        message: "Tagihan sudah dibatalkan otomatis karena jatuh tempo.",
+        message: "Tagihan sudah dibatalkan otomatis karena melewati batas pembayaran.",
       });
       return;
     }
@@ -759,7 +747,7 @@ export default function AdminBillingPage() {
     if (displayStatus === "cancelled") {
       setNotice({
         variant: "error",
-        message: "Tagihan sudah dibatalkan otomatis karena jatuh tempo.",
+        message: "Tagihan sudah dibatalkan otomatis karena melewati batas pembayaran.",
       });
       setApproveConfirmationPayment(null);
       return;
@@ -942,7 +930,7 @@ export default function AdminBillingPage() {
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
-            <option value="due_date">Jatuh Tempo</option>
+            <option value="due_date">Batas Pembayaran</option>
           </select>
 
           <button
@@ -990,23 +978,23 @@ export default function AdminBillingPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] table-fixed text-sm leading-5">
             <colgroup>
+              <col className="w-[190px]" />
               <col className="w-[220px]" />
-              <col className="w-[210px]" />
-              <col className="w-[160px]" />
               <col className="w-[150px]" />
-              <col className="w-[140px]" />
-              <col className="w-[110px]" />
-              <col className="w-[170px]" />
+              <col className="w-[205px]" />
+              <col className="w-[135px]" />
+              <col className="w-[155px]" />
+              <col className="w-[105px]" />
             </colgroup>
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
               <tr>
-                <th className="px-3 py-3 text-left">Faktur</th>
-                <th className="px-3 py-3 text-left">Properti</th>
-                <th className="px-3 py-3 text-left">Penyewa</th>
-                <th className="px-3 py-3 text-left">Jatuh Tempo</th>
-                <th className="px-3 py-3 text-left">Jumlah</th>
-                <th className="px-3 py-3 text-left">Status</th>
-                <th className="px-3 py-3 text-left">Aksi</th>
+                <th className="px-4 py-3 text-left">Faktur</th>
+                <th className="px-4 py-3 text-left">Properti / Unit</th>
+                <th className="px-4 py-3 text-left">Penyewa</th>
+                <th className="px-4 py-3 text-left">Batas Pembayaran</th>
+                <th className="px-4 py-3 text-left">Jumlah</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-center">Aksi</th>
               </tr>
             </thead>
 
@@ -1029,9 +1017,9 @@ export default function AdminBillingPage() {
                     key={getPaymentRowKey(payment)}
                     className="border-t border-slate-100 align-top hover:bg-slate-50"
                   >
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-4">
                       <p
-                        className="break-all font-semibold text-slate-800"
+                        className="break-words font-mono text-xs font-semibold text-slate-800"
                         title={`#${payment.invoice_id}`}
                       >
                         #{payment.invoice_id}
@@ -1040,7 +1028,7 @@ export default function AdminBillingPage() {
                         Dibuat: {formatDate(payment.created_at)}
                       </p>
                       {payment.transfer_proof_url ? (
-                        <div className="mt-2 flex items-center gap-1.5 whitespace-nowrap">
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           <a
                             href={resolveAssetUrl(payment.transfer_proof_url) || "#"}
                             target="_blank"
@@ -1073,53 +1061,63 @@ export default function AdminBillingPage() {
                       )}
                     </td>
 
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-4">
                       <p
-                        className="break-words text-slate-700"
+                        className="line-clamp-2 break-words font-medium text-slate-800"
                         title={payment.property.name || "-"}
                       >
                         {payment.property.name || "-"}
                       </p>
                       <p
-                        className="break-words text-xs text-slate-500"
+                        className="mt-1 line-clamp-2 break-words text-xs text-slate-500"
                         title={payment.unit.name || "-"}
                       >
                         Unit: {payment.unit.name || "-"}
                       </p>
                     </td>
 
-                    <td className="px-3 py-3 text-slate-700">
+                    <td className="px-4 py-4 text-slate-700">
                       <p
-                        className="break-words"
+                        className="line-clamp-3 break-words"
                         title={payment.tenant.full_name || "-"}
                       >
                         {payment.tenant.full_name || "-"}
                       </p>
                     </td>
 
-                    <td className="px-3 py-3">
-                      <p className="whitespace-nowrap text-slate-700">
-                        {formatDate(payment.due_date)}
+                    <td className="space-y-1 px-4 py-4">
+                      <p className="font-medium text-slate-700">
+                        {formatDueDate(payment.due_date)}
                       </p>
+                      {getPaymentDisplayStatus(payment) === "waiting" ? (
+                        <DeadlineCountdown
+                          value={payment.due_date}
+                          variant="text"
+                          className="mt-1"
+                        />
+                      ) : null}
                       <p className="whitespace-nowrap text-xs text-slate-500">
                         Bayar: {formatDateTime(payment.paid_at)}
                       </p>
                     </td>
 
-                    <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-800">
+                    <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">
                       Rp {Number(payment.amount || 0).toLocaleString("id-ID")}
                     </td>
 
-                    <td className="px-3 py-3">
+                    <td className="space-y-2 px-4 py-4">
                       <StatusBadge status={getPaymentDisplayStatus(payment)} />
                       {isPaymentAutoCancelledByDueDate(payment) ? (
-                        <p className="mt-1 break-words text-xs font-medium text-red-600">
-                          Dibatalkan otomatis karena sudah melewati jatuh tempo.
+                        <p
+                          className="inline-flex rounded-lg border border-red-100 bg-red-50 px-2 py-1 text-xs font-medium text-red-700"
+                          title="Dibatalkan otomatis karena melewati batas pembayaran."
+                        >
+                          Batal otomatis
                         </p>
                       ) : null}
                       {payment.booking_status_label ? (
                         <p
-                          className="mt-1 break-words text-xs text-slate-500"
+                          className="line-clamp-2 break-words text-xs text-slate-500"
                           title={payment.booking_status_label}
                         >
                           Pemesanan: {payment.booking_status_label}
@@ -1127,12 +1125,12 @@ export default function AdminBillingPage() {
                       ) : null}
                     </td>
 
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <td className="px-4 py-4">
+                      <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
                           onClick={() => setViewPayment(payment)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
                           title="Lihat detail"
                         >
                           <Eye size={16} />
@@ -1140,7 +1138,7 @@ export default function AdminBillingPage() {
                         <button
                           type="button"
                           onClick={() => handleEditPayment(payment)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
                           title="Ubah tagihan"
                         >
                           <Pencil size={16} />
@@ -1151,7 +1149,7 @@ export default function AdminBillingPage() {
                             void handleDeletePayment(payment);
                           }}
                           disabled={isDeletingId === payment.id}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title="Hapus tagihan"
                         >
                           <Trash2 size={16} />
@@ -1166,7 +1164,7 @@ export default function AdminBillingPage() {
                             getPaymentDisplayStatus(payment) === "cancelled" ||
                             isApprovingId === payment.id
                           }
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
                             getPaymentDisplayStatus(payment) === "paid"
                               ? "Pembayaran sudah lunas"
@@ -1361,7 +1359,11 @@ export default function AdminBillingPage() {
               {isPaymentAutoCancelledByDueDate(viewPayment) ? (
                 <DetailRow
                   label="Catatan Pembatalan"
-                  value="Dibatalkan otomatis karena pembayaran sudah melewati tanggal jatuh tempo."
+                  value={`Pembayaran dibatalkan otomatis karena melewati batas pembayaran${
+                    viewPayment.due_date
+                      ? ` (${formatDueDate(viewPayment.due_date)}).`
+                      : "."
+                  }`}
                 />
               ) : null}
               <DetailRow
@@ -1372,7 +1374,16 @@ export default function AdminBillingPage() {
                 label="Jumlah"
                 value={`Rp ${viewPayment.amount.toLocaleString("id-ID")}`}
               />
-              <DetailRow label="Jatuh Tempo" value={formatDate(viewPayment.due_date)} />
+              <DetailRow
+                label="Batas Pembayaran"
+                value={formatDueDate(viewPayment.due_date)}
+              />
+              {getPaymentDisplayStatus(viewPayment) === "waiting" ? (
+                <DetailRow
+                  label="Sisa Waktu Pembayaran"
+                  value={<DeadlineCountdown value={viewPayment.due_date} />}
+                />
+              ) : null}
               <DetailRow
                 label="Tanggal Bayar"
                 value={formatDateTime(viewPayment.paid_at)}
@@ -1570,7 +1581,7 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Jatuh Tempo
+                    Tanggal Batas Pembayaran
                   </label>
                   <input
                     type="date"

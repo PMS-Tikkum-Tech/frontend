@@ -22,7 +22,9 @@ import {
   type TenantPayment,
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
+import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
+import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
@@ -90,33 +92,21 @@ const getTimestamp = (value?: string | null) => {
   return date.getTime();
 };
 
-const isDueDateReached = (value?: string | null) => {
-  if (!value) {
-    return false;
-  }
-
-  const dueDate = new Date(value);
-  if (Number.isNaN(dueDate.getTime())) {
-    return false;
-  }
-
-  const dueDay = new Date(dueDate);
-  dueDay.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return dueDay.getTime() <= today.getTime();
-};
-
 const getPaymentDisplayStatus = (
-  payment: Pick<TenantPayment, "status" | "due_date">
+  payment: Pick<TenantPayment, "status" | "due_date" | "booking_status">
 ): TenantPayment["status"] => {
   if (payment.status === "overdue") {
     return "cancelled";
   }
 
-  if (payment.status === "waiting" && isDueDateReached(payment.due_date)) {
+  const canAutoCancelByDueDate =
+    !payment.booking_status || payment.booking_status === "awaiting_payment";
+
+  if (
+    canAutoCancelByDueDate &&
+    payment.status === "waiting" &&
+    isDueDateReached(payment.due_date)
+  ) {
     return "cancelled";
   }
 
@@ -245,9 +235,9 @@ export default function KostSayaPage() {
           title: "Tagihan baru diterbitkan",
         },
         overdue: {
-          label: "Lewat Jatuh Tempo",
+          label: "Lewat Batas Bayar",
           tone: "rose",
-          title: "Tagihan melewati jatuh tempo",
+          title: "Pembayaran melewati batas waktu",
         },
         paid: {
           label: "Berhasil Dibayar",
@@ -463,9 +453,21 @@ export default function KostSayaPage() {
                 icon={<Wrench size={16} />}
               />
               <InfoCard
-                label="Jatuh Tempo Terdekat"
-                value={formatDate(nextDuePayment?.due_date)}
-                helper={nextDuePayment ? formatCurrency(nextDuePayment.amount) : "Tidak ada tagihan aktif"}
+                label="Batas Pembayaran Terdekat"
+                value={formatDueDate(nextDuePayment?.due_date)}
+                helper={
+                  nextDuePayment ? (
+                    <span className="inline-flex flex-col gap-1">
+                      <span>{formatCurrency(nextDuePayment.amount)}</span>
+                      <DeadlineCountdown
+                        value={nextDuePayment.due_date}
+                        variant="text"
+                      />
+                    </span>
+                  ) : (
+                    "Tidak ada tagihan aktif"
+                  )
+                }
                 tone="indigo"
                 icon={<Clock3 size={16} />}
               />
@@ -677,7 +679,7 @@ function InfoCard({
 }: {
   label: string;
   value: string;
-  helper: string;
+  helper: ReactNode;
   icon: ReactNode;
   tone: "emerald" | "amber" | "sky" | "indigo";
 }) {
@@ -756,7 +758,7 @@ function ActiveStayCard({
       className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     },
     overdue: {
-      label: "Lewat Jatuh Tempo",
+      label: "Lewat Batas Bayar",
       className: "border-red-200 bg-red-50 text-red-700",
     },
     cancelled: {
@@ -812,6 +814,11 @@ function ActiveStayCard({
                 ? `${openBillCount} tagihan • ${formatCurrency(openBillAmount)}`
                 : "Tidak ada tagihan aktif"
             }
+            helper={
+              latestPayment && displayStatus === "waiting" ? (
+                <DeadlineCountdown value={latestPayment.due_date} variant="text" />
+              ) : null
+            }
           />
           <StayMetric
             label="Perawatan Aktif"
@@ -854,9 +861,11 @@ function ActiveStayCard({
 function StayMetric({
   label,
   value,
+  helper,
 }: {
   label: string;
   value: string;
+  helper?: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
@@ -864,6 +873,7 @@ function StayMetric({
         {label}
       </p>
       <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+      {helper ? <div className="mt-1">{helper}</div> : null}
     </div>
   );
 }
