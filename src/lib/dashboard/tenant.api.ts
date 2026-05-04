@@ -151,6 +151,8 @@ export interface TenantPropertySummary {
   longitude?: number | null;
   property_type?: string | null;
   condition?: string | null;
+  description?: string | null;
+  rules?: string | null;
   facilities?: string[];
   owner_name?: string | null;
   total_units?: number;
@@ -169,6 +171,7 @@ export interface TenantPropertySummary {
   video_url?: string | null;
   video_360_url?: string | null;
   photo_360_url?: string | null;
+  roomphoto_urls?: string[];
 }
 
 export interface TenantFavoriteProperty {
@@ -450,10 +453,19 @@ type PublicPropertyApiItem = {
     } | null;
     availability_status?: string | null;
   } | null;
+  price_range?: {
+    min?: number | string | null;
+    max?: number | string | null;
+  } | null;
+  available_price_range?: {
+    min?: number | string | null;
+    max?: number | string | null;
+  } | null;
   availability_status?: string | null;
   photo_url?: string | null;
   photo_urls?: string[];
   roomphoto_urls?: string[];
+  roomphoto_property_urls?: string[];
   video_urls?: string[];
   video_url?: string | null;
   video_360_url?: string | null;
@@ -473,6 +485,15 @@ type PublicPropertyApiItem = {
     unit_type?: string | null;
     monthly_rent_amount?: number | string | null;
     roomphoto_urls?: string[];
+    photo_urls?: string[];
+  }>;
+  units_preview?: Array<{
+    id: number;
+    name?: string | null;
+    unit_type?: string | null;
+    monthly_rent_amount?: number | string | null;
+    roomphoto_urls?: string[];
+    photo_urls?: string[];
   }>;
   created_at?: string | null;
   updated_at?: string | null;
@@ -841,21 +862,34 @@ const normalizePublicProperty = (
   property: PublicPropertyApiItem
 ): PublicPropertySummary => {
   const stats = property.stats || {};
-  const priceRange = stats.price_range || null;
+  const priceRange = property.price_range || stats.price_range || null;
+  const availablePriceRange = property.available_price_range || null;
+  const unitPreviewItems = [
+    ...(property.available_units_preview || []),
+    ...(property.units_preview || []),
+  ];
   const previewPriceRange = getPriceRangeFromValues(
-    property.available_units_preview?.map((unit) => unit.monthly_rent_amount) || []
+    unitPreviewItems.map((unit) => unit.monthly_rent_amount)
   );
   const photoUrls = dedupeMediaPaths(
+    property.roomphoto_property_urls,
     property.roomphoto_urls,
     property.photo_urls,
     property.photo_url,
-    property.available_units_preview?.flatMap((unit) => unit.roomphoto_urls || [])
+    unitPreviewItems.flatMap((unit) => [
+      ...(unit.roomphoto_urls || []),
+      ...(unit.photo_urls || []),
+    ])
   );
   const videoUrls = dedupeMediaPaths(property.video_urls, property.video_url);
   const priceMin =
-    previewPriceRange.min ?? getNumberValue(priceRange?.min ?? property.price_min);
+    getNumberValue(availablePriceRange?.min) ??
+    previewPriceRange.min ??
+    getNumberValue(priceRange?.min ?? property.price_min);
   const priceMax =
-    previewPriceRange.max ?? getNumberValue(priceRange?.max ?? property.price_max);
+    getNumberValue(availablePriceRange?.max) ??
+    previewPriceRange.max ??
+    getNumberValue(priceRange?.max ?? property.price_max);
   const totalUnits = getNumberValue(stats.total_units ?? property.total_units);
   const occupiedUnits = getNumberValue(
     stats.occupied_units ?? property.occupied_units
@@ -888,6 +922,8 @@ const normalizePublicProperty = (
     longitude: getNumberValue(property.longitude),
     property_type: property.property_type || null,
     condition: property.condition || null,
+    description: property.description || null,
+    rules: property.rules || null,
     facilities: property.facilities || [],
     owner_name:
       property.owner_name ||
@@ -909,6 +945,7 @@ const normalizePublicProperty = (
     price_max: priceMax == null ? undefined : Math.max(0, priceMax),
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,
+    roomphoto_urls: photoUrls,
     video_urls: videoUrls,
     video_url: property.video_url || videoUrls[0] || null,
     video_360_url: property.video_360_url || null,
@@ -1061,6 +1098,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
         price_max: unitPrice == null ? undefined : Math.max(0, unitPrice),
         photo_url: propertyPhotoUrls[0] || null,
         photo_urls: propertyPhotoUrls,
+        roomphoto_urls: propertyPhotoUrls,
         video_urls: propertyVideoUrls,
         video_url: property.video_url || propertyVideoUrls[0] || null,
         video_360_url: property.video_360_url || null,
@@ -1085,6 +1123,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
       propertyPhotoUrls,
       unit.roomphoto_urls
     );
+    existing.roomphoto_urls = existing.photo_urls;
     existing.photo_url = existing.photo_urls[0] || null;
     existing.video_urls = dedupeMediaPaths(existing.video_urls, propertyVideoUrls);
     existing.video_url = existing.video_url || property.video_url || existing.video_urls[0] || null;
@@ -1184,6 +1223,7 @@ const mergePublicProperties = (
   fallback: PublicPropertySummary[],
   options?: {
     preferFallbackMedia?: boolean;
+    preferFallbackMasterData?: boolean;
     preferFallbackPrice?: boolean;
   }
 ) => {
@@ -1198,8 +1238,37 @@ const mergePublicProperties = (
       return item;
     }
 
+    const masterProperty = options?.preferFallbackMasterData
+      ? fallbackItem
+      : item;
+    const secondaryProperty = options?.preferFallbackMasterData
+      ? item
+      : fallbackItem;
+    const mediaProperty = options?.preferFallbackMedia ? fallbackItem : item;
+    const secondaryMediaProperty = options?.preferFallbackMedia
+      ? item
+      : fallbackItem;
+    const primaryPhotoUrls = mediaProperty.photo_urls || mediaProperty.roomphoto_urls;
+    const secondaryPhotoUrls =
+      secondaryMediaProperty.photo_urls || secondaryMediaProperty.roomphoto_urls;
+
     return {
       ...item,
+      name: masterProperty.name || secondaryProperty.name,
+      address: masterProperty.address || secondaryProperty.address || null,
+      latitude: masterProperty.latitude ?? secondaryProperty.latitude ?? null,
+      longitude: masterProperty.longitude ?? secondaryProperty.longitude ?? null,
+      property_type:
+        masterProperty.property_type || secondaryProperty.property_type || null,
+      condition: masterProperty.condition || secondaryProperty.condition || null,
+      description:
+        masterProperty.description || secondaryProperty.description || null,
+      rules: masterProperty.rules || secondaryProperty.rules || null,
+      facilities:
+        masterProperty.facilities && masterProperty.facilities.length > 0
+          ? masterProperty.facilities
+          : secondaryProperty.facilities || [],
+      owner_name: masterProperty.owner_name || secondaryProperty.owner_name || null,
       total_units: item.total_units ?? fallbackItem.total_units,
       occupied_units: item.occupied_units ?? fallbackItem.occupied_units,
       vacant_units: item.vacant_units ?? fallbackItem.vacant_units,
@@ -1222,32 +1291,34 @@ const mergePublicProperties = (
         fallbackItem.price_max > 0
           ? fallbackItem.price_max
           : item.price_max,
-      photo_url: options?.preferFallbackMedia
-        ? fallbackItem.photo_url || item.photo_url || null
-        : item.photo_url || fallbackItem.photo_url || null,
-      photo_urls: options?.preferFallbackMedia
-        ? fallbackItem.photo_urls && fallbackItem.photo_urls.length > 0
-          ? fallbackItem.photo_urls
-          : item.photo_urls || []
-        : item.photo_urls && item.photo_urls.length > 0
-          ? item.photo_urls
-          : fallbackItem.photo_urls || [],
-      video_urls: options?.preferFallbackMedia
-        ? fallbackItem.video_urls && fallbackItem.video_urls.length > 0
-          ? fallbackItem.video_urls
-          : item.video_urls || []
-        : item.video_urls && item.video_urls.length > 0
-          ? item.video_urls
-          : fallbackItem.video_urls || [],
-      video_url: options?.preferFallbackMedia
-        ? fallbackItem.video_url || item.video_url || null
-        : item.video_url || fallbackItem.video_url || null,
-      video_360_url: options?.preferFallbackMedia
-        ? fallbackItem.video_360_url || item.video_360_url || null
-        : item.video_360_url || fallbackItem.video_360_url || null,
-      photo_360_url: options?.preferFallbackMedia
-        ? fallbackItem.photo_360_url || item.photo_360_url || null
-        : item.photo_360_url || fallbackItem.photo_360_url || null,
+      photo_url:
+        mediaProperty.photo_url ||
+        primaryPhotoUrls?.[0] ||
+        secondaryMediaProperty.photo_url ||
+        secondaryPhotoUrls?.[0] ||
+        null,
+      photo_urls:
+        primaryPhotoUrls && primaryPhotoUrls.length > 0
+          ? primaryPhotoUrls
+          : secondaryPhotoUrls || [],
+      roomphoto_urls:
+        mediaProperty.roomphoto_urls && mediaProperty.roomphoto_urls.length > 0
+          ? mediaProperty.roomphoto_urls
+          : secondaryMediaProperty.roomphoto_urls || secondaryPhotoUrls || [],
+      video_urls:
+        mediaProperty.video_urls && mediaProperty.video_urls.length > 0
+          ? mediaProperty.video_urls
+          : secondaryMediaProperty.video_urls || [],
+      video_url:
+        mediaProperty.video_url ||
+        mediaProperty.video_urls?.[0] ||
+        secondaryMediaProperty.video_url ||
+        secondaryMediaProperty.video_urls?.[0] ||
+        null,
+      video_360_url:
+        mediaProperty.video_360_url || secondaryMediaProperty.video_360_url || null,
+      photo_360_url:
+        mediaProperty.photo_360_url || secondaryMediaProperty.photo_360_url || null,
     };
   });
 };
@@ -2061,6 +2132,7 @@ export const getPublicProperties = async (
       return {
         data: mergePublicProperties(catalogResponse.data, adminResponse.data, {
           preferFallbackMedia: true,
+          preferFallbackMasterData: true,
         }),
         meta: catalogResponse.meta,
         message: catalogResponse.message,
