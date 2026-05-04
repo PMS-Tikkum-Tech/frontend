@@ -11,6 +11,7 @@ import {
   removeTenantFavoriteByProperty,
   type TenantFavoriteProperty,
 } from "@/lib/dashboard/tenant.api";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import {
   getTenantFavoritesCache,
   patchFavoriteState,
@@ -77,9 +78,7 @@ const resolvePropertyImage = (path?: string | null) => {
     return normalizedPath;
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:3001";
+  const baseUrl = resolveApiBaseUrl();
 
   return `${baseUrl}${normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`}`;
 };

@@ -51,6 +51,18 @@ Backend lokal harus hidup di `http://127.0.0.1:3001` dan dikonfigurasi dengan Go
 
 Jika `GOOGLE_OAUTH_CLIENT_IDS` belum diisi di backend, endpoint `/api/v1/auth/google` akan menolak login Google.
 
+## Deploy production
+
+Saat build production, pastikan `NEXT_PUBLIC_API_URL` diisi dengan URL backend yang bisa diakses browser.
+
+Contoh domain KIKOST:
+
+```bash
+NEXT_PUBLIC_API_URL=https://api.kikost.com
+```
+
+Setelah env diubah, lakukan rebuild dan redeploy frontend karena variabel `NEXT_PUBLIC_*` dibaca saat build Next.js.
+
 ## Geocoding alamat properti admin
 
 Form tambah/edit properti admin akan mencoba mengubah alamat menjadi latitude dan longitude otomatis memakai Google Maps Geocoding API dari browser.

@@ -117,24 +117,61 @@ const GoogleLogo = () => (
   </svg>
 );
 
+const getResponsePayloadMessage = (data: unknown) => {
+  if (typeof data === "string") {
+    const normalized = data.replace(/\s+/g, " ").trim();
+    if (normalized && !normalized.toLowerCase().startsWith("<!doctype html")) {
+      return normalized.slice(0, 180);
+    }
+  }
+
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as {
+    error?: string;
+    errors?: unknown;
+    message?: string;
+  };
+
+  if (Array.isArray(payload.errors) && typeof payload.errors[0] === "string") {
+    return payload.errors[0];
+  }
+
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message;
+  }
+
+  if (typeof payload.error === "string" && payload.error.trim()) {
+    return payload.error;
+  }
+
+  return null;
+};
+
 const getErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
       return "Tidak bisa terhubung ke layanan KIKOST. Pastikan sistem aktif dan NEXT_PUBLIC_API_URL sudah benar.";
     }
 
+    const status = error.response.status;
+
     if (error.response?.status === 404) {
       return "Layanan masuk tidak ditemukan. Periksa konfigurasi NEXT_PUBLIC_API_URL.";
     }
 
-    const payload = error.response?.data as
-      | { message?: string; errors?: string[] }
-      | undefined;
-    return (
-      payload?.errors?.[0] ??
-      payload?.message ??
-      "Masuk gagal. Silakan coba lagi."
-    );
+    const payloadMessage = getResponsePayloadMessage(error.response.data);
+    if (payloadMessage) {
+      return payloadMessage;
+    }
+
+    if (status >= 500) {
+      return `Layanan masuk sedang bermasalah (HTTP ${status}). Periksa log backend dan konfigurasi API production.`;
+    }
+
+    return `Masuk gagal (HTTP ${status}). Periksa konfigurasi API dan kredensial akun.`;
   }
 
   return "Terjadi kesalahan saat masuk.";

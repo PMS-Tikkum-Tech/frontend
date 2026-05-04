@@ -32,6 +32,7 @@ import {
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
 import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
@@ -121,9 +122,7 @@ const resolveAssetUrl = (value?: string | null) => {
     return normalized;
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:3001";
+  const baseUrl = resolveApiBaseUrl();
 
   return `${baseUrl}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
 };

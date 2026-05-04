@@ -34,6 +34,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import {
   createTenantBookingPayment,
   getBasicProfileRequiredFields,
@@ -277,9 +278,7 @@ const resolveMediaUrl = (path?: string | null) => {
     return normalized;
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:3001";
+  const baseUrl = resolveApiBaseUrl();
 
   return `${baseUrl}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
 };

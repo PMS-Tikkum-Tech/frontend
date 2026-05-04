@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import {
   ArrowRight,
   Calendar,
@@ -142,9 +143,7 @@ const resolvePropertyImage = (path?: string | null) => {
     return normalizedPath;
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:3001";
+  const baseUrl = resolveApiBaseUrl();
 
   return `${baseUrl}${normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`}`;
 };

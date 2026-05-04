@@ -28,6 +28,7 @@ import {
   type TenantPayment,
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import { formatDueDate, isDueDateReached } from "@/lib/due-date";
@@ -128,9 +129,7 @@ const resolveAssetUrl = (value?: string | null) => {
     return normalized;
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:3001";
+  const baseUrl = resolveApiBaseUrl();
 
   return `${baseUrl}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
 };

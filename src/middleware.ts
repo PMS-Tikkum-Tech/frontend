@@ -32,6 +32,10 @@ type AuthRefreshResponse = {
 };
 
 const VALID_ROLES = new Set<SessionRole>(["admin", "owner", "tenant"]);
+const PRODUCTION_API_BASE_URLS: Record<string, string> = {
+  "kikost.com": "https://api.kikost.com",
+  "www.kikost.com": "https://api.kikost.com",
+};
 
 const isSafeNextPath = (nextPath: string) => {
   return nextPath.startsWith("/") && !nextPath.startsWith("//");
@@ -102,7 +106,17 @@ const getApiBaseUrl = (req: NextRequest) => {
     return envBaseUrl.replace(/\/$/, "");
   }
 
-  return `${req.nextUrl.protocol}//${req.nextUrl.hostname}:3001`;
+  const hostname = req.nextUrl.hostname;
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return `${req.nextUrl.protocol}//127.0.0.1:3001`;
+  }
+
+  const mappedProductionApiBaseUrl = PRODUCTION_API_BASE_URLS[hostname];
+  if (mappedProductionApiBaseUrl) {
+    return mappedProductionApiBaseUrl;
+  }
+
+  return req.nextUrl.origin;
 };
 
 const clearSessionCookies = (response: NextResponse) => {

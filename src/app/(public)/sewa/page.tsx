@@ -22,6 +22,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import {
   addTenantFavorite,
   getApiErrorMessage,
@@ -179,9 +180,7 @@ const resolvePropertyImage = (path?: string | null) => {
     return normalizedPath;
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:3001";
+  const baseUrl = resolveApiBaseUrl();
 
   return `${baseUrl}${normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`}`;
 };
