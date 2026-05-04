@@ -639,7 +639,6 @@ export default function DetailPropertiPage() {
 
     try {
       await updateAdminProperty(propertyId, {
-        owner_id: payload.owner_id,
         name: payload.name,
         address: payload.address,
         latitude: payload.latitude,
