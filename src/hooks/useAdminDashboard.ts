@@ -6,6 +6,7 @@ import {
   getAdminFinancialDashboard,
   getAdminLogActivities,
   getAdminMaintenanceRequests,
+  getAdminManualRentalBookings,
   getAdminPayments,
   getAdminProperties,
   getApiErrorMessage,
@@ -127,6 +128,7 @@ export const useAdminDashboard = (period: string) => {
           propertiesResponse,
           maintenanceResponse,
           paymentsResponse,
+          manualBookingsResponse,
           financialDashboardResponse,
           activityResponse,
         ] = await Promise.all([
@@ -144,6 +146,11 @@ export const useAdminDashboard = (period: string) => {
             page: 1,
             per_page: 100,
           }),
+          getAdminManualRentalBookings({
+            ...periodParams,
+            page: 1,
+            per_page: 100,
+          }),
           getAdminFinancialDashboard(periodParams),
           getAdminLogActivities({
             page: 1,
@@ -157,7 +164,7 @@ export const useAdminDashboard = (period: string) => {
 
         const properties = propertiesResponse.data;
         const maintenanceRequests = maintenanceResponse.data;
-        const payments = paymentsResponse.data;
+        const payments = [...paymentsResponse.data, ...manualBookingsResponse.data];
         const dashboard = financialDashboardResponse.data;
         const activities = activityResponse.data;
 

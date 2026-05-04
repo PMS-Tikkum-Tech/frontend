@@ -179,12 +179,13 @@ export default function OwnerDashboardPage() {
         </h3>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[930px] w-full text-sm">
+          <table className="min-w-[1040px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
                 <th className="p-3 text-left font-semibold">Kode Pemesanan</th>
                 <th className="p-3 text-left font-semibold">Properti</th>
                 <th className="p-3 text-left font-semibold">Unit</th>
+                <th className="p-3 text-left font-semibold">Tenant</th>
                 <th className="p-3 text-left font-semibold">Status</th>
                 <th className="p-3 text-left font-semibold">Status Sewa</th>
                 <th className="p-3 text-left font-semibold">Mulai</th>
@@ -196,13 +197,13 @@ export default function OwnerDashboardPage() {
             <tbody>
               {isLoading ? (
                 <tr className="border-t border-slate-100">
-                  <td colSpan={8} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Memuat pemesanan terbaru...
                   </td>
                 </tr>
               ) : data.latestBookings.length === 0 ? (
                 <tr className="border-t border-slate-100">
-                  <td colSpan={8} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Belum ada data pemesanan.
                   </td>
                 </tr>
@@ -212,6 +213,7 @@ export default function OwnerDashboardPage() {
                     <td className="p-3 font-medium text-slate-800">{row.bookingCode}</td>
                     <td className="p-3 text-slate-700">{row.propertyName}</td>
                     <td className="p-3 text-slate-700">{row.unitName}</td>
+                    <td className="p-3 text-slate-700">{row.tenantName}</td>
                     <td className="p-3 text-slate-700">{row.statusLabel}</td>
                     <td className="p-3 text-slate-700">{row.occupancyStatus}</td>
                     <td className="p-3 text-slate-700">{formatDate(row.startDate)}</td>

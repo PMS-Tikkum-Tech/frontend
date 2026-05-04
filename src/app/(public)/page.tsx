@@ -106,6 +106,16 @@ const formatCurrency = (value?: number) => {
   return `Rp${CURRENCY_FORMATTER.format(value)}`;
 };
 
+const hasMonthlyPrice = (value?: number | null) => {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+};
+
+const formatMonthlyPriceLabel = (value?: number | null) => {
+  return hasMonthlyPrice(value)
+    ? `mulai dari ${formatCurrency(value)} /bulan`
+    : "Hubungi administrator";
+};
+
 const formatLabel = (value?: string | null) => {
   if (!value) {
     return "-";
@@ -391,7 +401,7 @@ const toPropertyItem = (
     area: property.address || "-",
     availabilityStatus: getPublicPropertyAvailabilityStatus(property),
     availabilityLabel: getPublicPropertyAvailabilityLabel(property),
-    priceStart: formatCurrency(property.price_min),
+    priceStart: formatMonthlyPriceLabel(property.price_min || property.price_max),
     nearestPopularDistance: getNearestPopularDistanceLabel(property),
     facilities: (property.facilities || [])
       .slice(0, 3)
@@ -1693,11 +1703,7 @@ function PropertyCard({
         </div>
 
         <div className="rounded-xl border border-green-100 bg-green-50/70 px-3 py-2">
-          <p className="text-xs font-medium text-green-800">
-            mulai dari
-            <span className="ml-1 text-xl font-semibold">{item.priceStart}</span>
-            <span className="ml-1 text-sm font-medium">/bulan</span>
-          </p>
+          <p className="text-sm font-semibold text-green-800">{item.priceStart}</p>
         </div>
       </div>
     </div>

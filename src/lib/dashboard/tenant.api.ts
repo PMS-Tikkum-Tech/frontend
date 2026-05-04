@@ -355,6 +355,7 @@ type ManualRentalCatalogUnit = {
   status?: string | null;
   people_allowed?: number | null;
   monthly_rent_amount?: number | null;
+  price?: number | string | null;
   roomphoto_urls?: string[];
   photo_urls?: string[];
   video_urls?: string[];
@@ -386,6 +387,33 @@ type ManualRentalCatalogUnit = {
   } | null;
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+const getPositivePriceValue = (value: unknown) => {
+  const numericValue = getNumberValue(value);
+  return numericValue != null && numericValue > 0 ? numericValue : null;
+};
+
+const getCatalogUnitPrice = (
+  unit: Pick<ManualRentalCatalogUnit, "monthly_rent_amount" | "price">
+) => getPositivePriceValue(unit.monthly_rent_amount ?? unit.price);
+
+const getPriceRangeFromValues = (values: unknown[]) => {
+  const prices = values
+    .map(getPositivePriceValue)
+    .filter((value): value is number => value != null);
+
+  if (prices.length === 0) {
+    return {
+      min: null,
+      max: null,
+    };
+  }
+
+  return {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+  };
 };
 
 type PublicPropertyApiItem = {
@@ -814,6 +842,9 @@ const normalizePublicProperty = (
 ): PublicPropertySummary => {
   const stats = property.stats || {};
   const priceRange = stats.price_range || null;
+  const previewPriceRange = getPriceRangeFromValues(
+    property.available_units_preview?.map((unit) => unit.monthly_rent_amount) || []
+  );
   const photoUrls = dedupeMediaPaths(
     property.photo_urls,
     property.roomphoto_urls,
@@ -821,8 +852,10 @@ const normalizePublicProperty = (
     property.available_units_preview?.flatMap((unit) => unit.roomphoto_urls || [])
   );
   const videoUrls = dedupeMediaPaths(property.video_urls, property.video_url);
-  const priceMin = getNumberValue(priceRange?.min ?? property.price_min);
-  const priceMax = getNumberValue(priceRange?.max ?? property.price_max);
+  const priceMin =
+    previewPriceRange.min ?? getNumberValue(priceRange?.min ?? property.price_min);
+  const priceMax =
+    previewPriceRange.max ?? getNumberValue(priceRange?.max ?? property.price_max);
   const totalUnits = getNumberValue(stats.total_units ?? property.total_units);
   const occupiedUnits = getNumberValue(
     stats.occupied_units ?? property.occupied_units
@@ -913,14 +946,42 @@ const fetchAllCatalogUnits = async (params?: QueryParams) => {
 
 const fetchAllCatalogProperties = async (params?: QueryParams) => {
   const perPage = 100;
-  const firstResponse = await axiosInstance.get<
-    ApiResponse<PublicPropertyApiItem[], ApiPaginationMeta>
-  >("/api/v1/manual_rentals/catalog/properties", {
-    params: buildCatalogQuery(params, 1, perPage),
-  });
+  const [firstResponse, unitsResponse] = await Promise.all([
+    axiosInstance.get<ApiResponse<PublicPropertyApiItem[], ApiPaginationMeta>>(
+      "/api/v1/manual_rentals/catalog/properties",
+      {
+        params: buildCatalogQuery(params, 1, perPage),
+      }
+    ),
+    fetchAllCatalogUnits(params).catch(() => null),
+  ]);
 
   const properties: PublicPropertyApiItem[] = [...firstResponse.data.data];
   const totalPages = firstResponse.data.meta?.total_pages || 0;
+  const unitPriceRangeByProperty = new Map<
+    number,
+    { price_min: number; price_max: number }
+  >();
+
+  unitsResponse?.data.forEach((unit) => {
+    const propertyId = unit.property?.id;
+    const unitPrice = getCatalogUnitPrice(unit);
+    if (!propertyId || unitPrice == null) {
+      return;
+    }
+
+    const existing = unitPriceRangeByProperty.get(propertyId);
+    unitPriceRangeByProperty.set(propertyId, {
+      price_min:
+        existing?.price_min == null
+          ? unitPrice
+          : Math.min(existing.price_min, unitPrice),
+      price_max:
+        existing?.price_max == null
+          ? unitPrice
+          : Math.max(existing.price_max, unitPrice),
+    });
+  });
 
   for (let page = 2; page <= totalPages; page += 1) {
     const nextResponse = await axiosInstance.get<
@@ -932,7 +993,19 @@ const fetchAllCatalogProperties = async (params?: QueryParams) => {
   }
 
   return {
-    data: properties.map(normalizePublicProperty),
+    data: properties.map((property) => {
+      const normalizedProperty = normalizePublicProperty(property);
+      const unitPriceRange = unitPriceRangeByProperty.get(property.id);
+      if (!unitPriceRange) {
+        return normalizedProperty;
+      }
+
+      return {
+        ...normalizedProperty,
+        price_min: unitPriceRange.price_min,
+        price_max: unitPriceRange.price_max,
+      };
+    }),
     message: firstResponse.data.message,
   };
 };
@@ -950,7 +1023,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
     }
 
     const existing = propertyMap.get(property.id);
-    const unitPrice = getNumberValue(unit.monthly_rent_amount);
+    const unitPrice = getCatalogUnitPrice(unit);
     const propertyPhotoUrls = dedupeMediaPaths(
       property.photo_urls,
       property.roomphoto_urls,
@@ -1079,7 +1152,7 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
     unit_type: unit.unit_type || null,
     status: unit.status || "vacant",
     people_allowed: unit.people_allowed || null,
-    price: unit.monthly_rent_amount || null,
+    price: getCatalogUnitPrice(unit),
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,
     roomphoto_urls: photoUrls,
@@ -1133,8 +1206,14 @@ const mergePublicProperties = (
       total_tenants: item.total_tenants ?? fallbackItem.total_tenants,
       availability_status:
         item.availability_status ?? fallbackItem.availability_status ?? null,
-      price_min: item.price_min ?? fallbackItem.price_min,
-      price_max: item.price_max ?? fallbackItem.price_max,
+      price_min:
+        fallbackItem.price_min != null && fallbackItem.price_min > 0
+          ? fallbackItem.price_min
+          : item.price_min,
+      price_max:
+        fallbackItem.price_max != null && fallbackItem.price_max > 0
+          ? fallbackItem.price_max
+          : item.price_max,
       photo_url: item.photo_url || fallbackItem.photo_url || null,
       photo_urls:
         item.photo_urls && item.photo_urls.length > 0

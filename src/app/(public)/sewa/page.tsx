@@ -83,6 +83,22 @@ const formatCurrency = (value?: number) => {
   return `Rp ${CURRENCY_FORMATTER.format(value)}`;
 };
 
+const hasMonthlyPrice = (value?: number | null) => {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+};
+
+const getPropertyStartingPrice = (property: PublicPropertySummary) => {
+  if (hasMonthlyPrice(property.price_min)) {
+    return property.price_min;
+  }
+
+  return hasMonthlyPrice(property.price_max) ? property.price_max : undefined;
+};
+
+const formatMonthlyPriceLabel = (value?: number | null) => {
+  return hasMonthlyPrice(value) ? `${formatCurrency(value)} /bulan` : "Hubungi administrator";
+};
+
 const formatMarkerPrice = (value?: number) => {
   if (!value || value <= 0) {
     return "Info";
@@ -694,9 +710,17 @@ export default function SewaPage() {
     if (sortBy === "name") {
       sorted.sort((a, b) => a.property.name.localeCompare(b.property.name));
     } else if (sortBy === "price_low") {
-      sorted.sort((a, b) => (a.property.price_min || 0) - (b.property.price_min || 0));
+      sorted.sort(
+        (a, b) =>
+          (getPropertyStartingPrice(a.property) || Number.MAX_SAFE_INTEGER) -
+          (getPropertyStartingPrice(b.property) || Number.MAX_SAFE_INTEGER)
+      );
     } else if (sortBy === "price_high") {
-      sorted.sort((a, b) => (b.property.price_min || 0) - (a.property.price_min || 0));
+      sorted.sort(
+        (a, b) =>
+          (b.property.price_max || getPropertyStartingPrice(b.property) || 0) -
+          (a.property.price_max || getPropertyStartingPrice(a.property) || 0)
+      );
     }
 
     return sorted;
@@ -715,8 +739,8 @@ export default function SewaPage() {
         address: item.property.address || "-",
         lat: coordinate.lat,
         lng: coordinate.lng,
-        priceLabel: `${formatCurrency(item.property.price_min)} /bulan`,
-        markerLabel: formatMarkerPrice(item.property.price_min),
+        priceLabel: formatMonthlyPriceLabel(getPropertyStartingPrice(item.property)),
+        markerLabel: formatMarkerPrice(getPropertyStartingPrice(item.property)),
         isFavorite: item.is_favorite,
       };
     });
@@ -755,7 +779,7 @@ export default function SewaPage() {
 
   const marketSnapshot = useMemo(() => {
     const prices = filteredItems
-      .map((item) => item.property.price_min || item.property.price_max || 0)
+      .map((item) => getPropertyStartingPrice(item.property) || 0)
       .filter((value) => value > 0);
 
     const averagePrice =
@@ -788,7 +812,7 @@ export default function SewaPage() {
         id: item.property.id,
         name: item.property.name,
         district: extractDistrict(item.property.address),
-        priceLabel: formatCurrency(item.property.price_min || item.property.price_max),
+        priceLabel: formatMonthlyPriceLabel(getPropertyStartingPrice(item.property)),
         distanceLabel: nearestPopular
           ? formatDistanceLabel(nearestPopular.distanceKm, nearestPopular.name)
           : "-",
@@ -1097,11 +1121,19 @@ export default function SewaPage() {
                   {selectedProperty.property.address || "-"}
                 </p>
                 <p className="text-sm text-slate-500">
-                  mulai dari
-                  <span className="ml-1 text-lg font-semibold text-green-700">
-                    {formatCurrency(selectedProperty.property.price_min)}
-                  </span>
-                  /bulan
+                  {hasMonthlyPrice(getPropertyStartingPrice(selectedProperty.property)) ? (
+                    <>
+                      mulai dari
+                      <span className="ml-1 text-lg font-semibold text-green-700">
+                        {formatCurrency(
+                          getPropertyStartingPrice(selectedProperty.property)
+                        )}
+                      </span>
+                      /bulan
+                    </>
+                  ) : (
+                    "Hubungi administrator"
+                  )}
                 </p>
                 <button
                   type="button"
@@ -1296,7 +1328,7 @@ export default function SewaPage() {
                         </p>
                       </div>
                       <p className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                        {item.priceLabel}/bulan
+                        {item.priceLabel}
                       </p>
                     </div>
                     <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
@@ -1731,11 +1763,17 @@ function PropertyCard({
 
         <div className="rounded-xl border border-green-100 bg-green-50/70 px-3 py-2">
           <p className="text-xs font-medium text-green-800">
-            mulai dari
-            <span className="ml-1 text-xl font-semibold">
-              {formatCurrency(item.property.price_min)}
-            </span>
-            <span className="ml-1 text-sm font-medium">/bulan</span>
+            {hasMonthlyPrice(getPropertyStartingPrice(item.property)) ? (
+              <>
+                mulai dari
+                <span className="ml-1 text-xl font-semibold">
+                  {formatCurrency(getPropertyStartingPrice(item.property))}
+                </span>
+                <span className="ml-1 text-sm font-medium">/bulan</span>
+              </>
+            ) : (
+              "Hubungi administrator"
+            )}
           </p>
         </div>
       </div>

@@ -34,6 +34,15 @@ export interface OwnerManualRentalBooking {
   unit?: {
     id?: number | null;
     name?: string | null;
+    unit_number?: string | number | null;
+    room_number?: string | number | null;
+    number?: string | number | null;
+    building_name?: string | null;
+    block_name?: string | null;
+  } | null;
+  tenant?: {
+    id?: number | null;
+    full_name?: string | null;
   } | null;
   settlement?: {
     owner_amount?: number | null;

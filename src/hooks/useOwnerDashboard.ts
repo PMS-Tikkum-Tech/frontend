@@ -8,6 +8,7 @@ import {
   type OwnerCashflowEntry,
   type OwnerManualRentalBooking,
 } from "@/lib/dashboard/owner.api";
+import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import type { OccupancyData, RevenueData } from "@/types/dashboard";
 
 export interface OwnerDashboardStats {
@@ -49,6 +50,7 @@ export interface OwnerLatestBookingRow {
   bookingCode: string;
   propertyName: string;
   unitName: string;
+  tenantName: string;
   statusLabel: string;
   occupancyStatus: string;
   startDate: string;
@@ -547,7 +549,8 @@ export const useOwnerDashboard = (period: string) => {
             id: row.id,
             bookingCode: row.booking_code || "-",
             propertyName: row.property?.name || "-",
-            unitName: row.unit?.name || "-",
+            unitName: getTenantUnitDisplayName(row.unit),
+            tenantName: row.tenant?.full_name || "-",
             statusLabel: row.status_label || row.status || "-",
             occupancyStatus: row.occupancy_status || "-",
             startDate: row.start_date || "-",
