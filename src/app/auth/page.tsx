@@ -85,9 +85,9 @@ function AuthPageContent() {
 
   const description =
     mode === "register"
-      ? "Pilih metode pendaftaran dan verifikasi nomor WhatsApp atau email."
+      ? "Daftar dengan email + nomor HP (OTP SMS) atau gunakan email saja."
       : mode === "verify"
-        ? "Buka tautan verifikasi yang dikirim ke email kamu, lalu kembali ke halaman ini."
+        ? "Metode pendaftaran telah diperbarui. Silakan gunakan formulir pendaftaran baru."
         : "Gunakan email dan kata sandi untuk melanjutkan.";
 
   return (

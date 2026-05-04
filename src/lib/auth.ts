@@ -14,29 +14,13 @@ type LoginRequest = {
 
 type GoogleLoginRequest = {
   id_token: string;
-  phone_verification_token?: string;
 };
 
 type RegisterRequest = {
   full_name: string;
   email: string;
   password: string;
-  phone_number: string;
-  phone_verification_token?: string;
-};
-
-type OtpRequestPayload = {
-  request_id: string;
-  phone_number: string;
-  expires_at?: string | null;
-  resend_available_at?: string | null;
-  debug_code?: string | null;
-};
-
-type OtpVerifyPayload = {
-  phone_number: string;
-  phone_verification_token: string;
-  expires_at?: string | null;
+  firebase_phone_token: string;
 };
 
 type EmailCodeRequestPayload = {
@@ -60,22 +44,12 @@ type ChangePasswordRequest = {
   new_password_confirmation: string;
 };
 
-type AuthResult = {
+export type AuthResult = {
   user: SessionUser;
   token: string;
   refreshToken: string;
   expiresAt?: string | null;
   refreshTokenExpiresAt?: string | null;
-};
-
-type RegisterResult = {
-  email: string;
-  phoneNumber: string;
-  accountStatus?: "active" | "inactive" | "pending_verification";
-};
-
-type RegisterPayload = {
-  user: BackendUser;
 };
 
 export const TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY =
@@ -179,57 +153,6 @@ export const refreshAuthSession = async (refreshToken: string): Promise<AuthResu
   return mapAuthPayload(res.data.data);
 };
 
-export const requestTenantRegistrationOtp = async (phoneNumber: string) => {
-  const res = await axiosInstance.post<ApiResponse<OtpRequestPayload>>(
-    "/api/v1/auth/tenant/register/request_otp",
-    {
-      phone_number: phoneNumber,
-    }
-  );
-
-  return {
-    requestId: res.data.data.request_id,
-    phoneNumber: res.data.data.phone_number,
-    expiresAt: res.data.data.expires_at ?? null,
-    resendAvailableAt: res.data.data.resend_available_at ?? null,
-    debugCode: res.data.data.debug_code ?? null,
-  };
-};
-
-export const verifyTenantRegistrationOtp = async (payload: {
-  phoneNumber: string;
-  code: string;
-}) => {
-  const res = await axiosInstance.post<ApiResponse<OtpVerifyPayload>>(
-    "/api/v1/auth/tenant/register/verify_otp",
-    {
-      phone_number: payload.phoneNumber,
-      code: payload.code,
-    }
-  );
-
-  return {
-    phoneNumber: res.data.data.phone_number,
-    phoneVerificationToken: res.data.data.phone_verification_token,
-    expiresAt: res.data.data.expires_at ?? null,
-  };
-};
-
-export const completeTenantPhoneRegistration = async (payload: {
-  phoneVerificationToken: string;
-  fullName?: string;
-}): Promise<AuthResult> => {
-  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
-    "/api/v1/auth/tenant/register/complete_phone",
-    {
-      phone_verification_token: payload.phoneVerificationToken,
-      full_name: payload.fullName?.trim() || undefined,
-    }
-  );
-
-  return mapAuthPayload(res.data.data);
-};
-
 export const requestTenantRegistrationEmailCode = async (email: string) => {
   const res = await axiosInstance.post<ApiResponse<EmailCodeRequestPayload>>(
     "/api/v1/auth/tenant/register/request_email_code",
@@ -281,31 +204,12 @@ export const completeTenantEmailRegistration = async (payload: {
   return mapAuthPayload(res.data.data);
 };
 
-export const registerTenant = async (
-  data: RegisterRequest
-): Promise<RegisterResult> => {
-  const res = await axiosInstance.post<ApiResponse<RegisterPayload>>(
+export const registerTenant = async (data: RegisterRequest): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
     "/api/v1/auth/tenant/register",
     data
   );
-
-  return {
-    email: res.data.data.user.email || data.email,
-    phoneNumber: res.data.data.user.phone_number || data.phone_number,
-    accountStatus: res.data.data.user.account_status,
-  };
-};
-
-export const resendTenantRegistrationOtp = async (
-  phoneNumber: string
-): Promise<{
-  requestId: string;
-  phoneNumber: string;
-  expiresAt: string | null;
-  resendAvailableAt: string | null;
-  debugCode: string | null;
-}> => {
-  return requestTenantRegistrationOtp(phoneNumber);
+  return mapAuthPayload(res.data.data);
 };
 
 export const getMe = async (): Promise<SessionUser> => {
