@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 
 interface Props {
   open: boolean;
@@ -134,11 +135,7 @@ export default function ProfilePanel({
       return user.avatar;
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-      (typeof window !== "undefined"
-        ? `${window.location.protocol}//${window.location.hostname}:3001`
-        : "http://127.0.0.1:3001");
+    const baseUrl = resolveApiBaseUrl();
 
     return `${baseUrl}${user.avatar.startsWith("/") ? user.avatar : `/${user.avatar}`}`;
   })();

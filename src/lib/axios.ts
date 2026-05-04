@@ -4,6 +4,7 @@ import {
   isSessionExpired,
   syncClientAuthCookies,
 } from "@/lib/auth-cookies";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 
 export const AUTH_SESSION_STORAGE_KEY = "kyra.auth.session";
 
@@ -154,20 +155,6 @@ const isAuthFailureResponse = (error: unknown) => {
 
 const isRefreshEndpoint = (url?: string | null) =>
   Boolean(url?.includes("/api/v1/auth/refresh") || url?.includes("/auth/refresh"));
-
-const resolveApiBaseUrl = () => {
-  const envBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (envBaseUrl) {
-    return envBaseUrl;
-  }
-
-  // Default dev fallback: Next.js on :3000 and Rails API on :3001.
-  if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:3001`;
-  }
-
-  return "http://127.0.0.1:3001";
-};
 
 const refreshClient = axios.create({
   baseURL: resolveApiBaseUrl(),

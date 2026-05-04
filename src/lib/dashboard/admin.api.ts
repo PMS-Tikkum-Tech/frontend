@@ -1,5 +1,6 @@
 import axios from "axios";
 import axiosInstance from "@/lib/axios";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import type { ApiPaginationMeta, ApiResponse } from "@/types/api";
 import type { Property, PropertyStatus } from "@/types/dashboard";
 
@@ -619,19 +620,6 @@ export interface AdminLogActivity {
   created_at?: string | null;
   updated_at?: string | null;
 }
-
-const resolveApiBaseUrl = () => {
-  const envBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (envBaseUrl) {
-    return envBaseUrl.replace(/\/$/, "");
-  }
-
-  if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:3001`;
-  }
-
-  return "http://127.0.0.1:3001";
-};
 
 const sanitizeParams = (params?: QueryParams) => {
   if (!params) {

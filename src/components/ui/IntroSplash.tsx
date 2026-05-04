@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const INTRO_STORAGE_KEY = "kikost_intro_seen";
-const INTRO_MESSAGE = "Selamat datang di uji coba Sistem Manajemen Properti KIKOST";
+const INTRO_MESSAGE = "Selamat datang di KIKOST";
 const INTRO_EXCLUDED_PATHS = ["/verifikasi-email", "/__/auth/action"];
 
 export default function IntroSplash() {
@@ -91,7 +91,9 @@ export default function IntroSplash() {
           {typedText}
           <span className="ml-1 inline-block h-7 w-[2px] animate-pulse bg-white/90 align-middle md:h-10" />
         </h1>
-        <p className="mt-4 text-sm text-white/85">Memuat sistem KIKOST...</p>
+        <p className="mt-4 text-sm text-white/85">
+          Hunian nyaman, proses sewa lebih mudah.
+        </p>
 
         <button
           type="button"

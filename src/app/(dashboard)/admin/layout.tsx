@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import RoleGuard from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import { updateSelfProfilePicture } from "@/lib/profile.api";
 import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
@@ -59,11 +60,7 @@ export default function AdminDashboardLayout({
       return user.avatar;
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-      (typeof window !== "undefined"
-        ? `${window.location.protocol}//${window.location.hostname}:3001`
-        : "http://127.0.0.1:3001");
+    const baseUrl = resolveApiBaseUrl();
 
     return `${baseUrl}${user.avatar.startsWith("/") ? user.avatar : `/${user.avatar}`}`;
   })();

@@ -1,5 +1,6 @@
 import axios from "axios";
 import axiosInstance, { AUTH_SESSION_STORAGE_KEY } from "@/lib/axios";
+import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import type { ApiPaginationMeta } from "@/types/api";
 import type { BackendUser } from "@/types/auth";
 
@@ -523,19 +524,6 @@ const getItem = async <T>(path: string): Promise<ItemResult<T>> => {
     data: response.data.data,
     message: response.data.message,
   };
-};
-
-const resolveApiBaseUrl = () => {
-  const envBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (envBaseUrl) {
-    return envBaseUrl.replace(/\/$/, "");
-  }
-
-  if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:3001`;
-  }
-
-  return "http://127.0.0.1:3001";
 };
 
 const toAbsoluteAssetUrl = (path?: string | null) => {
