@@ -129,7 +129,7 @@ export default function TentangPage() {
 
         <div className="absolute inset-0 opacity-10">
           <Image
-            src="/bg.jpg"
+            src="/bg-1200.webp"
             alt="Tentang Kyra Stay"
             fill
             className="object-cover"
@@ -171,7 +171,7 @@ export default function TentangPage() {
           <div className="relative">
             <div className="relative h-[330px] overflow-hidden rounded-3xl border border-white/30 bg-white/10 shadow-2xl backdrop-blur-sm md:h-[400px]">
               <Image
-                src="/bg.jpg"
+                src="/bg-1200.webp"
                 alt="Hunian mahasiswa Kyra Stay"
                 fill
                 className="object-cover"
@@ -459,7 +459,7 @@ export default function TentangPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Image
-                  src="/logo-header.png"
+                  src="/logo-header-400.webp"
                   alt="KiKost"
                   width={204}
                   height={64}
@@ -467,7 +467,7 @@ export default function TentangPage() {
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image
-                  src="/logo-white.png"
+                  src="/logo-white-400.webp"
                   alt="Kyra Stay"
                   width={92}
                   height={28}

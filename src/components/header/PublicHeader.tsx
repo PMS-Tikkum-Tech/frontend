@@ -112,7 +112,7 @@ export default function PublicHeader() {
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Image
-              src="/logo-header.png"
+              src="/logo-header-400.webp"
               alt="KiKost"
               width={416}
               height={416}

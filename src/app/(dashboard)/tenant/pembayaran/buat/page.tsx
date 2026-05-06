@@ -271,7 +271,7 @@ const toDateInput = (date: Date) => {
 const resolveMediaUrl = (path?: string | null) => {
   const normalized = path?.trim();
   if (!normalized) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
   if (/^https?:\/\//i.test(normalized)) {
@@ -285,7 +285,7 @@ const resolveMediaUrl = (path?: string | null) => {
 
 const getPropertyHero = (property: PublicPropertySummary | null) => {
   if (!property) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
   const primary = property.photo_url || property.photo_urls?.[0];

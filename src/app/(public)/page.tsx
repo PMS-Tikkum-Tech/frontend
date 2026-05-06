@@ -47,17 +47,17 @@ import { useTransientToast } from "@/hooks/useTransientToast";
 
 const heroSlides = [
   {
-    src: "/bg.jpg",
+    src: "/bg-1200.webp",
     alt: "Visual hunian Kyra Stay - tampak depan properti",
     objectPosition: "center 58%",
   },
   {
-    src: "/bg.jpg",
+    src: "/bg-1200.webp",
     alt: "Visual hunian Kyra Stay - area bangunan modern",
     objectPosition: "center 42%",
   },
   {
-    src: "/bg.jpg",
+    src: "/bg-1200.webp",
     alt: "Visual hunian Kyra Stay - fasad properti",
     objectPosition: "center 72%",
   },
@@ -65,7 +65,7 @@ const heroSlides = [
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 const rawWhatsappNumber =
-  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "08123456789";
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "082114224431";
 const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
 const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`
@@ -142,7 +142,7 @@ const getAvailabilityBadgeClass = (status: PublicPropertyAvailabilityStatus) => 
 const resolvePropertyImage = (path?: string | null) => {
   const normalizedPath = path?.trim();
   if (!normalizedPath) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
   if (/^data:image\//i.test(normalizedPath)) {
@@ -207,7 +207,7 @@ const buildPropertyMedias = (
     return medias;
   }
 
-  return [{ type: "image", src: "/bg.jpg" }];
+  return [{ type: "image", src: "/bg-1200.webp" }];
 };
 
 const extractDistrict = (address?: string | null) => {
@@ -406,7 +406,7 @@ const toPropertyItem = (
     facilities: (property.facilities || [])
       .slice(0, 3)
       .map((facility) => formatLabel(facility)),
-    image: medias[0]?.src || "/bg.jpg",
+    image: medias[0]?.src || "/bg-1200.webp",
     medias,
     occupiedUnits,
     totalUnits,
@@ -1224,7 +1224,7 @@ export default function PublicHomePage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Image
-                  src="/logo-header.png"
+                  src="/logo-header-400.webp"
                   alt="KiKost"
                   width={204}
                   height={64}
@@ -1232,7 +1232,7 @@ export default function PublicHomePage() {
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image
-                  src="/logo-white.png"
+                  src="/logo-white-400.webp"
                   alt="Kyra Stay"
                   width={92}
                   height={28}
@@ -1482,7 +1482,7 @@ function PropertyCard({
   const router = useRouter();
   const detailHref = `/sewa/${item.id}`;
   const [mediaItems, setMediaItems] = useState<PropertyMedia[]>(
-    item.medias.length > 0 ? item.medias : [{ type: "image", src: "/bg.jpg" }]
+    item.medias.length > 0 ? item.medias : [{ type: "image", src: "/bg-1200.webp" }]
   );
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -1491,7 +1491,7 @@ function PropertyCard({
 
   const activeMedia = mediaItems[activeMediaIndex] || {
     type: "image" as const,
-    src: "/bg.jpg",
+    src: "/bg-1200.webp",
   };
   const goToPrevMedia = () => {
     setActiveMediaIndex((prev) => (prev <= 0 ? mediaItems.length - 1 : prev - 1));
@@ -1576,7 +1576,7 @@ function PropertyCard({
               setMediaItems((prev) =>
                 prev.map((media, idx) =>
                   idx === activeMediaIndex
-                    ? { type: "image", src: "/bg.jpg" }
+                    ? { type: "image", src: "/bg-1200.webp" }
                     : media
                 )
               );
@@ -1593,7 +1593,7 @@ function PropertyCard({
               setMediaItems((prev) =>
                 prev.map((media, idx) =>
                   idx === activeMediaIndex
-                    ? { type: "image", src: "/bg.jpg" }
+                    ? { type: "image", src: "/bg-1200.webp" }
                     : media
                 )
               );

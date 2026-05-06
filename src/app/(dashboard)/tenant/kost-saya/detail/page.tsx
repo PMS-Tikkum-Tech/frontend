@@ -122,7 +122,7 @@ const getPaymentDisplayStatus = (
 const resolveAssetUrl = (value?: string | null) => {
   const normalized = value?.trim();
   if (!normalized) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
   if (/^https?:\/\//i.test(normalized)) {

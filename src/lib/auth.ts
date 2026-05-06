@@ -14,6 +14,8 @@ type LoginRequest = {
 
 type GoogleLoginRequest = {
   id_token: string;
+  google_access_token?: string;
+  phone_verification_token?: string;
 };
 
 type RegisterRequest = {
@@ -21,6 +23,20 @@ type RegisterRequest = {
   email: string;
   password: string;
   firebase_phone_token: string;
+};
+
+type OtpRequestPayload = {
+  request_id: string;
+  phone_number: string;
+  expires_at?: string | null;
+  resend_available_at?: string | null;
+  debug_code?: string | null;
+};
+
+type OtpVerifyPayload = {
+  phone_number: string;
+  phone_verification_token: string;
+  expires_at?: string | null;
 };
 
 type EmailCodeRequestPayload = {
@@ -147,6 +163,61 @@ export const refreshAuthSession = async (refreshToken: string): Promise<AuthResu
     "/api/v1/auth/refresh",
     {
       refresh_token: refreshToken,
+    }
+  );
+
+  return mapAuthPayload(res.data.data);
+};
+
+export const requestTenantRegistrationOtp = async (phoneNumber: string) => {
+  const res = await axiosInstance.post<ApiResponse<OtpRequestPayload>>(
+    "/api/v1/auth/tenant/register/request_otp",
+    {
+      phone_number: phoneNumber,
+    }
+  );
+
+  return {
+    requestId: res.data.data.request_id,
+    phoneNumber: res.data.data.phone_number,
+    expiresAt: res.data.data.expires_at ?? null,
+    resendAvailableAt: res.data.data.resend_available_at ?? null,
+    debugCode: res.data.data.debug_code ?? null,
+  };
+};
+
+export const resendTenantRegistrationOtp = async (phoneNumber: string) => {
+  return requestTenantRegistrationOtp(phoneNumber);
+};
+
+export const verifyTenantRegistrationOtp = async (payload: {
+  phoneNumber: string;
+  code: string;
+}) => {
+  const res = await axiosInstance.post<ApiResponse<OtpVerifyPayload>>(
+    "/api/v1/auth/tenant/register/verify_otp",
+    {
+      phone_number: payload.phoneNumber,
+      code: payload.code,
+    }
+  );
+
+  return {
+    phoneNumber: res.data.data.phone_number,
+    phoneVerificationToken: res.data.data.phone_verification_token,
+    expiresAt: res.data.data.expires_at ?? null,
+  };
+};
+
+export const completeTenantPhoneRegistration = async (payload: {
+  phoneVerificationToken: string;
+  fullName?: string;
+}): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/tenant/register/complete_phone",
+    {
+      phone_verification_token: payload.phoneVerificationToken,
+      full_name: payload.fullName?.trim() || undefined,
     }
   );
 

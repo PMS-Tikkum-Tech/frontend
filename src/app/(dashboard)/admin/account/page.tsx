@@ -687,7 +687,7 @@ export default function AdminAccountPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <Image
-                          src={toAbsoluteAssetUrl(user.profile_picture_url) || "/bg.jpg"}
+                          src={toAbsoluteAssetUrl(user.profile_picture_url) || "/bg-1200.webp"}
                           alt={user.full_name}
                           width={40}
                           height={40}
@@ -971,7 +971,7 @@ export default function AdminAccountPage() {
             <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm">
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <Image
-                  src={toAbsoluteAssetUrl(viewUser.profile_picture_url) || "/bg.jpg"}
+                  src={toAbsoluteAssetUrl(viewUser.profile_picture_url) || "/bg-1200.webp"}
                   alt={viewUser.full_name}
                   width={44}
                   height={44}

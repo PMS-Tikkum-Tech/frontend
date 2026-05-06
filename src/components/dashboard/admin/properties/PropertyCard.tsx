@@ -47,7 +47,7 @@ export default function PropertyCard({ data }: { data: Property }) {
             alt={data.name}
             loading="lazy"
             onError={(event) => {
-              event.currentTarget.src = "/bg.jpg";
+              event.currentTarget.src = "/bg-1200.webp";
             }}
             className="h-52 w-full object-cover"
           />

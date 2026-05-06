@@ -85,7 +85,7 @@ function AuthPageContent() {
 
   const description =
     mode === "register"
-      ? "Daftar dengan email + nomor HP (OTP SMS) atau gunakan email saja."
+      ? "Daftar cukup dengan email atau nomor HP."
       : mode === "verify"
         ? "Metode pendaftaran telah diperbarui. Silakan gunakan formulir pendaftaran baru."
         : "Gunakan email dan kata sandi untuk melanjutkan.";

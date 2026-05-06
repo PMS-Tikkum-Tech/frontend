@@ -49,6 +49,15 @@ const PRIORITY_OPTIONS = [
 
 type PriorityValue = (typeof PRIORITY_OPTIONS)[number]["value"];
 
+const fieldControlClass =
+  "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500";
+
+const readOnlyControlClass =
+  "h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 shadow-sm outline-none";
+
+const textareaControlClass =
+  "min-h-36 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100";
+
 export default function ComplaintPage() {
   const { user } = useAuth();
   const [unitOptions, setUnitOptions] = useState<UnitOption[]>([]);
@@ -222,28 +231,26 @@ export default function ComplaintPage() {
                 type="text"
                 value={user?.name || "-"}
                 readOnly
-                className="w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                className={readOnlyControlClass}
               />
             </Field>
 
             <Field label="Informasi Unit">
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedUnit}
-                  onChange={(event) => setSelectedUnit(event.target.value)}
-                  className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400"
-                  disabled={isLoadingUnit}
-                >
-                  <option value="">
-                    {isLoadingUnit ? "Memuat unit..." : "Pilih Unit"}
+              <select
+                value={selectedUnit}
+                onChange={(event) => setSelectedUnit(event.target.value)}
+                className={fieldControlClass}
+                disabled={isLoadingUnit}
+              >
+                <option value="">
+                  {isLoadingUnit ? "Memuat unit..." : "Pilih Unit"}
+                </option>
+                {unitOptions.map((option) => (
+                  <option key={option.unitId} value={option.unitId}>
+                    {option.propertyName} - {option.unitName}
                   </option>
-                  {unitOptions.map((option) => (
-                    <option key={option.unitId} value={option.unitId}>
-                      {option.propertyName} - {option.unitName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </select>
             </Field>
           </div>
 
@@ -253,7 +260,7 @@ export default function ComplaintPage() {
               value={issue}
               onChange={(event) => setIssue(event.target.value)}
               placeholder="Contoh: AC tidak dingin"
-              className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400"
+              className={fieldControlClass}
             />
           </Field>
 
@@ -262,7 +269,7 @@ export default function ComplaintPage() {
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
-                className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400"
+                className={fieldControlClass}
               >
                 {CATEGORY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -276,7 +283,7 @@ export default function ComplaintPage() {
               <select
                 value={priority}
                 onChange={(event) => setPriority(event.target.value as PriorityValue)}
-                className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400"
+                className={fieldControlClass}
               >
                 {PRIORITY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -293,7 +300,7 @@ export default function ComplaintPage() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Jelaskan kronologi masalah, area yang terdampak, dan kondisi saat ini."
-              className="w-full resize-none rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400"
+              className={textareaControlClass}
             />
           </Field>
 
@@ -313,14 +320,14 @@ export default function ComplaintPage() {
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isSubmitting}
             >
               Atur Ulang Formulir
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isSubmitting}
             >
               <SendHorizonal size={14} />
@@ -341,7 +348,7 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5">
+    <label className="flex flex-col gap-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       {children}
     </label>

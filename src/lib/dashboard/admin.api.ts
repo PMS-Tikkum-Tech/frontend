@@ -1,6 +1,7 @@
 import axios from "axios";
 import axiosInstance from "@/lib/axios";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
+import { optimizeImageFilesForUpload } from "@/lib/image-optimizer";
 import type { ApiPaginationMeta, ApiResponse } from "@/types/api";
 import type { Property, PropertyStatus } from "@/types/dashboard";
 
@@ -741,7 +742,21 @@ const normalizeAdminPropertyDetailPayload = (
   };
 };
 
-const toPropertyFormData = (payload: AdminPropertyUpsertPayload) => {
+const appendOptimizedPhotos = async (
+  formData: FormData,
+  key: string,
+  photos?: File[]
+) => {
+  const optimizedPhotos = await optimizeImageFilesForUpload(photos || [], {
+    fallbackToOriginal: false,
+  });
+
+  optimizedPhotos.forEach((photo) => {
+    formData.append(key, photo);
+  });
+};
+
+const toPropertyFormData = async (payload: AdminPropertyUpsertPayload) => {
   const formData = new FormData();
 
   if (typeof payload.owner_id === "number") {
@@ -768,9 +783,7 @@ const toPropertyFormData = (payload: AdminPropertyUpsertPayload) => {
     formData.append("property[facilities][]", facility);
   });
 
-  (payload.photos || []).forEach((photo) => {
-    formData.append("property[photos][]", photo);
-  });
+  await appendOptimizedPhotos(formData, "property[photos][]", payload.photos);
 
   const primaryVideo = payload.video || payload.videos?.[0] || null;
   if (primaryVideo) {
@@ -785,7 +798,7 @@ const toPropertyFormData = (payload: AdminPropertyUpsertPayload) => {
   return formData;
 };
 
-const toPropertyUpdateFormData = (payload: AdminPropertyUpdatePayload) => {
+const toPropertyUpdateFormData = async (payload: AdminPropertyUpdatePayload) => {
   const formData = new FormData();
 
   if (typeof payload.owner_id === "number") {
@@ -834,9 +847,7 @@ const toPropertyUpdateFormData = (payload: AdminPropertyUpdatePayload) => {
     });
   }
 
-  (payload.photos || []).forEach((photo) => {
-    formData.append("property[photos][]", photo);
-  });
+  await appendOptimizedPhotos(formData, "property[photos][]", payload.photos);
 
   const primaryVideo = payload.video || payload.videos?.[0] || null;
   if (primaryVideo) {
@@ -863,7 +874,9 @@ const appendUnitFormDataValue = (
   formData.append(`unit[${key}]`, String(value));
 };
 
-const toUnitFormData = (payload: AdminUnitCreatePayload | AdminUnitUpdatePayload) => {
+const toUnitFormData = async (
+  payload: AdminUnitCreatePayload | AdminUnitUpdatePayload
+) => {
   const formData = new FormData();
 
   appendUnitFormDataValue(formData, "property_id", payload.property_id);
@@ -879,9 +892,7 @@ const toUnitFormData = (payload: AdminUnitCreatePayload | AdminUnitUpdatePayload
   appendUnitFormDataValue(formData, "price", payload.price);
   appendUnitFormDataValue(formData, "notes", payload.notes);
 
-  (payload.photos || []).forEach((photo) => {
-    formData.append("unit[photos][]", photo);
-  });
+  await appendOptimizedPhotos(formData, "unit[photos][]", payload.photos);
 
   if (payload.video) {
     formData.append("unit[video]", payload.video);
@@ -1047,7 +1058,7 @@ export const mapPropertyToCard = (property: AdminPropertyListItem): Property => 
   const image =
     toAbsoluteAssetUrl(property.photo_urls?.[0]) ||
     toAbsoluteAssetUrl(property.roomphoto_urls?.[0]) ||
-    "/bg.jpg";
+    "/bg-1200.webp";
 
   return {
     id: property.id,
@@ -1107,9 +1118,10 @@ export const getAdminProperties = async (params?: QueryParams) => {
 };
 
 export const createAdminProperty = async (payload: AdminPropertyUpsertPayload) => {
+  const formData = await toPropertyFormData(payload);
   const response = await axiosInstance.post<ApiResponse<AdminPropertyDetailPayload>>(
     "/api/v1/properties",
-    toPropertyFormData(payload),
+    formData,
     {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -1137,9 +1149,10 @@ export const updateAdminProperty = async (
   id: number | string,
   payload: AdminPropertyUpdatePayload
 ) => {
+  const formData = await toPropertyUpdateFormData(payload);
   const response = await axiosInstance.patch<ApiResponse<AdminPropertyDetailPayload>>(
     `/api/v1/properties/${id}`,
-    toPropertyUpdateFormData(payload),
+    formData,
     {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -1218,9 +1231,10 @@ export const getAdminPropertyUnits = (id: number | string, params?: QueryParams)
   getList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
 
 export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
+  const formData = await toUnitFormData(payload);
   const response = await axiosInstance.post<ApiResponse<unknown>>(
     "/api/v1/units",
-    toUnitFormData(payload),
+    formData,
     {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -1238,9 +1252,10 @@ export const updateAdminUnit = async (
   id: number | string,
   payload: AdminUnitUpdatePayload
 ) => {
+  const formData = await toUnitFormData(payload);
   const response = await axiosInstance.patch<ApiResponse<unknown>>(
     `/api/v1/units/${id}`,
-    toUnitFormData(payload),
+    formData,
     {
       headers: {
         "Content-Type": "multipart/form-data",

@@ -67,7 +67,7 @@ const extractDistrict = (address?: string | null) => {
 const resolvePropertyImage = (path?: string | null) => {
   const normalizedPath = path?.trim();
   if (!normalizedPath) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
   if (/^data:image\//i.test(normalizedPath)) {

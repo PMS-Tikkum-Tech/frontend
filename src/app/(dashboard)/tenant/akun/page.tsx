@@ -58,7 +58,7 @@ import type { BackendUser } from "@/types/auth";
 
 const resolveAvatarUrl = (path?: string | null) => {
   if (!path) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
   if (/^https?:\/\//i.test(path)) {

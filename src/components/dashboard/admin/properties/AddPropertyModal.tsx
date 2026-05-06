@@ -684,7 +684,7 @@ export default function AddPropertyModal({
 
             <input
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"
               multiple
               onChange={(event) =>
                 setPhotos(Array.from(event.target.files || []))
@@ -692,7 +692,7 @@ export default function AddPropertyModal({
               className="text-sm"
             />
             <p className="mt-1 text-xs text-slate-500">
-              Maksimal 10 file. Format: PNG, JPG, JPEG, WEBP.
+              Maksimal 10 file. Gambar akan dikompres ke WebP max 1200px.
             </p>
 
             {photos.length > 0 && (

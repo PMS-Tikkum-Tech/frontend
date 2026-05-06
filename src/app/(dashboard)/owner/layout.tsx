@@ -155,7 +155,7 @@ export default function OwnerDashboardLayout({
                 <X size={18} />
               </button>
               <Image
-                src="/logo-white.png"
+                src="/logo-white-400.webp"
                 alt="Logo Kyra Stay"
                 width={140}
                 height={40}

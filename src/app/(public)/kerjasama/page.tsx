@@ -107,7 +107,7 @@ const PARTNERSHIP_FOOTER_COLUMNS = [
   },
 ];
 const rawWhatsappNumber =
-  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "08123456789";
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "082114224431";
 const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
 const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`
@@ -125,7 +125,7 @@ export default function KerjasamaPage() {
 
         <div className="absolute inset-0 opacity-10">
           <Image
-            src="/bg.jpg"
+            src="/bg-1200.webp"
             alt="Kerja sama Kyra Stay"
             fill
             className="object-cover"
@@ -174,7 +174,7 @@ export default function KerjasamaPage() {
           <div className="relative">
             <div className="relative h-[330px] overflow-hidden rounded-3xl border border-white/30 bg-white/10 shadow-2xl backdrop-blur-sm md:h-[400px]">
               <Image
-                src="/bg.jpg"
+                src="/bg-1200.webp"
                 alt="Investasi properti"
                 fill
                 className="object-cover"
@@ -514,7 +514,7 @@ export default function KerjasamaPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Image
-                  src="/logo-header.png"
+                  src="/logo-header-400.webp"
                   alt="KiKost"
                   width={204}
                   height={64}
@@ -522,7 +522,7 @@ export default function KerjasamaPage() {
                 />
                 <span className="text-sm text-green-100">dikelola oleh</span>
                 <Image
-                  src="/logo-white.png"
+                  src="/logo-white-400.webp"
                   alt="Kyra Stay"
                   width={92}
                   height={28}

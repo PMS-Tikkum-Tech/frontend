@@ -197,10 +197,10 @@ const formatPriceRange = (
 
 const resolveMediaImageUrl = (path?: string | null) => {
   if (!path) {
-    return "/bg.jpg";
+    return "/bg-1200.webp";
   }
 
-  if (path === "/bg.jpg") {
+  if (path === "/bg-1200.webp") {
     return path;
   }
 
@@ -467,14 +467,14 @@ export default function DetailPropertiPage() {
 
   const images = useMemo(() => {
     if (!propertyDetail) {
-      return ["/bg.jpg"];
+      return ["/bg-1200.webp"];
     }
 
     const source = propertyDetail.property.photo_urls?.length
       ? propertyDetail.property.photo_urls
       : propertyDetail.property.roomphoto_urls?.length
         ? propertyDetail.property.roomphoto_urls
-        : ["/bg.jpg"];
+        : ["/bg-1200.webp"];
 
     return source.map((item) => resolveMediaImageUrl(item));
   }, [propertyDetail]);
@@ -483,7 +483,7 @@ export default function DetailPropertiPage() {
     setActiveImageIndex(0);
   }, [propertyDetail?.property.id, images.length]);
 
-  const selectedImage = images[Math.min(activeImageIndex, images.length - 1)] || "/bg.jpg";
+  const selectedImage = images[Math.min(activeImageIndex, images.length - 1)] || "/bg-1200.webp";
 
   const videos = useMemo(() => {
     const source = propertyDetail?.property.video_urls || [];
@@ -1185,7 +1185,7 @@ export default function DetailPropertiPage() {
                     alt={propertyDetail.property.name}
                     loading="lazy"
                     onError={(event) => {
-                      event.currentTarget.src = "/bg.jpg";
+                      event.currentTarget.src = "/bg-1200.webp";
                     }}
                     className="aspect-[16/9] w-full object-cover"
                   />
@@ -1209,7 +1209,7 @@ export default function DetailPropertiPage() {
                           alt={`${propertyDetail.property.name} ${index + 1}`}
                           loading="lazy"
                           onError={(event) => {
-                            event.currentTarget.src = "/bg.jpg";
+                            event.currentTarget.src = "/bg-1200.webp";
                           }}
                           className="h-20 w-full object-cover"
                         />
@@ -1275,7 +1275,7 @@ export default function DetailPropertiPage() {
                           alt={`Foto 360 ${propertyDetail.property.name}`}
                           loading="lazy"
                           onError={(event) => {
-                            event.currentTarget.src = "/bg.jpg";
+                            event.currentTarget.src = "/bg-1200.webp";
                           }}
                           className="h-52 w-full object-cover"
                         />
@@ -1827,7 +1827,7 @@ export default function DetailPropertiPage() {
                     </label>
                     <input
                       type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"
                       multiple
                       onChange={(event) =>
                         setUnitPhotos(Array.from(event.target.files || []))
@@ -1836,10 +1836,10 @@ export default function DetailPropertiPage() {
                     />
                     <p className="mt-2 text-[11px] text-slate-500">
                       {unitPhotos.length > 0
-                        ? `${unitPhotos.length} foto baru dipilih.`
+                        ? `${unitPhotos.length} foto baru dipilih dan akan dioptimasi ke WebP.`
                         : editingUnitPhotoCount > 0
                           ? `${editingUnitPhotoCount} foto unit sudah tersimpan.`
-                          : "Belum ada foto unit."}
+                          : "Belum ada foto unit. Foto baru akan dioptimasi ke WebP."}
                     </p>
                   </div>
 

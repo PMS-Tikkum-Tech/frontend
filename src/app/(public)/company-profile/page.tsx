@@ -54,19 +54,19 @@ const PORTFOLIO_ITEMS = [
   {
     name: "Kinara Signature Kost",
     location: "Dramaga, Bogor",
-    image: "/bg.jpg",
+    image: "/bg-1200.webp",
     desc: "Hunian mahasiswa dengan pendekatan layanan premium dan akses kampus cepat.",
   },
   {
     name: "Kinara Manunggal",
     location: "Bogor Barat",
-    image: "/bg.jpg",
+    image: "/bg-1200.webp",
     desc: "Aset hunian produktif dengan permintaan stabil sepanjang kalender akademik.",
   },
   {
     name: "Kinara Kost Cifor",
     location: "Cifor, Bogor",
-    image: "/bg.jpg",
+    image: "/bg-1200.webp",
     desc: "Menjaga keseimbangan kenyamanan penghuni dan efisiensi operasional properti.",
   },
 ];
@@ -83,7 +83,7 @@ export default function CompanyProfilePage() {
     <div className="font-manrope min-h-screen bg-[#F5F2EC] text-slate-900">
       <section className="relative overflow-hidden bg-[#1E293B] text-white">
         <Image
-          src="/bg.jpg"
+          src="/bg-1200.webp"
           alt="Profil Perusahaan Kinara Land"
           fill
           priority
@@ -231,7 +231,7 @@ export default function CompanyProfilePage() {
           <RevealOnScroll delayMs={120}>
             <div className="relative h-full min-h-[360px] overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
               <Image
-                src="/bg.jpg"
+                src="/bg-1200.webp"
                 alt="Operasional properti Kinara Land"
                 fill
                 className="object-cover"

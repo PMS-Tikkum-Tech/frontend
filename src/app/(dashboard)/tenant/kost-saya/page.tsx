@@ -766,7 +766,7 @@ function ActiveStayCard({
       className: "border-slate-200 bg-slate-100 text-slate-700",
     },
   };
-  const heroImage = stay.roomphoto_urls?.[0] || "/bg.jpg";
+  const heroImage = stay.roomphoto_urls?.[0] || "/bg-1200.webp";
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg">

@@ -171,7 +171,7 @@ export default function AdminDashboardLayout({
                 <X size={18} />
               </button>
               <Image
-                src="/logo-header.png"
+                src="/logo-header-400.webp"
                 alt="Logo KIKOST"
                 width={140}
                 height={40}
