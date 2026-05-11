@@ -42,9 +42,18 @@ const getErrorMessage = (error: unknown) => {
       | { message?: string; errors?: string[] }
       | undefined;
 
+    const rawMessage = payload?.errors?.[0] ?? payload?.message;
+    const normalizedMessage = rawMessage?.toLowerCase() ?? "";
+    if (
+      normalizedMessage.includes("wrongpass") ||
+      normalizedMessage.includes("redis://") ||
+      normalizedMessage.includes("invalid username-password")
+    ) {
+      return "Layanan pendaftaran sedang bermasalah. Silakan coba lagi nanti.";
+    }
+
     return (
-      payload?.errors?.[0] ??
-      payload?.message ??
+      rawMessage ??
       "Pendaftaran gagal. Silakan coba lagi."
     );
   }

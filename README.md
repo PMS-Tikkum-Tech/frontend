@@ -24,6 +24,10 @@ cp .env.example .env.local
 NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=YOUR_GOOGLE_WEB_CLIENT_ID
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_BROWSER_KEY
+NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_FIREBASE_WEB_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT_ID.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_FIREBASE_WEB_APP_ID
 ```
 
 4. Jalankan frontend:
@@ -48,8 +52,19 @@ Backend lokal harus hidup di `http://127.0.0.1:3001` dan dikonfigurasi dengan Go
 
 - frontend: `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
 - backend: `GOOGLE_OAUTH_CLIENT_IDS`
+- backend Firebase: `FIREBASE_PROJECT_ID` harus sama dengan `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
 
 Jika `GOOGLE_OAUTH_CLIENT_IDS` belum diisi di backend, endpoint `/api/v1/auth/google` akan menolak login Google.
+
+## Firebase Authentication
+
+Flow daftar tenant memakai Firebase Phone Auth untuk OTP SMS dan menautkan provider Email/Password pada user Firebase yang sama. Setelah OTP valid, frontend mengirim Firebase ID token ke endpoint backend `POST /api/v1/auth/tenant/register`, lalu session aplikasi tetap berasal dari backend.
+
+Yang perlu aktif di Firebase Authentication:
+
+- Sign-in method `Email/Password`
+- Sign-in method `Phone`
+- Authorized domain untuk domain frontend, termasuk `localhost` saat development
 
 ## Deploy production
 

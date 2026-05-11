@@ -1,21 +1,22 @@
 "use client";
 
-import { FirebaseError, getApp, getApps, initializeApp } from "firebase/app";
+import { FirebaseError } from "firebase/app";
 import {
   applyActionCode,
-  browserSessionPersistence,
   checkActionCode,
   createUserWithEmailAndPassword,
   deleteUser,
   fetchSignInMethodsForEmail,
-  getAuth,
   reload,
   sendEmailVerification,
-  setPersistence,
   signInWithEmailAndPassword,
   signOut,
   type User,
 } from "firebase/auth";
+import {
+  getFirebaseAuth,
+  setFirebaseSessionPersistence,
+} from "@/lib/firebase";
 
 export type PendingTenantRegistration = {
   fullName: string;
@@ -37,29 +38,7 @@ export const TENANT_EMAIL_VERIFIED_MARKER_STORAGE_KEY =
 
 const PENDING_TENANT_REGISTRATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-const firebaseConfig = {
-  apiKey:
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
-    "AIzaSyD9RpfJoiY8hwScCXSzMvw5LWixvg3WrXU",
-  authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
-    "kikost-c536d.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "kikost-c536d",
-  storageBucket:
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-    "kikost-c536d.firebasestorage.app",
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1079630604119",
-  appId:
-    process.env.NEXT_PUBLIC_FIREBASE_APP_ID ||
-    "1:1079630604119:web:ab1712accbd2733787c012",
-  measurementId:
-    process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-6YX9E6BCXV",
-};
-
-const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const firebaseAuth = getAuth(firebaseApp);
-firebaseAuth.languageCode = "id";
+const firebaseAuth = getFirebaseAuth();
 
 const getVerificationContinueUrl = (email: string) => {
   if (typeof window === "undefined") {
@@ -80,7 +59,7 @@ const verificationActionSettings = (email: string) => ({
 });
 
 const withSessionPersistence = async () => {
-  await setPersistence(firebaseAuth, browserSessionPersistence);
+  await setFirebaseSessionPersistence();
 };
 
 const signInPendingUser = async (
