@@ -1,30 +1,51 @@
 "use client";
 
 import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
+  isSignInWithEmailLink,
+  sendSignInLinkToEmail,
   signInWithEmailAndPassword,
+  signInWithEmailLink,
   signOut,
   type User as FirebaseUser,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 
-export type FirebaseEmailRegisterResult = {
+const EMAIL_FOR_SIGN_IN_KEY = "kikost.emailForSignIn";
+
+export type FirebaseEmailSignInResult = {
   idToken: string;
   email: string;
 };
 
-export const registerWithFirebaseEmail = async (
-  email: string,
-  password: string
-): Promise<FirebaseEmailRegisterResult> => {
+export const sendEmailSignInLink = async (email: string): Promise<void> => {
   const auth = getFirebaseAuth();
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
-  await sendEmailVerification(credential.user);
+  await sendSignInLinkToEmail(auth, email, {
+    url: `${window.location.origin}/auth/selesai-daftar`,
+    handleCodeInApp: true,
+  });
+  window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
+};
+
+export const isEmailSignInLink = (href: string): boolean => {
+  const auth = getFirebaseAuth();
+  return isSignInWithEmailLink(auth, href);
+};
+
+export const completeEmailSignInLink = async (
+  href: string
+): Promise<FirebaseEmailSignInResult> => {
+  const auth = getFirebaseAuth();
+  const storedEmail = window.localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
+  if (!storedEmail) {
+    throw new Error(
+      "Email tidak ditemukan. Coba daftar ulang dari perangkat yang sama."
+    );
+  }
+  const credential = await signInWithEmailLink(auth, storedEmail, href);
   const idToken = await credential.user.getIdToken();
-  // Sign out locally — user re-authenticates after verifying email
+  window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
   await signOut(auth);
-  return { idToken, email };
+  return { idToken, email: storedEmail };
 };
 
 export const loginWithFirebaseEmail = async (
@@ -35,7 +56,6 @@ export const loginWithFirebaseEmail = async (
   const credential = await signInWithEmailAndPassword(auth, email, password);
   await credential.user.reload();
   const emailVerified = credential.user.emailVerified;
-  // Force-refresh so token carries up-to-date email_verified claim
   const idToken = await credential.user.getIdToken(true);
   if (!emailVerified) {
     await signOut(auth);
@@ -43,14 +63,12 @@ export const loginWithFirebaseEmail = async (
   return { user: credential.user, idToken, emailVerified };
 };
 
-export const resendFirebaseVerificationEmail = async (
-  email: string,
-  password: string
-): Promise<void> => {
-  const auth = getFirebaseAuth();
-  const credential = await signInWithEmailAndPassword(auth, email, password);
-  await sendEmailVerification(credential.user);
-  await signOut(auth);
+export const isFirebaseUserNotFoundError = (error: unknown): boolean => {
+  if (error !== null && typeof error === "object" && "code" in error) {
+    const code = (error as { code: string }).code;
+    return code === "auth/user-not-found" || code === "auth/invalid-credential";
+  }
+  return false;
 };
 
 export const getFirebaseAuthErrorMessage = (error: unknown): string => {
@@ -72,6 +90,11 @@ export const getFirebaseAuthErrorMessage = (error: unknown): string => {
         return "Terlalu banyak percobaan. Coba lagi nanti.";
       case "auth/network-request-failed":
         return "Koneksi gagal. Periksa koneksi internet Anda.";
+      case "auth/operation-not-allowed":
+        return "Metode masuk ini belum diaktifkan. Hubungi administrator.";
+      case "auth/expired-action-code":
+      case "auth/invalid-action-code":
+        return "Tautan sudah kadaluarsa atau tidak valid. Minta tautan baru.";
       default:
         return "Terjadi kesalahan autentikasi. Silakan coba lagi.";
     }
