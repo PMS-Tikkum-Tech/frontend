@@ -8,7 +8,7 @@ import { loginSchema } from "@/schemas/login.schema";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { login, loginWithGoogle, resolveRoleRoute, syncFirebaseUser } from "@/lib/auth";
+import { type AuthResult, login, loginWithGoogle, resolveRoleRoute, syncFirebaseUser } from "@/lib/auth";
 import { sanitizeEmailInput } from "@/lib/form-validation";
 import {
   getFirebaseAuthErrorMessage,
@@ -244,12 +244,12 @@ export default function LoginForm() {
 
       const syncResult = await syncFirebaseUser(idToken);
 
-      if ("requiresVerification" in syncResult && syncResult.requiresVerification) {
+      if ("requiresVerification" in syncResult) {
         setTenantError("Email belum diverifikasi. Silakan cek inbox email Anda.");
         return;
       }
 
-      completeSession(syncResult);
+      completeSession(syncResult as AuthResult);
     } catch (error) {
       const msg = axios.isAxiosError(error)
         ? getAdminErrorMessage(error)
