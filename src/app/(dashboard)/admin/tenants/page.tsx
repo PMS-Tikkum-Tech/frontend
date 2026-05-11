@@ -260,7 +260,7 @@ export default function AdminTenantsPage() {
 
   const filtered = useMemo(() => {
     return tenants.filter((tenant) => {
-      const searchable = `${tenant.full_name} ${tenant.email} ${
+      const searchable = `${tenant.full_name || ""} ${tenant.email} ${
         tenant.phone_number || ""
       }`.toLowerCase();
       return (
@@ -432,7 +432,7 @@ export default function AdminTenantsPage() {
 
   const handleDeleteTenant = async (tenant: AdminUser) => {
     const agreed = window.confirm(
-      `Hapus penyewa ${tenant.full_name}? Tindakan ini tidak bisa dibatalkan.`
+      `Hapus penyewa ${tenant.full_name || tenant.email}? Tindakan ini tidak bisa dibatalkan.`
     );
 
     if (!agreed) {
@@ -623,12 +623,12 @@ export default function AdminTenantsPage() {
                       <div className="flex items-center gap-3">
                         <TenantAvatar
                           src={tenant.profile_picture_url}
-                          name={tenant.full_name}
+                          name={tenant.full_name || tenant.email || ""}
                         />
 
                         <div>
                           <p className="font-semibold text-slate-800">
-                            {tenant.full_name}
+                            {tenant.full_name || <span className="italic text-slate-400">Belum diisi</span>}
                           </p>
                           <p className="text-xs text-slate-500">{tenant.email}</p>
                         </div>
@@ -942,15 +942,15 @@ export default function AdminTenantsPage() {
               <div className="mb-1 flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <TenantAvatar
                   src={viewTenant.profile_picture_url}
-                  name={viewTenant.full_name}
+                  name={viewTenant.full_name || viewTenant.email || ""}
                   size={48}
                 />
                 <div>
-                  <p className="font-semibold text-slate-800">{viewTenant.full_name}</p>
+                  <p className="font-semibold text-slate-800">{viewTenant.full_name || <span className="italic text-slate-400">Belum diisi</span>}</p>
                   <p className="text-xs text-slate-500">{viewTenant.email}</p>
                 </div>
               </div>
-              <DetailRow label="Nama" value={viewTenant.full_name} />
+              <DetailRow label="Nama" value={viewTenant.full_name || "-"} />
               <DetailRow label="Email" value={viewTenant.email} />
               <DetailRow label="Telepon" value={viewTenant.phone_number || "-"} />
               <DetailRow label="NIK" value={viewTenant.nik || "-"} />
@@ -1003,7 +1003,7 @@ function TenantAvatar({
 }) {
   const [hasError, setHasError] = useState(false);
   const imageUrl = toAbsoluteAssetUrl(src);
-  const initials = name
+  const initials = (name || "")
     .trim()
     .split(/\s+/)
     .slice(0, 2)
