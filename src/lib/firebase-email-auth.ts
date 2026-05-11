@@ -1,52 +1,11 @@
 "use client";
 
 import {
-  isSignInWithEmailLink,
-  sendSignInLinkToEmail,
   signInWithEmailAndPassword,
-  signInWithEmailLink,
   signOut,
   type User as FirebaseUser,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
-
-const EMAIL_FOR_SIGN_IN_KEY = "kikost.emailForSignIn";
-
-export type FirebaseEmailSignInResult = {
-  idToken: string;
-  email: string;
-};
-
-export const sendEmailSignInLink = async (email: string): Promise<void> => {
-  const auth = getFirebaseAuth();
-  await sendSignInLinkToEmail(auth, email, {
-    url: `${window.location.origin}/auth/selesai-daftar`,
-    handleCodeInApp: true,
-  });
-  window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
-};
-
-export const isEmailSignInLink = (href: string): boolean => {
-  const auth = getFirebaseAuth();
-  return isSignInWithEmailLink(auth, href);
-};
-
-export const completeEmailSignInLink = async (
-  href: string
-): Promise<FirebaseEmailSignInResult> => {
-  const auth = getFirebaseAuth();
-  const storedEmail = window.localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
-  if (!storedEmail) {
-    throw new Error(
-      "Email tidak ditemukan. Coba daftar ulang dari perangkat yang sama."
-    );
-  }
-  const credential = await signInWithEmailLink(auth, storedEmail, href);
-  const idToken = await credential.user.getIdToken();
-  window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
-  await signOut(auth);
-  return { idToken, email: storedEmail };
-};
 
 export const loginWithFirebaseEmail = async (
   email: string,

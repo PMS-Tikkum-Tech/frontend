@@ -10,8 +10,12 @@ import {
   getFirebaseAuthErrorMessage,
   isFirebaseUserNotFoundError,
   loginWithFirebaseEmail,
-  sendEmailSignInLink,
 } from "@/lib/firebase-email-auth";
+import {
+  completeTenantEmailRegistration,
+  requestTenantRegistrationEmailCode,
+  verifyTenantRegistrationEmailCode,
+} from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 
 type GoogleCredentialResponse = {
@@ -106,11 +110,13 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
-  // Email-link (passwordless) section
+  // Passwordless OTP section
   const [showLinkSection, setShowLinkSection] = useState(false);
+  const [linkStep, setLinkStep] = useState<"email" | "otp">("email");
   const [linkEmail, setLinkEmail] = useState("");
+  const [linkCode, setLinkCode] = useState("");
   const [isSendingLink, setIsSendingLink] = useState(false);
-  const [linkSent, setLinkSent] = useState(false);
+  const [isVerifyingLink, setIsVerifyingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
   // Google
@@ -190,19 +196,51 @@ export default function LoginForm() {
     }
   };
 
-  const handleSendSignInLink = async () => {
+  const handleSendOtpCode = async () => {
     setLinkError(null);
     const sanitized = sanitizeEmailInput(linkEmail);
     if (!sanitized) { setLinkError("Email wajib diisi."); return; }
 
     setIsSendingLink(true);
     try {
-      await sendEmailSignInLink(sanitized);
-      setLinkSent(true);
+      await requestTenantRegistrationEmailCode(sanitized);
+      setLinkStep("otp");
     } catch (err) {
-      setLinkError(getFirebaseAuthErrorMessage(err));
+      const axErr = err as { response?: { data?: { errors?: string[]; message?: string } } };
+      setLinkError(
+        axErr?.response?.data?.errors?.[0] ??
+        axErr?.response?.data?.message ??
+        "Gagal mengirim kode. Coba lagi."
+      );
     } finally {
       setIsSendingLink(false);
+    }
+  };
+
+  const handleVerifyOtpCode = async () => {
+    setLinkError(null);
+    const trimmed = linkCode.replace(/\D/g, "");
+    if (trimmed.length !== 6) { setLinkError("Kode verifikasi harus 6 digit."); return; }
+
+    setIsVerifyingLink(true);
+    try {
+      const verified = await verifyTenantRegistrationEmailCode({
+        email: sanitizeEmailInput(linkEmail),
+        code: trimmed,
+      });
+      const authResult = await completeTenantEmailRegistration({
+        emailVerificationToken: verified.emailVerificationToken,
+      });
+      completeSession(authResult);
+    } catch (err) {
+      const axErr = err as { response?: { data?: { errors?: string[]; message?: string } } };
+      setLinkError(
+        axErr?.response?.data?.errors?.[0] ??
+        axErr?.response?.data?.message ??
+        "Kode salah atau sudah kadaluarsa."
+      );
+    } finally {
+      setIsVerifyingLink(false);
     }
   };
 
@@ -353,13 +391,14 @@ export default function LoginForm() {
             type="button"
             onClick={() => {
               setShowLinkSection(true);
+              setLinkStep("email");
               setLinkEmail(unverifiedEmail);
-              setLinkSent(false);
+              setLinkCode("");
               setLinkError(null);
             }}
             className="font-semibold underline"
           >
-            Masuk dengan tautan email
+            Masuk dengan kode email
           </button>
         </div>
       )}
@@ -401,40 +440,74 @@ export default function LoginForm() {
         <p className="text-center text-sm text-red-600">{googleError}</p>
       )}
 
-      {/* Email link (passwordless) section */}
+      {/* Passwordless OTP section */}
       <div className="border-t border-slate-100 pt-3">
         {!showLinkSection ? (
           <button
             type="button"
             onClick={() => {
               setShowLinkSection(true);
+              setLinkStep("email");
               setLinkEmail("");
-              setLinkSent(false);
+              setLinkCode("");
               setLinkError(null);
             }}
             className="w-full text-center text-sm text-slate-500 hover:text-sky-700"
           >
             Masuk tanpa kata sandi
           </button>
-        ) : linkSent ? (
-          <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-            <p className="font-medium">Cek email Anda</p>
-            <p className="text-xs">
-              Tautan masuk dikirim ke <strong>{linkEmail}</strong>. Klik tautan
-              di email untuk masuk.
-            </p>
+        ) : linkStep === "otp" ? (
+          <div className="space-y-2">
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+              Kode 6 digit dikirim ke <strong>{sanitizeEmailInput(linkEmail)}</strong>. Berlaku 5 menit.
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={linkCode}
+              onChange={(e) => {
+                setLinkCode(e.target.value.replace(/\D/g, ""));
+                setLinkError(null);
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleVerifyOtpCode(); }}
+              disabled={isVerifyingLink}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-center text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50"
+            />
+            {linkError && <p className="text-xs text-red-600">{linkError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleVerifyOtpCode}
+                disabled={isVerifyingLink}
+                className="flex-1 rounded-xl bg-sky-600 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+              >
+                {isVerifyingLink ? "Memverifikasi..." : "Verifikasi & Masuk"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLinkStep("email"); setLinkCode(""); setLinkError(null); }}
+                disabled={isVerifyingLink}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-500 hover:bg-slate-50"
+              >
+                Ganti
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => { setLinkSent(false); setLinkEmail(""); }}
-              className="text-xs text-sky-700 underline"
+              onClick={() => void handleSendOtpCode()}
+              disabled={isSendingLink || isVerifyingLink}
+              className="w-full text-xs text-sky-700 hover:text-sky-800 disabled:opacity-50"
             >
-              Coba email lain
+              {isSendingLink ? "Mengirim ulang..." : "Kirim ulang kode"}
             </button>
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-xs font-medium text-slate-700">
-              Masuk dengan tautan email (tanpa kata sandi)
+              Masuk dengan kode email (tanpa kata sandi)
             </p>
             <input
               type="email"
@@ -447,21 +520,19 @@ export default function LoginForm() {
                 setLinkEmail(sanitizeEmailInput(e.target.value));
                 setLinkError(null);
               }}
-              onKeyDown={(e) => { if (e.key === "Enter") void handleSendSignInLink(); }}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleSendOtpCode(); }}
               disabled={isSendingLink}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50"
             />
-            {linkError && (
-              <p className="text-xs text-red-600">{linkError}</p>
-            )}
+            {linkError && <p className="text-xs text-red-600">{linkError}</p>}
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleSendSignInLink}
+                onClick={handleSendOtpCode}
                 disabled={isSendingLink}
                 className="flex-1 rounded-xl bg-sky-600 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
               >
-                {isSendingLink ? "Mengirim..." : "Kirim tautan"}
+                {isSendingLink ? "Mengirim..." : "Kirim kode"}
               </button>
               <button
                 type="button"
