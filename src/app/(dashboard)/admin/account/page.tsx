@@ -688,14 +688,18 @@ export default function AdminAccountPage() {
                       <div className="flex items-center gap-3">
                         <Image
                           src={toAbsoluteAssetUrl(user.profile_picture_url) || "/bg-1200.webp"}
-                          alt={user.full_name}
+                          alt={user.full_name || user.email}
                           width={40}
                           height={40}
                           unoptimized
                           className="rounded-xl object-cover"
                         />
                         <div className="space-y-0.5">
-                          <div className="font-medium text-slate-800">{user.full_name}</div>
+                          <div className="font-medium text-slate-800">
+                            {user.full_name || (
+                              <span className="italic text-slate-400">Belum diisi</span>
+                            )}
+                          </div>
                           <div className="text-xs text-slate-500">
                             {getUserEmailDisplay(user)}
                           </div>
@@ -972,14 +976,18 @@ export default function AdminAccountPage() {
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <Image
                   src={toAbsoluteAssetUrl(viewUser.profile_picture_url) || "/bg-1200.webp"}
-                  alt={viewUser.full_name}
+                  alt={viewUser.full_name || viewUser.email}
                   width={44}
                   height={44}
                   unoptimized
                   className="rounded-xl object-cover"
                 />
                 <div>
-                  <p className="font-semibold text-slate-800">{viewUser.full_name}</p>
+                  <p className="font-semibold text-slate-800">
+                    {viewUser.full_name || (
+                      <span className="italic text-slate-400">Belum diisi</span>
+                    )}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {getUserEmailDisplay(viewUser)}
                   </p>
