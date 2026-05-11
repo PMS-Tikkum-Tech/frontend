@@ -258,7 +258,7 @@ export interface AdminPropertyMaintenanceRow {
 
 export interface AdminUser {
   id: number;
-  full_name: string;
+  full_name: string | null;
   email: string;
   phone_number?: string | null;
   emergency_contact_name?: string | null;

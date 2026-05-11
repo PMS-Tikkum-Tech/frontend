@@ -9,6 +9,7 @@ import {
   Filter,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   X,
@@ -258,7 +259,7 @@ export default function AdminAccountPage() {
     setFormMode("edit");
     setEditingUserId(user.id);
     setForm({
-      fullName: user.full_name,
+      fullName: user.full_name || "",
       email: isOperationalRole(user.role) ? "" : user.email,
       phoneNumber: sanitizePhoneInput(user.phone_number || ""),
       role: user.role,
@@ -398,7 +399,7 @@ export default function AdminAccountPage() {
   const filteredUsers = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     const nextUsers = users.filter((user) => {
-      const searchable = `${user.full_name} ${user.email} ${
+      const searchable = `${user.full_name || ""} ${user.email} ${
         roleLabelMap[user.role] || user.role
       } ${user.phone_number || ""}`.toLowerCase();
       return (
@@ -410,11 +411,11 @@ export default function AdminAccountPage() {
 
     nextUsers.sort((a, b) => {
       if (sortBy === "name_asc") {
-        return a.full_name.localeCompare(b.full_name, "id", { sensitivity: "base" });
+        return (a.full_name || "").localeCompare(b.full_name || "", "id", { sensitivity: "base" });
       }
 
       if (sortBy === "name_desc") {
-        return b.full_name.localeCompare(a.full_name, "id", { sensitivity: "base" });
+        return (b.full_name || "").localeCompare(a.full_name || "", "id", { sensitivity: "base" });
       }
 
       if (sortBy === "oldest") {
@@ -512,15 +513,28 @@ export default function AdminAccountPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={openCreateModal}
-            disabled={isSubmitting}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Plus size={17} />
-            Tambah Akun
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setRefreshKey((prev) => prev + 1)}
+              disabled={isLoading}
+              title="Perbarui data"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+              Perbarui
+            </button>
+
+            <button
+              type="button"
+              onClick={openCreateModal}
+              disabled={isSubmitting}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Plus size={17} />
+              Tambah Akun
+            </button>
+          </div>
         </div>
       </section>
 
