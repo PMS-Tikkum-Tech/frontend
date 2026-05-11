@@ -68,6 +68,10 @@ export type AuthResult = {
   refreshTokenExpiresAt?: string | null;
 };
 
+export type FirebaseSyncResult =
+  | { requiresVerification: true; email: string }
+  | AuthResult;
+
 export const TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY =
   "kyra.pending.tenant.approval.notice";
 
@@ -281,6 +285,20 @@ export const registerTenant = async (data: RegisterRequest): Promise<AuthResult>
     data
   );
   return mapAuthPayload(res.data.data);
+};
+
+export const syncFirebaseUser = async (idToken: string): Promise<FirebaseSyncResult> => {
+  const res = await axiosInstance.post<ApiResponse<
+    { requires_verification: true; email: string } | AuthPayload
+  >>("/api/v1/auth/firebase/sync", { id_token: idToken });
+
+  const data = res.data.data;
+
+  if ("requires_verification" in data && data.requires_verification) {
+    return { requiresVerification: true, email: data.email };
+  }
+
+  return mapAuthPayload(data as AuthPayload);
 };
 
 export const getMe = async (): Promise<SessionUser> => {

@@ -8,11 +8,17 @@ import { loginSchema } from "@/schemas/login.schema";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { login, loginWithGoogle, resolveRoleRoute } from "@/lib/auth";
+import { login, loginWithGoogle, resolveRoleRoute, syncFirebaseUser } from "@/lib/auth";
 import { sanitizeEmailInput } from "@/lib/form-validation";
+import {
+  getFirebaseAuthErrorMessage,
+  loginWithFirebaseEmail,
+  resendFirebaseVerificationEmail,
+} from "@/lib/firebase-email-auth";
 import { useAuth } from "@/context/AuthContext";
 
 type LoginFormData = z.infer<typeof loginSchema>;
+type LoginMode = "tenant" | "admin";
 
 type GoogleCredentialResponse = {
   credential?: string;
@@ -72,7 +78,7 @@ const GoogleLogo = () => (
   </svg>
 );
 
-const getErrorMessage = (error: unknown) => {
+const getAdminErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
       return "Tidak bisa terhubung ke layanan KIKOST. Pastikan sistem aktif dan NEXT_PUBLIC_API_URL sudah benar.";
@@ -112,10 +118,24 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export default function LoginForm() {
+  const [loginMode, setLoginMode] = useState<LoginMode>("tenant");
+
+  // ── Admin form (react-hook-form) ──
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+
+  // ── Tenant Firebase email form ──
+  const [tenantEmail, setTenantEmail] = useState("");
+  const [tenantPassword, setTenantPassword] = useState("");
+  const [showTenantPassword, setShowTenantPassword] = useState(false);
+  const [tenantError, setTenantError] = useState<string | null>(null);
+  const [tenantInfo, setTenantInfo] = useState<string | null>(null);
+  const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [unverifiedPassword, setUnverifiedPassword] = useState<string | null>(null);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -133,7 +153,6 @@ export default function LoginForm() {
         expiresAt: result.expiresAt,
         refreshTokenExpiresAt: result.refreshTokenExpiresAt,
       });
-
       router.push(resolveRoleRoute(result.user.role, searchParams.get("next")));
       router.refresh();
     },
@@ -156,15 +175,14 @@ export default function LoginForm() {
   });
   const passwordRegistration = register("password");
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onAdminSubmit = async (data: LoginFormData) => {
     setServerError(null);
     setGoogleError(null);
-
     try {
       const result = await login(data);
       completeSession(result);
     } catch (error) {
-      setServerError(getErrorMessage(error));
+      setServerError(getAdminErrorMessage(error));
     }
   };
 
@@ -174,19 +192,16 @@ export default function LoginForm() {
       setGoogleError(null);
 
       if (!response.credential) {
-        setGoogleError(
-          "Token Google tidak ditemukan. Coba ulangi proses masuk."
-        );
+        setGoogleError("Token Google tidak ditemukan. Coba ulangi proses masuk.");
         return;
       }
 
       setIsGoogleSubmitting(true);
-
       try {
         const result = await loginWithGoogle({ id_token: response.credential });
         completeSession(result);
       } catch (error) {
-        setGoogleError(getErrorMessage(error));
+        setGoogleError(getAdminErrorMessage(error));
       } finally {
         setIsGoogleSubmitting(false);
       }
@@ -194,12 +209,88 @@ export default function LoginForm() {
     [completeSession]
   );
 
-  useEffect(() => {
-    googleInitializedRef.current = false;
+  // ── Tenant Firebase email login ──────────────────────────────────────────
 
-    if (!googleClientId) {
+  const handleTenantLogin = async () => {
+    setTenantError(null);
+    setTenantInfo(null);
+    setUnverifiedEmail(null);
+    setUnverifiedPassword(null);
+
+    if (!tenantEmail.trim()) {
+      setTenantError("Email wajib diisi.");
       return;
     }
+    if (!tenantPassword) {
+      setTenantError("Kata sandi wajib diisi.");
+      return;
+    }
+
+    setIsTenantSubmitting(true);
+    try {
+      const { idToken, emailVerified } = await loginWithFirebaseEmail(
+        sanitizeEmailInput(tenantEmail),
+        tenantPassword
+      );
+
+      if (!emailVerified) {
+        setUnverifiedEmail(sanitizeEmailInput(tenantEmail));
+        setUnverifiedPassword(tenantPassword);
+        setTenantError(
+          "Email belum diverifikasi. Cek inbox dan klik link verifikasi, lalu coba masuk lagi."
+        );
+        return;
+      }
+
+      const syncResult = await syncFirebaseUser(idToken);
+
+      if ("requiresVerification" in syncResult && syncResult.requiresVerification) {
+        setTenantError("Email belum diverifikasi. Silakan cek inbox email Anda.");
+        return;
+      }
+
+      completeSession(syncResult);
+    } catch (error) {
+      const msg = axios.isAxiosError(error)
+        ? getAdminErrorMessage(error)
+        : getFirebaseAuthErrorMessage(error);
+      setTenantError(msg);
+    } finally {
+      setIsTenantSubmitting(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail || !unverifiedPassword) return;
+    setIsResendingVerification(true);
+    setTenantError(null);
+    setTenantInfo(null);
+    try {
+      await resendFirebaseVerificationEmail(unverifiedEmail, unverifiedPassword);
+      setTenantInfo(`Email verifikasi dikirim ulang ke ${unverifiedEmail}.`);
+    } catch (error) {
+      setTenantError(getFirebaseAuthErrorMessage(error));
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
+  const handleModeChange = (mode: LoginMode) => {
+    setLoginMode(mode);
+    setServerError(null);
+    setGoogleError(null);
+    setTenantError(null);
+    setTenantInfo(null);
+    setUnverifiedEmail(null);
+    setUnverifiedPassword(null);
+  };
+
+  // ── Google button init (admin mode only) ──────────────────────────────────
+
+  useEffect(() => {
+    if (loginMode !== "admin") return;
+    googleInitializedRef.current = false;
+    if (!googleClientId) return;
 
     let active = true;
 
@@ -233,9 +324,7 @@ export default function LoginForm() {
 
     if (window.google?.accounts?.id) {
       renderGoogleButton();
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
 
     const existingScript = document.querySelector(
@@ -243,9 +332,7 @@ export default function LoginForm() {
     ) as HTMLScriptElement | null;
 
     if (existingScript) {
-      existingScript.addEventListener("load", renderGoogleButton, {
-        once: true,
-      });
+      existingScript.addEventListener("load", renderGoogleButton, { once: true });
       return () => {
         active = false;
         existingScript.removeEventListener("load", renderGoogleButton);
@@ -258,9 +345,7 @@ export default function LoginForm() {
     script.defer = true;
     script.onload = renderGoogleButton;
     script.onerror = () => {
-      if (active) {
-        setGoogleError("Gagal memuat komponen Google Sign-In.");
-      }
+      if (active) setGoogleError("Gagal memuat komponen Google Sign-In.");
     };
     document.head.appendChild(script);
 
@@ -269,112 +354,206 @@ export default function LoginForm() {
       script.onload = null;
       script.onerror = null;
     };
-  }, [googleClientId, handleGoogleCredential]);
+  }, [loginMode, googleClientId, handleGoogleCredential]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium mb-1">Alamat Email</label>
-
-        <input
-          {...emailRegistration}
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          maxLength={100}
-          placeholder="Masukkan alamat email Anda"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
-        />
-
-        {!errors.email && (
-          <p className="mt-1 text-[11px] text-gray-400">
-            Gunakan alamat email yang terdaftar pada akun Anda.
-          </p>
-        )}
-
-        {errors.email && (
-          <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
-        )}
+    <div className="space-y-5">
+      {/* Mode toggle: Tenant / Admin */}
+      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+        {(["tenant", "admin"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => handleModeChange(m)}
+            className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+              loginMode === m
+                ? "bg-white text-sky-700 shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {m === "tenant" ? "Tenant" : "Admin / Owner"}
+          </button>
+        ))}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Kata Sandi</label>
+      {/* ── Tenant Firebase email login ── */}
+      {loginMode === "tenant" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Alamat Email</label>
+            <input
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              maxLength={100}
+              placeholder="nama@email.com"
+              value={tenantEmail}
+              onChange={(e) => {
+                setTenantEmail(sanitizeEmailInput(e.target.value));
+                setTenantError(null);
+              }}
+              disabled={isTenantSubmitting || isResendingVerification}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50"
+            />
+          </div>
 
-        <div className="relative">
-          <input
-            {...passwordRegistration}
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            maxLength={100}
-            placeholder="Masukkan kata sandi Anda"
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500"
-          />
+          <div>
+            <label className="block text-sm font-medium mb-1">Kata Sandi</label>
+            <div className="relative">
+              <input
+                type={showTenantPassword ? "text" : "password"}
+                autoComplete="current-password"
+                maxLength={100}
+                placeholder="Kata sandi Anda"
+                value={tenantPassword}
+                onChange={(e) => {
+                  setTenantPassword(e.target.value);
+                  setTenantError(null);
+                }}
+                disabled={isTenantSubmitting || isResendingVerification}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowTenantPassword(!showTenantPassword)}
+                className="absolute right-3 top-2.5 text-gray-500"
+                aria-label={showTenantPassword ? "Sembunyikan" : "Tampilkan"}
+              >
+                {showTenantPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {tenantError && (
+            <p className="text-sm text-red-600 text-center">{tenantError}</p>
+          )}
+
+          {tenantInfo && (
+            <p className="text-sm text-sky-700 text-center">{tenantInfo}</p>
+          )}
+
+          {unverifiedEmail && (
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isResendingVerification}
+              className="w-full text-sm font-medium text-sky-700 hover:text-sky-800 disabled:opacity-50"
+            >
+              {isResendingVerification
+                ? "Mengirim ulang..."
+                : "Kirim ulang email verifikasi"}
+            </button>
+          )}
 
           <button
             type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-2.5 text-gray-500"
-            aria-label={
-              showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"
-            }
+            onClick={handleTenantLogin}
+            disabled={isTenantSubmitting || isResendingVerification}
+            className="w-full rounded-xl bg-sky-600 py-2.5 text-white transition hover:bg-sky-700 disabled:opacity-50"
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {isTenantSubmitting ? "Memproses..." : "Masuk"}
           </button>
         </div>
-
-        {!errors.password && (
-          <p className="mt-1 text-[11px] text-gray-400">
-            Pastikan Anda memasukkan kata sandi dengan benar.
-          </p>
-        )}
-
-        {errors.password && (
-          <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
-        )}
-      </div>
-
-      {serverError && (
-        <p className="text-sm text-red-600 text-center">{serverError}</p>
       )}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-xl bg-sky-600 py-2.5 text-white transition hover:bg-sky-700 disabled:opacity-50"
-      >
-        {isSubmitting ? "Memproses..." : "Masuk"}
-      </button>
-
-      <div className="space-y-3 pt-1">
-        <p className="text-center text-xs text-slate-500">atau masuk dengan</p>
-
-        {googleClientId ? (
-          <div
-            className={`relative flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4 ${
-              isGoogleSubmitting ? "pointer-events-none opacity-70" : ""
-            }`}
-          >
-            <div className="pointer-events-none absolute left-1/2 top-4 z-10 flex h-[42px] w-[42px] -translate-x-1/2 items-center justify-center rounded-full bg-white">
-              <GoogleLogo />
-            </div>
-            <div
-              ref={googleButtonRef}
-              className="relative z-20 flex min-h-[42px] items-center justify-center opacity-[0.02]"
+      {/* ── Admin / Owner login (existing, unchanged) ── */}
+      {loginMode === "admin" && (
+        <form onSubmit={handleSubmit(onAdminSubmit)} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium mb-1">Alamat Email</label>
+            <input
+              {...emailRegistration}
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              maxLength={100}
+              placeholder="Masukkan alamat email Anda"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
-            <p className="text-xs text-slate-500">Google</p>
+            {!errors.email && (
+              <p className="mt-1 text-[11px] text-gray-400">
+                Gunakan alamat email yang terdaftar pada akun Anda.
+              </p>
+            )}
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+            )}
           </div>
-        ) : null}
-      </div>
 
-      {isGoogleSubmitting && (
-        <p className="text-center text-xs text-slate-500">
-          Memproses masuk Google...
-        </p>
-      )}
+          <div>
+            <label className="block text-sm font-medium mb-1">Kata Sandi</label>
+            <div className="relative">
+              <input
+                {...passwordRegistration}
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                maxLength={100}
+                placeholder="Masukkan kata sandi Anda"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-gray-500"
+                aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {!errors.password && (
+              <p className="mt-1 text-[11px] text-gray-400">
+                Pastikan Anda memasukkan kata sandi dengan benar.
+              </p>
+            )}
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+            )}
+          </div>
 
-      {googleError && (
-        <p className="text-center text-sm text-red-600">{googleError}</p>
+          {serverError && (
+            <p className="text-sm text-red-600 text-center">{serverError}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-sky-600 py-2.5 text-white transition hover:bg-sky-700 disabled:opacity-50"
+          >
+            {isSubmitting ? "Memproses..." : "Masuk"}
+          </button>
+
+          <div className="space-y-3 pt-1">
+            <p className="text-center text-xs text-slate-500">atau masuk dengan</p>
+
+            {googleClientId ? (
+              <div
+                className={`relative flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4 ${
+                  isGoogleSubmitting ? "pointer-events-none opacity-70" : ""
+                }`}
+              >
+                <div className="pointer-events-none absolute left-1/2 top-4 z-10 flex h-[42px] w-[42px] -translate-x-1/2 items-center justify-center rounded-full bg-white">
+                  <GoogleLogo />
+                </div>
+                <div
+                  ref={googleButtonRef}
+                  className="relative z-20 flex min-h-[42px] items-center justify-center opacity-[0.02]"
+                />
+                <p className="text-xs text-slate-500">Google</p>
+              </div>
+            ) : null}
+          </div>
+
+          {isGoogleSubmitting && (
+            <p className="text-center text-xs text-slate-500">Memproses masuk Google...</p>
+          )}
+
+          {googleError && (
+            <p className="text-center text-sm text-red-600">{googleError}</p>
+          )}
+        </form>
       )}
-    </form>
+    </div>
   );
 }
