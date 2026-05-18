@@ -28,8 +28,8 @@ const faqs: Record<string, FaqItem[]> = {
   ],
   "Pemesanan Kost": [
     {
-      q: "Bagaimana cara memesan kamar?",
-      a: "Pilih kost, lalu klik Pesan Kamar. Isi data penyewa dan lanjutkan proses pembayaran sesuai instruksi.",
+      q: "Bagaimana cara memesan unit?",
+      a: "Pilih kost, lalu pilih unit berdasarkan bangunan/blok seperti A1, A2, atau A3. Isi data penyewa dan lanjutkan proses pembayaran sesuai instruksi.",
     },
     {
       q: "Apakah saya bisa menjadwalkan kunjungan dulu?",

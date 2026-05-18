@@ -281,11 +281,15 @@ type AvailableUnitCard = {
   displayName: string;
   buildingName: string | null;
   unitNumber: string;
+  availableOptionCount: number;
   unitType: string;
   unitTypeValue: string;
+  unitTypeValues: string[];
   status: string;
   statusValue: string;
   capacityLabel: string | null;
+  priceMin: number;
+  priceMax: number;
   priceValue: number;
   priceLabel: string;
   facilities: string[];
@@ -387,16 +391,127 @@ const mapPublicUnitToCard = (
     displayName: getTenantUnitDisplayName(unit),
     buildingName,
     unitNumber,
+    availableOptionCount: 1,
     unitType: formatLabel(unit.unit_type || property.property_type),
     unitTypeValue: unit.unit_type || property.property_type || "",
+    unitTypeValues: [unit.unit_type || property.property_type || ""].filter(Boolean),
     status: toUnitStatusLabel(unit.status),
     statusValue: unit.status || "vacant",
     capacityLabel,
+    priceMin: monthlyPrice,
+    priceMax: monthlyPrice,
     priceValue: monthlyPrice,
     priceLabel: formatCurrency(monthlyPrice),
     facilities: (property.facilities || []).slice(0, 3),
     media: buildUnitMedias(unit),
   };
+};
+
+const formatPriceRange = (min: number, max: number) => {
+  if (min > 0 && max > 0 && max > min) {
+    return `${formatCurrency(min)} - ${formatCurrency(max)}`;
+  }
+
+  return formatCurrency(min || max);
+};
+
+const formatCapacityRange = (values: number[]) => {
+  const capacities = values
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((first, second) => first - second);
+
+  if (capacities.length === 0) {
+    return null;
+  }
+
+  const min = capacities[0];
+  const max = capacities[capacities.length - 1];
+
+  return min === max ? `${min} orang` : `${min}-${max} orang`;
+};
+
+const groupUnitsByBuilding = (
+  units: AvailableUnitCard[]
+): AvailableUnitCard[] => {
+  const grouped = new Map<string, AvailableUnitCard[]>();
+
+  units.forEach((unit) => {
+    const key = (unit.buildingName || unit.displayName || unit.name)
+      .trim()
+      .toLowerCase();
+    const currentUnits = grouped.get(key) || [];
+    grouped.set(key, [...currentUnits, unit]);
+  });
+
+  return Array.from(grouped.values()).map((group) => {
+    const sortedGroup = [...group].sort((first, second) => {
+      const buildingCompare = (first.buildingName || "").localeCompare(
+        second.buildingName || "",
+        "id-ID",
+        { numeric: true }
+      );
+
+      if (buildingCompare !== 0) {
+        return buildingCompare;
+      }
+
+      const priceCompare = first.priceValue - second.priceValue;
+      if (priceCompare !== 0) {
+        return priceCompare;
+      }
+
+      return first.unitNumber.localeCompare(second.unitNumber, "id-ID", {
+        numeric: true,
+      });
+    });
+    const representative = sortedGroup[0];
+    const prices = sortedGroup
+      .map((unit) => unit.priceValue)
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const priceMin = prices.length > 0 ? Math.min(...prices) : 0;
+    const priceMax = prices.length > 0 ? Math.max(...prices) : 0;
+    const typeEntries = new Map<string, string>();
+
+    sortedGroup.forEach((unit) => {
+      unit.unitTypeValues.forEach((value) => {
+        if (value) {
+          typeEntries.set(value, formatLabel(value));
+        }
+      });
+    });
+
+    const typeLabels = Array.from(typeEntries.values());
+    const media = sortedGroup.flatMap((unit) => unit.media);
+
+    return {
+      ...representative,
+      displayName:
+        representative.buildingName || representative.displayName || representative.name,
+      availableOptionCount: sortedGroup.length,
+      unitType:
+        typeLabels.length > 1
+          ? `${typeLabels.length} tipe tersedia`
+          : typeLabels[0] || representative.unitType,
+      unitTypeValue:
+        typeEntries.size === 1
+          ? Array.from(typeEntries.keys())[0]
+          : "mixed",
+      unitTypeValues: Array.from(typeEntries.keys()),
+      capacityLabel: formatCapacityRange(
+        sortedGroup.map((unit) => {
+          const match = unit.capacityLabel?.match(/\d+/);
+          return match ? Number(match[0]) : 0;
+        })
+      ),
+      priceMin,
+      priceMax,
+      priceValue: priceMin || representative.priceValue,
+      priceLabel: formatPriceRange(priceMin, priceMax),
+      media: Array.from(
+        new Map(media.map((item) => [`${item.type}-${item.src}`, item])).values()
+      ),
+    };
+  });
 };
 
 export default function SewaPropertyDetailPage() {
@@ -538,8 +653,8 @@ export default function SewaPropertyDetailPage() {
           });
 
           if (unitsResponse.data.length > 0) {
-            nextUnits = unitsResponse.data.map((unit) =>
-              mapPublicUnitToCard(unit, found)
+            nextUnits = groupUnitsByBuilding(
+              unitsResponse.data.map((unit) => mapPublicUnitToCard(unit, found))
             );
           }
         } catch {
@@ -667,7 +782,9 @@ export default function SewaPropertyDetailPage() {
   const unitTypeOptions = useMemo(() => {
     return Array.from(
       new Map(
-        availableUnits.map((unit) => [unit.unitTypeValue, unit.unitType])
+        availableUnits.flatMap((unit) =>
+          unit.unitTypeValues.map((value) => [value, formatLabel(value)] as const)
+        )
       ).entries()
     ).filter(([value]) => Boolean(value));
   }, [availableUnits]);
@@ -687,18 +804,18 @@ export default function SewaPropertyDetailPage() {
         const matchStatus =
           unitStatusFilter === "all" || unit.statusValue === unitStatusFilter;
         const matchType =
-          unitTypeFilter === "all" || unit.unitTypeValue === unitTypeFilter;
+          unitTypeFilter === "all" || unit.unitTypeValues.includes(unitTypeFilter);
         const matchFacility =
           unitFacilityFilter === "all" ||
           unit.facilities.includes(unitFacilityFilter);
         const matchMinPrice =
           minPrice == null || !Number.isFinite(minPrice)
             ? true
-            : unit.priceValue >= minPrice;
+            : unit.priceMax >= minPrice;
         const matchMaxPrice =
           maxPrice == null || !Number.isFinite(maxPrice)
             ? true
-            : unit.priceValue <= maxPrice;
+            : unit.priceMin <= maxPrice;
 
         return (
           matchStatus &&
@@ -1051,12 +1168,12 @@ export default function SewaPropertyDetailPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <HeroStat icon={<Home size={14} />} label="Total Unit" value={`${property.total_units || 0}`} />
-              <HeroStat icon={<Users size={14} />} label="Unit Terisi" value={`${property.occupied_units || 0}`} />
+              <HeroStat icon={<Home size={14} />} label="Total Data Unit" value={`${property.total_units || 0}`} />
+              <HeroStat icon={<Users size={14} />} label="Data Unit Terisi" value={`${property.occupied_units || 0}`} />
               <HeroStat
                 icon={<CheckCircle2 size={14} />}
-                label="Unit Tersedia"
-                value={`${property.vacant_units || 0}`}
+                label="Bangunan Tersedia"
+                value={`${availableUnits.length}`}
               />
             </div>
 
@@ -1065,7 +1182,7 @@ export default function SewaPropertyDetailPage() {
                 href="#unit-tersedia"
                 className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Lihat Unit Tersedia
+                Lihat Bangunan Tersedia
                 <ArrowRight size={14} />
               </Link>
 
@@ -1170,18 +1287,19 @@ export default function SewaPropertyDetailPage() {
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                   <Sparkles size={13} />
-                  Unit Tersedia
+                  Unit per Bangunan
                 </p>
                 <h2 className="mt-2 text-lg font-semibold text-slate-900">
-                  Pilihan unit yang siap disewa
+                  Pilihan unit per bangunan
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Lihat unit berdasarkan gedung/blok dan nomor kamar, tanpa data owner.
+                  Tenant memilih berdasarkan bangunan/blok seperti A1, A2, A3,
+                  bukan berdasarkan nomor kamar.
                 </p>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
                 <Home size={13} />
-                {filteredAvailableUnits.length} dari {availableUnits.length} unit
+                {filteredAvailableUnits.length} dari {availableUnits.length} bangunan
               </span>
             </div>
 
@@ -1248,7 +1366,7 @@ export default function SewaPropertyDetailPage() {
               {availableUnits.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-blue-100 bg-white px-4 py-5 text-sm text-slate-600">
                   <p className="font-medium text-slate-800">
-                    Saat ini belum ada unit kosong pada properti ini.
+                    Saat ini belum ada bangunan/unit kosong pada properti ini.
                   </p>
                   <p className="mt-1">
                     Kamu tetap bisa mengajukan kunjungan untuk masuk daftar prioritas saat
@@ -1313,6 +1431,11 @@ export default function SewaPropertyDetailPage() {
                           <p className="mt-0.5 text-xs text-slate-500">
                             {unit.unitType}
                           </p>
+                          {unit.availableOptionCount > 1 ? (
+                            <p className="mt-1 text-xs font-medium text-blue-700">
+                              {unit.availableOptionCount} pilihan tersedia di bangunan ini
+                            </p>
+                          ) : null}
                         </div>
                         <span
                           className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${getUnitStatusBadgeClass(
@@ -1364,7 +1487,7 @@ export default function SewaPropertyDetailPage() {
                           }
                           className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-700 px-3.5 text-xs font-semibold text-white transition hover:bg-blue-800"
                         >
-                          Pilih Unit
+                          Pilih Bangunan
                           <ArrowRight size={13} />
                         </Link>
                       </div>
@@ -1385,7 +1508,7 @@ export default function SewaPropertyDetailPage() {
               <SidebarItem label="Alamat" value={property.address || "-"} />
               <SidebarItem
                 label="Ketersediaan"
-                value={`${property.vacant_units || 0} unit kosong`}
+                value={`${availableUnits.length} bangunan tersedia`}
               />
             </div>
           </article>

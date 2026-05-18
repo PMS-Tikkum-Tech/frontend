@@ -1408,11 +1408,11 @@ export default function SewaPage() {
                 />
               </div>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-50/95">
-                Daftar hunian KiKost dikelola tim KIKOST agar proses pencarian dan
-                sewa lebih jelas, cepat, dan tepercaya.
+                KIKOST menampilkan hunian yang dikelola Kyra Stay agar proses
+                pencarian dan sewa lebih jelas, cepat, dan tepercaya.
               </p>
               <p className="mt-4 text-sm text-blue-100">
-                Bogor, Jawa Barat • support@kyrastay.id
+                Bogor, Jawa Barat • support@kikost.com
               </p>
             </div>
 
@@ -1426,12 +1426,12 @@ export default function SewaPage() {
             />
             <FooterCol
               title="Kontak"
-              items={["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"]}
+              items={["WhatsApp Administrator", "support@kikost.com", "Bogor, Jawa Barat"]}
             />
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs text-blue-100">
-            <p>© 2026 KiKost by Kyra Stay.</p>
+            <p>© 2026 KIKOST by Kyra Stay. Semua hak dilindungi.</p>
             <div className="flex items-center gap-4">
               <Link href="/tentang" className="transition hover:text-white">
                 Tentang

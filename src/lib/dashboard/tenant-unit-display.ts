@@ -92,8 +92,8 @@ export const getTenantUnitDisplayName = (
   const buildingName = getTenantUnitBuildingName(unit);
   const unitNumber = getTenantUnitNumber(unit, buildingName);
 
-  if (buildingName && unitNumber) {
-    return `${buildingName} - Unit ${unitNumber}`;
+  if (buildingName) {
+    return buildingName;
   }
 
   if (unitNumber) {

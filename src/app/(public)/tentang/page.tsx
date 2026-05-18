@@ -116,7 +116,7 @@ const ABOUT_FOOTER_COLUMNS = [
   },
   {
     title: "Kontak",
-    items: ["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"],
+    items: ["WhatsApp Administrator", "support@kikost.com", "Bogor, Jawa Barat"],
   },
 ];
 
@@ -475,11 +475,11 @@ export default function TentangPage() {
                 />
               </div>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-50/95">
-                Profil dan layanan hunian mahasiswa yang dikelola tim Kyra Stay
-                dengan standar operasional yang jelas.
+                Profil, layanan, dan standar hunian mahasiswa yang dikelola
+                Kyra Stay melalui platform KIKOST.
               </p>
               <p className="mt-4 text-sm text-blue-100">
-                Bogor, Jawa Barat • support@kyrastay.id
+                Bogor, Jawa Barat • support@kikost.com
               </p>
             </div>
 
@@ -493,7 +493,7 @@ export default function TentangPage() {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs text-blue-100">
-            <p>© 2026 KiKost by Kyra Stay.</p>
+            <p>© 2026 KIKOST by Kyra Stay. Semua hak dilindungi.</p>
             <div className="flex items-center gap-4">
               <Link href="/tentang" className="transition hover:text-white">
                 Tentang

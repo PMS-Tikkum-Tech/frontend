@@ -103,7 +103,7 @@ const PARTNERSHIP_FOOTER_COLUMNS = [
   },
   {
     title: "Kontak",
-    items: ["WhatsApp Administrator", "support@kyrastay.id", "Bogor, Jawa Barat"],
+    items: ["WhatsApp Administrator", "support@kikost.com", "Bogor, Jawa Barat"],
   },
 ];
 const rawWhatsappNumber =
@@ -499,10 +499,10 @@ export default function KerjasamaPage() {
               Mulai Konsultasi
             </a>
             <a
-              href="mailto:support@kyrastay.id"
+              href="mailto:support@kikost.com"
               className="inline-flex h-11 items-center rounded-xl border border-white/45 px-5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              support@kyrastay.id
+              support@kikost.com
             </a>
           </div>
         </div>
@@ -530,11 +530,11 @@ export default function KerjasamaPage() {
                 />
               </div>
               <p className="mt-3 max-w-md text-sm leading-relaxed text-green-50/95">
-                Program kemitraan properti dengan proses orientasi terstruktur
-                dan pendampingan operasional dari tim Kyra Stay.
+                Program kemitraan properti bersama Kyra Stay dengan evaluasi aset,
+                orientasi terstruktur, dan pendampingan operasional.
               </p>
               <p className="mt-4 text-sm text-green-100">
-                Bogor, Jawa Barat • support@kyrastay.id
+                Bogor, Jawa Barat • support@kikost.com
               </p>
             </div>
 
@@ -548,7 +548,7 @@ export default function KerjasamaPage() {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs text-green-100">
-            <p>© 2026 KiKost by Kyra Stay.</p>
+            <p>© 2026 KIKOST by Kyra Stay. Semua hak dilindungi.</p>
             <div className="flex items-center gap-4">
               <Link href="/tentang" className="transition hover:text-white">
                 Tentang
