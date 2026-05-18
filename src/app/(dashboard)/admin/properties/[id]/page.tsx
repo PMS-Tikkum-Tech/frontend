@@ -1827,7 +1827,7 @@ export default function DetailPropertiPage() {
                     </label>
                     <input
                       type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif"
                       multiple
                       onChange={(event) =>
                         setUnitPhotos(Array.from(event.target.files || []))

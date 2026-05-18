@@ -747,11 +747,26 @@ const appendOptimizedPhotos = async (
   key: string,
   photos?: File[]
 ) => {
-  const optimizedPhotos = await optimizeImageFilesForUpload(photos || [], {
+  const sourcePhotos = photos || [];
+  const backendOptimizedPhotos = sourcePhotos.filter((photo) => {
+    const type = photo.type.toLowerCase();
+    const name = photo.name.toLowerCase();
+
+    return (
+      type === "image/heic" ||
+      type === "image/heif" ||
+      name.endsWith(".heic") ||
+      name.endsWith(".heif")
+    );
+  });
+  const browserOptimizedPhotos = sourcePhotos.filter((photo) => {
+    return !backendOptimizedPhotos.includes(photo);
+  });
+  const optimizedPhotos = await optimizeImageFilesForUpload(browserOptimizedPhotos, {
     fallbackToOriginal: false,
   });
 
-  optimizedPhotos.forEach((photo) => {
+  [...optimizedPhotos, ...backendOptimizedPhotos].forEach((photo) => {
     formData.append(key, photo);
   });
 };

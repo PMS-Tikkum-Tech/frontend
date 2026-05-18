@@ -684,7 +684,7 @@ export default function AddPropertyModal({
 
             <input
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp,image/avif"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif"
               multiple
               onChange={(event) =>
                 setPhotos(Array.from(event.target.files || []))
@@ -693,6 +693,7 @@ export default function AddPropertyModal({
             />
             <p className="mt-1 text-xs text-slate-500">
               Maksimal 10 file. Gambar akan dikompres ke WebP max 1200px.
+              HEIC/HEIF akan dikonversi di backend.
             </p>
 
             {photos.length > 0 && (
