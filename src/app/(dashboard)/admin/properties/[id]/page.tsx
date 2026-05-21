@@ -6,14 +6,17 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowUpDown,
   Building2,
   CircleX,
   DoorOpen,
+  Filter,
   Image as ImageIcon,
   MapPin,
   Pencil,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
   Users,
   Video,
@@ -26,11 +29,11 @@ import {
   deleteAdminProperty,
   deleteAdminPropertyTenant,
   deleteAdminUnit,
+  getAllAdminPropertyMaintenance,
+  getAllAdminPropertyTenants,
+  getAllAdminPropertyUnits,
   getAdminOwners,
   getAdminPropertyDetail,
-  getAdminPropertyMaintenance,
-  getAdminPropertyTenants,
-  getAdminPropertyUnits,
   getAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
@@ -125,6 +128,22 @@ const unitBadgeClassMap: Record<string, string> = {
   vacant: "border-sky-200 bg-sky-50 text-sky-700",
   maintenance: "border-amber-200 bg-amber-50 text-amber-700",
 };
+
+const defaultUnitSort = "building_unit_asc";
+
+const unitSortOptions = [
+  { value: "building_unit_asc", label: "Blok & unit A-Z" },
+  { value: "unit_asc", label: "Nomor unit A-Z" },
+  { value: "status_asc", label: "Status" },
+  { value: "price_asc", label: "Harga terendah" },
+  { value: "price_desc", label: "Harga tertinggi" },
+  { value: "capacity_desc", label: "Kapasitas terbesar" },
+];
+
+const naturalCollator = new Intl.Collator("id-ID", {
+  numeric: true,
+  sensitivity: "base",
+});
 
 const propertyTypeLabelMap: Record<string, string> = {
   kost: "Kost",
@@ -306,6 +325,9 @@ export default function DetailPropertiPage() {
   const [tenantStatus, setTenantStatus] = useState("");
   const [unitSearch, setUnitSearch] = useState("");
   const [unitStatus, setUnitStatus] = useState("");
+  const [unitBuilding, setUnitBuilding] = useState("");
+  const [unitType, setUnitType] = useState("");
+  const [unitSort, setUnitSort] = useState(defaultUnitSort);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [showAddUnitForm, setShowAddUnitForm] = useState(false);
@@ -359,9 +381,9 @@ export default function DetailPropertiPage() {
           tenantsResponse,
         ] = await Promise.all([
           getAdminPropertyDetail(propertyId),
-          getAdminPropertyTenants(propertyId, { page: 1, per_page: 100 }),
-          getAdminPropertyUnits(propertyId, { page: 1, per_page: 100 }),
-          getAdminPropertyMaintenance(propertyId, { page: 1, per_page: 100 }),
+          getAllAdminPropertyTenants(propertyId),
+          getAllAdminPropertyUnits(propertyId),
+          getAllAdminPropertyMaintenance(propertyId),
           getAdminOwners({ page: 1, per_page: 100 }),
           getAdminTenants({ page: 1, per_page: 100 }),
         ]);
@@ -411,45 +433,37 @@ export default function DetailPropertiPage() {
     [tenantRows]
   );
 
-  const unitStatusOptions = useMemo(
-    () =>
-      uniqueFilterOptions(
-        unitRows,
-        (unit) => unit.status,
-        (value) => unitStatusLabelMap[value]
-      ),
-    [unitRows]
-  );
-
   const tenantFiltered = useMemo(() => {
-    return tenantRows.filter((tenant) => {
-      return (
-        tenant.tenant_name.toLowerCase().includes(tenantSearch.toLowerCase()) &&
-        (tenantStatus ? tenant.payment_status === tenantStatus : true)
-      );
-    });
-  }, [tenantRows, tenantSearch, tenantStatus]);
+    const searchValue = tenantSearch.trim().toLowerCase();
 
-  const unitFiltered = useMemo(() => {
-    return unitRows.filter((unit) => {
-      return (
-        unit.unit_name.toLowerCase().includes(unitSearch.toLowerCase()) &&
-        (unitStatus ? unit.status === unitStatus : true)
+    return tenantRows
+      .filter((tenant) => {
+        const searchableText = [
+          tenant.tenant_name,
+          tenant.tenant_email,
+          tenant.mobile_phone,
+          tenant.tenant_phone,
+          tenant.unit_name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return (
+          (!searchValue || searchableText.includes(searchValue)) &&
+          (tenantStatus ? tenant.payment_status === tenantStatus : true)
+        );
+      })
+      .sort((first, second) =>
+        naturalCollator.compare(first.tenant_name, second.tenant_name)
       );
-    });
-  }, [unitRows, unitSearch, unitStatus]);
+  }, [tenantRows, tenantSearch, tenantStatus]);
 
   useEffect(() => {
     if (!hasFilterOption(tenantStatusOptions, tenantStatus)) {
       setTenantStatus("");
     }
   }, [tenantStatus, tenantStatusOptions]);
-
-  useEffect(() => {
-    if (!hasFilterOption(unitStatusOptions, unitStatus)) {
-      setUnitStatus("");
-    }
-  }, [unitStatus, unitStatusOptions]);
 
   const maintenanceActiveCount = useMemo(() => {
     return maintenanceRows.filter(
@@ -565,6 +579,147 @@ export default function DetailPropertiPage() {
 
     return lookup;
   }, [propertyStructure]);
+
+  const unitStatusOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        unitRows,
+        (unit) => unitStructureLookup.get(unit.unit_id)?.status || unit.status,
+        (value) => unitStatusLabelMap[value]
+      ),
+    [unitRows, unitStructureLookup]
+  );
+
+  const unitBuildingOptions = useMemo(
+    () =>
+      propertyStructure.blocks.map((block) => ({
+        value: block.name,
+        label: block.name,
+      })),
+    [propertyStructure.blocks]
+  );
+
+  const unitTypeOptions = useMemo(
+    () =>
+      uniqueFilterOptions(
+        unitRows,
+        (unit) => unit.unit_type,
+        (value) => formatReadableText(value)
+      ),
+    [unitRows]
+  );
+
+  const unitFiltered = useMemo(() => {
+    const searchValue = unitSearch.trim().toLowerCase();
+
+    const getUnitValues = (unit: AdminPropertyUnitRow) => {
+      const structuredUnit = unitStructureLookup.get(unit.unit_id);
+      const ownerName =
+        unit.owner_name ||
+        propertyStructure.blocks.find((block) =>
+          block.units.some((item) => item.id === unit.unit_id)
+        )?.ownerName ||
+        "";
+      const buildingName = structuredUnit?.buildingName || "";
+      const displayName = structuredUnit?.displayName || unit.unit_name;
+      const statusValue = structuredUnit?.status || unit.status || "";
+
+      return {
+        buildingName,
+        displayName,
+        ownerName,
+        statusValue,
+        searchText: [
+          unit.unit_name,
+          displayName,
+          buildingName,
+          unit.unit_type,
+          ownerName,
+          unit.tenant_name,
+          unit.tenant_email,
+          unit.mobile_phone,
+          statusValue,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      };
+    };
+
+    return unitRows
+      .filter((unit) => {
+        const unitValues = getUnitValues(unit);
+
+        return (
+          (!searchValue || unitValues.searchText.includes(searchValue)) &&
+          (unitStatus ? unitValues.statusValue === unitStatus : true) &&
+          (unitBuilding ? unitValues.buildingName === unitBuilding : true) &&
+          (unitType ? unit.unit_type === unitType : true)
+        );
+      })
+      .sort((first, second) => {
+        const firstValues = getUnitValues(first);
+        const secondValues = getUnitValues(second);
+        const fallbackCompare =
+          naturalCollator.compare(firstValues.buildingName, secondValues.buildingName) ||
+          naturalCollator.compare(firstValues.displayName, secondValues.displayName);
+
+        switch (unitSort) {
+          case "unit_asc":
+            return (
+              naturalCollator.compare(firstValues.displayName, secondValues.displayName) ||
+              naturalCollator.compare(firstValues.buildingName, secondValues.buildingName)
+            );
+          case "status_asc":
+            return (
+              naturalCollator.compare(
+                unitStatusLabelMap[firstValues.statusValue] || firstValues.statusValue,
+                unitStatusLabelMap[secondValues.statusValue] || secondValues.statusValue
+              ) || fallbackCompare
+            );
+          case "price_asc":
+            return Number(first.price || 0) - Number(second.price || 0) || fallbackCompare;
+          case "price_desc":
+            return Number(second.price || 0) - Number(first.price || 0) || fallbackCompare;
+          case "capacity_desc":
+            return (
+              Number(second.people_allowed || 0) -
+                Number(first.people_allowed || 0) ||
+              fallbackCompare
+            );
+          case "building_unit_asc":
+          default:
+            return fallbackCompare;
+        }
+      });
+  }, [
+    propertyStructure.blocks,
+    unitBuilding,
+    unitRows,
+    unitSearch,
+    unitSort,
+    unitStatus,
+    unitStructureLookup,
+    unitType,
+  ]);
+
+  useEffect(() => {
+    if (!hasFilterOption(unitStatusOptions, unitStatus)) {
+      setUnitStatus("");
+    }
+  }, [unitStatus, unitStatusOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(unitBuildingOptions, unitBuilding)) {
+      setUnitBuilding("");
+    }
+  }, [unitBuilding, unitBuildingOptions]);
+
+  useEffect(() => {
+    if (!hasFilterOption(unitTypeOptions, unitType)) {
+      setUnitType("");
+    }
+  }, [unitType, unitTypeOptions]);
 
   const blockNameOptions = useMemo(() => {
     return propertyStructure.blocks
@@ -997,6 +1152,12 @@ export default function DetailPropertiPage() {
     : null;
   const editingUnitPhotoCount = editingUnit ? getUnitPhotoUrls(editingUnit).length : 0;
   const editingUnitVideoCount = editingUnit ? getUnitVideoCount(editingUnit) : 0;
+  const hasActiveUnitFilter =
+    unitSearch.trim() !== "" ||
+    unitStatus !== "" ||
+    unitBuilding !== "" ||
+    unitType !== "" ||
+    unitSort !== defaultUnitSort;
 
   return (
     <div className="space-y-6">
@@ -1920,26 +2081,112 @@ export default function DetailPropertiPage() {
               </form>
             )}
 
-            <div className="flex flex-wrap gap-3">
-              <input
-                placeholder="Cari nama / nomor unit"
-                value={unitSearch}
-                onChange={(event) => setUnitSearch(event.target.value)}
-                className="h-11 w-full max-w-xs rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
-              />
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_190px_170px_190px_auto]">
+                <div className="relative">
+                  <Search
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <input
+                    placeholder="Cari unit, blok, owner, atau penyewa"
+                    value={unitSearch}
+                    onChange={(event) => setUnitSearch(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  />
+                </div>
 
-              <select
-                value={unitStatus}
-                onChange={(event) => setUnitStatus(event.target.value)}
-                className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
-              >
-                <option value="">Semua Status</option>
-                {unitStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <div className="relative">
+                  <Filter
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <select
+                    value={unitStatus}
+                    onChange={(event) => setUnitStatus(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  >
+                    <option value="">Semua Status</option>
+                    {unitStatusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <select
+                  value={unitBuilding}
+                  onChange={(event) => setUnitBuilding(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                >
+                  <option value="">Semua Blok</option>
+                  {unitBuildingOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={unitType}
+                  onChange={(event) => setUnitType(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                >
+                  <option value="">Semua Tipe</option>
+                  {unitTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="relative">
+                  <ArrowUpDown
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <select
+                    value={unitSort}
+                    onChange={(event) => setUnitSort(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  >
+                    {unitSortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnitSearch("");
+                    setUnitStatus("");
+                    setUnitBuilding("");
+                    setUnitType("");
+                    setUnitSort(defaultUnitSort);
+                  }}
+                  disabled={!hasActiveUnitFilter}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RotateCcw size={14} />
+                  Reset
+                </button>
+              </div>
+
+              <p className="mt-2 text-xs text-slate-500">
+                Menampilkan{" "}
+                <span className="font-semibold text-slate-700">
+                  {unitFiltered.length}
+                </span>{" "}
+                dari{" "}
+                <span className="font-semibold text-slate-700">
+                  {unitRows.length}
+                </span>{" "}
+                unit.
+              </p>
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">

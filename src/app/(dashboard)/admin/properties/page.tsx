@@ -10,8 +10,8 @@ import {
   buildPeriodParams,
   createAdminProperty,
   getAdminFinancialDashboard,
+  getAllAdminProperties,
   getAdminOwners,
-  getAdminProperties,
   getApiErrorMessage,
   mapPropertyToCard,
   type AdminPropertyUpsertPayload,
@@ -43,9 +43,52 @@ const propertyStatusLabelMap: Record<string, string> = {
   renovation: "Renovasi",
 };
 
+const defaultPropertySort = "name_asc";
+
+const propertySortOptions = [
+  { value: "name_asc", label: "Nama A-Z" },
+  { value: "name_desc", label: "Nama Z-A" },
+  { value: "id_asc", label: "ID terkecil" },
+  { value: "id_desc", label: "ID terbesar" },
+  { value: "unit_desc", label: "Total unit terbanyak" },
+  { value: "vacant_desc", label: "Unit kosong terbanyak" },
+];
+
+const naturalCollator = new Intl.Collator("id-ID", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+const sortProperties = (items: Property[], sortBy: string) => {
+  return [...items].sort((first, second) => {
+    switch (sortBy) {
+      case "name_desc":
+        return naturalCollator.compare(second.name, first.name);
+      case "id_asc":
+        return Number(first.id) - Number(second.id);
+      case "id_desc":
+        return Number(second.id) - Number(first.id);
+      case "unit_desc":
+        return (
+          Number(second.totalUnits || 0) - Number(first.totalUnits || 0) ||
+          naturalCollator.compare(first.name, second.name)
+        );
+      case "vacant_desc":
+        return (
+          Number(second.vacantUnits || 0) - Number(first.vacantUnits || 0) ||
+          naturalCollator.compare(first.name, second.name)
+        );
+      case "name_asc":
+      default:
+        return naturalCollator.compare(first.name, second.name);
+    }
+  });
+};
+
 export default function AdminPropertiesPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [sortBy, setSortBy] = useState(defaultPropertySort);
   const [openModal, setOpenModal] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [owners, setOwners] = useState<AdminUser[]>([]);
@@ -64,10 +107,7 @@ export default function AdminPropertiesPage() {
 
       try {
         const [propertiesResponse, dashboardResponse, ownersResponse] = await Promise.all([
-          getAdminProperties({
-            page: 1,
-            per_page: 100,
-          }),
+          getAllAdminProperties(),
           getAdminFinancialDashboard(buildPeriodParams("year")),
           getAdminOwners({
             page: 1,
@@ -124,13 +164,17 @@ export default function AdminPropertiesPage() {
   }, [refreshKey]);
 
   const filtered = useMemo(() => {
-    return properties.filter((property) => {
+    const searchValue = search.trim().toLowerCase();
+    const filteredProperties = properties.filter((property) => {
+      const searchableText = `${property.name} ${property.address}`.toLowerCase();
       return (
-        property.name.toLowerCase().includes(search.toLowerCase()) &&
+        searchableText.includes(searchValue) &&
         (status ? property.status === status : true)
       );
     });
-  }, [properties, search, status]);
+
+    return sortProperties(filteredProperties, sortBy);
+  }, [properties, search, sortBy, status]);
 
   const statusFilterOptions = useMemo(
     () =>
@@ -242,11 +286,16 @@ export default function AdminPropertiesPage() {
         status={status}
         setStatus={setStatus}
         statusOptions={statusFilterOptions}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOptions={propertySortOptions}
+        defaultSortBy={defaultPropertySort}
         resultCount={filtered.length}
         totalCount={totalPropertyCount}
         onReset={() => {
           setSearch("");
           setStatus("");
+          setSortBy(defaultPropertySort);
         }}
       />
 

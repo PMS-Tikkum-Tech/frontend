@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, RotateCcw, Search } from "lucide-react";
+import { ArrowUpDown, Filter, RotateCcw, Search } from "lucide-react";
 import type { FilterOption } from "@/lib/filter-options";
 
 interface Props {
@@ -9,6 +9,10 @@ interface Props {
   status: string;
   setStatus: (value: string) => void;
   statusOptions: FilterOption[];
+  sortBy: string;
+  setSortBy: (value: string) => void;
+  sortOptions: FilterOption[];
+  defaultSortBy: string;
   resultCount: number;
   totalCount: number;
   onReset: () => void;
@@ -20,11 +24,16 @@ export default function PropertyFilters({
   status,
   setStatus,
   statusOptions,
+  sortBy,
+  setSortBy,
+  sortOptions,
+  defaultSortBy,
   resultCount,
   totalCount,
   onReset,
 }: Props) {
-  const hasActiveFilter = search.trim() !== "" || status !== "";
+  const hasActiveFilter =
+    search.trim() !== "" || status !== "" || sortBy !== defaultSortBy;
 
   return (
     <div className="w-full space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -55,6 +64,24 @@ export default function PropertyFilters({
           >
             <option value="">Semua Status</option>
             {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="relative min-w-[220px]">
+          <ArrowUpDown
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
+          >
+            {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

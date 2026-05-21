@@ -652,6 +652,34 @@ const getList = async <T>(
   };
 };
 
+const getAllList = async <T>(
+  path: string,
+  params?: QueryParams,
+  perPage = 100
+): Promise<ListResult<T>> => {
+  const firstResponse = await getList<T>(path, {
+    ...params,
+    page: 1,
+    per_page: perPage,
+  });
+  const data = [...firstResponse.data];
+  const totalPages = firstResponse.meta?.total_pages || 1;
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const nextResponse = await getList<T>(path, {
+      ...params,
+      page,
+      per_page: firstResponse.meta?.per_page || perPage,
+    });
+    data.push(...nextResponse.data);
+  }
+
+  return {
+    ...firstResponse,
+    data,
+  };
+};
+
 const getItem = async <T>(
   path: string,
   params?: QueryParams
@@ -1132,6 +1160,17 @@ export const getAdminProperties = async (params?: QueryParams) => {
   };
 };
 
+export const getAllAdminProperties = async (params?: QueryParams) => {
+  const response = await getAllList<AdminPropertyListItem>(
+    "/api/v1/properties",
+    params
+  );
+  return {
+    ...response,
+    data: response.data.map(normalizeAdminPropertyListItem),
+  };
+};
+
 export const createAdminProperty = async (payload: AdminPropertyUpsertPayload) => {
   const formData = await toPropertyFormData(payload);
   const response = await axiosInstance.post<ApiResponse<AdminPropertyDetailPayload>>(
@@ -1194,6 +1233,11 @@ export const getAdminPropertyTenants = (
   params?: QueryParams
 ) => getList<AdminPropertyTenantRow>(`/api/v1/properties/${id}/tenants`, params);
 
+export const getAllAdminPropertyTenants = (
+  id: number | string,
+  params?: QueryParams
+) => getAllList<AdminPropertyTenantRow>(`/api/v1/properties/${id}/tenants`, params);
+
 export const createAdminPropertyTenant = async (
   propertyId: number | string,
   payload: AdminPropertyTenantCreatePayload
@@ -1244,6 +1288,11 @@ export const deleteAdminPropertyTenant = async (
 
 export const getAdminPropertyUnits = (id: number | string, params?: QueryParams) =>
   getList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
+
+export const getAllAdminPropertyUnits = (
+  id: number | string,
+  params?: QueryParams
+) => getAllList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
 
 export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
   const formData = await toUnitFormData(payload);
@@ -1297,6 +1346,15 @@ export const getAdminPropertyMaintenance = (
   params?: QueryParams
 ) =>
   getList<AdminPropertyMaintenanceRow>(
+    `/api/v1/properties/${id}/maintenance`,
+    params
+  );
+
+export const getAllAdminPropertyMaintenance = (
+  id: number | string,
+  params?: QueryParams
+) =>
+  getAllList<AdminPropertyMaintenanceRow>(
     `/api/v1/properties/${id}/maintenance`,
     params
   );

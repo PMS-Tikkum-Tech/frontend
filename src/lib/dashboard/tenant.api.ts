@@ -846,12 +846,16 @@ const buildCatalogQuery = (params?: QueryParams, page = 1, perPage = 100) => {
   });
 };
 
-const buildAdminPropertyQuery = (params?: QueryParams) => {
+const buildAdminPropertyQuery = (
+  params?: QueryParams,
+  page = getNumberParam(params?.page, 1),
+  perPage = getNumberParam(params?.per_page, 100)
+) => {
   const sort = params?.sort?.toString() === "oldest" ? "oldest" : "newest";
 
   return sanitizeParams({
-    page: params?.page,
-    per_page: params?.per_page,
+    page,
+    per_page: perPage,
     search: params?.search,
     property_type: params?.property_type,
     sort,
@@ -1206,13 +1210,24 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
 const fetchAdminPropertiesForPublic = async (
   params?: QueryParams
 ): Promise<ListResult<PublicPropertySummary>> => {
+  const perPage = 100;
   const response = await getPublicApi<PublicPropertyApiItem[]>(
     "/api/v1/properties",
-    buildAdminPropertyQuery(params)
+    buildAdminPropertyQuery(params, 1, perPage)
   );
+  const properties = [...response.data.data];
+  const totalPages = response.data.meta?.total_pages || 1;
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const nextResponse = await getPublicApi<PublicPropertyApiItem[]>(
+      "/api/v1/properties",
+      buildAdminPropertyQuery(params, page, response.data.meta?.per_page || perPage)
+    );
+    properties.push(...nextResponse.data.data);
+  }
 
   return {
-    data: response.data.data.map(normalizePublicProperty),
+    data: properties.map(normalizePublicProperty),
     meta: response.data.meta,
     message: response.data.message,
   };

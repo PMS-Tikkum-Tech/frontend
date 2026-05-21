@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import {
   buildPeriodParams,
+  getAllAdminProperties,
   getAdminFinancialDashboard,
   getAdminLogActivities,
   getAdminMaintenanceRequests,
   getAdminManualRentalBookings,
   getAdminPayments,
-  getAdminProperties,
   getApiErrorMessage,
 } from "@/lib/dashboard/admin.api";
 import type {
@@ -132,10 +132,7 @@ export const useAdminDashboard = (period: string) => {
           financialDashboardResponse,
           activityResponse,
         ] = await Promise.all([
-          getAdminProperties({
-            page: 1,
-            per_page: 100,
-          }),
+          getAllAdminProperties(),
           getAdminMaintenanceRequests({
             ...periodParams,
             page: 1,
