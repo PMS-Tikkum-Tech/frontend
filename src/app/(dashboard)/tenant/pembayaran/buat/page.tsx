@@ -31,7 +31,6 @@ import {
   Save,
   ShieldCheck,
   UserRound,
-  WalletCards,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
@@ -83,32 +82,11 @@ type RentDurationValue = (typeof RENT_DURATION_OPTIONS)[number]["value"];
 
 const PAYMENT_METHODS = [
   {
-    value: "bank_bca",
-    label: "Transfer Bank BCA",
-    description: "No. Rekening 1234567890",
-    owner: "a.n. PT Kyra Stay Indonesia",
+    value: "bank_bsi",
+    label: "Transfer Bank BSI",
+    description: "BSI : 7283652283",
+    owner: "An Astri Kartika",
     icon: <Landmark size={16} />,
-  },
-  {
-    value: "bank_mandiri",
-    label: "Transfer Bank Mandiri",
-    description: "No. Rekening 9876543210",
-    owner: "a.n. PT Kyra Stay Indonesia",
-    icon: <Landmark size={16} />,
-  },
-  {
-    value: "ewallet_gopay",
-    label: "GoPay",
-    description: "Nomor 0812-0000-0000",
-    owner: "a.n. Kyra Stay",
-    icon: <WalletCards size={16} />,
-  },
-  {
-    value: "ewallet_ovo",
-    label: "OVO",
-    description: "Nomor 0813-0000-0000",
-    owner: "a.n. Kyra Stay",
-    icon: <WalletCards size={16} />,
   },
 ] as const;
 
@@ -1164,7 +1142,7 @@ function TenantCreatePaymentPageContent() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Metode Pembayaran</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3">
               {PAYMENT_METHODS.map((method) => {
                 const isSelected = paymentMethod === method.value;
                 return (

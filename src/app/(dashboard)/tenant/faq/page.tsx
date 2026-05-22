@@ -39,7 +39,7 @@ const faqs: Record<string, FaqItem[]> = {
   "Pembayaran & Tagihan": [
     {
       q: "Metode pembayaran apa saja yang tersedia?",
-      a: "Pembayaran mendukung transfer bank, dompet digital, dan metode lain yang tersedia di faktur.",
+      a: "Pembayaran saat ini hanya mendukung transfer Bank BSI ke rekening 7283652283 atas nama An Astri Kartika.",
     },
     {
       q: "Di mana saya melihat status tagihan?",

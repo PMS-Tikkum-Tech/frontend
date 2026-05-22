@@ -28,9 +28,9 @@ export default function PublicHeader() {
 
   const nav = [
     { label: "Beranda", href: "/" },
-    { label: "Tentang", href: "/tentang" },
+    { label: "Tentang", href: "/tentang", disabled: true },
     { label: "Sewa", href: "/sewa" },
-    { label: "Kerjasama", href: "/kerjasama" },
+    { label: "Kerjasama", href: "/kerjasama", disabled: true },
   ];
 
   useEffect(() => {
@@ -123,19 +123,29 @@ export default function PublicHeader() {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-10 text-sm font-medium">
-            {nav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`transition ${
-                  pathname === item.href
-                    ? "text-green-600 border-b-2 border-green-600 pb-1"
-                    : "text-slate-700 hover:text-green-600"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {nav.map((item) =>
+              item.disabled ? (
+                <span
+                  key={item.href}
+                  aria-disabled="true"
+                  className="cursor-not-allowed text-slate-400"
+                >
+                  {item.label}
+                </span>
+              ) : (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`transition ${
+                    pathname === item.href
+                      ? "text-green-600 border-b-2 border-green-600 pb-1"
+                      : "text-slate-700 hover:text-green-600"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            )}
           </nav>
 
           {/* Right Area */}
@@ -234,20 +244,30 @@ export default function PublicHeader() {
         >
           <div className="space-y-3 px-4 py-3">
             <nav className="grid gap-1.5">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    pathname === item.href
-                      ? "bg-sky-50 text-sky-700"
-                      : "text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {nav.map((item) =>
+                item.disabled ? (
+                  <span
+                    key={item.href}
+                    aria-disabled="true"
+                    className="cursor-not-allowed rounded-lg px-3 py-2 text-sm font-medium text-slate-400"
+                  >
+                    {item.label}
+                  </span>
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                      pathname === item.href
+                        ? "bg-sky-50 text-sky-700"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              )}
             </nav>
 
             {!user ? (
