@@ -25,7 +25,6 @@ import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import { updateSelfProfilePicture } from "@/lib/profile.api";
 import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
-import AdminCursor from "@/components/ui/AdminCursor";
 import { getProfilePictureValidationError } from "@/lib/profile-picture";
 
 export default function AdminDashboardLayout({
@@ -141,8 +140,7 @@ export default function AdminDashboardLayout({
 
   return (
     <RoleGuard allowedRoles={["admin"]}>
-      <div className="admin-custom-cursor min-h-screen bg-slate-50 lg:flex">
-        <AdminCursor />
+      <div className="min-h-screen bg-slate-50 lg:flex">
         {isSidebarOpen ? (
           <button
             type="button"
