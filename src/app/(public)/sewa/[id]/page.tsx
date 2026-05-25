@@ -14,13 +14,11 @@ import {
   ChevronRight,
   CheckCircle2,
   Home,
-  Image as ImageIcon,
   MapPin,
   Tag,
   ShieldCheck,
   Sparkles,
   Users,
-  Video,
   Wifi,
   X,
 } from "lucide-react";
@@ -1390,39 +1388,6 @@ export default function SewaPropertyDetailPage() {
                       key={unit.id}
                       className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:border-blue-200"
                     >
-                      {unit.media.length > 0 ? (
-                        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
-                          {unit.media[0].type === "video" ? (
-                            <video
-                              src={unit.media[0].src}
-                              controls
-                              preload="metadata"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Image
-                              src={unit.media[0].src}
-                              alt={`Media ${unit.displayName}`}
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
-                          )}
-                          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-900/75 px-2 py-1 text-[11px] font-semibold text-white">
-                            {unit.media[0].type === "video" ? (
-                              <Video size={12} />
-                            ) : (
-                              <ImageIcon size={12} />
-                            )}
-                            {unit.media.length} media
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="mb-3 flex aspect-[16/9] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs font-medium text-slate-500">
-                          Media unit belum tersedia
-                        </div>
-                      )}
-
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">
