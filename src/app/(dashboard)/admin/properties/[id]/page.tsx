@@ -52,6 +52,7 @@ import {
   updateAdminUnit,
   updateAdminProperty,
   updateAdminPropertyMediaOrder,
+  updateAdminPropertyBlockMedia,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 import {
@@ -273,6 +274,14 @@ type UnitFormState = {
   notes: string;
 };
 
+type BlockMediaDraft = {
+  photos: File[];
+  video: File | null;
+  video360: File | null;
+};
+
+type BlockMediaDrafts = Record<string, BlockMediaDraft>;
+
 type TenantAssignmentFormState = {
   tenantId: string;
   unitId: string;
@@ -350,11 +359,13 @@ export default function DetailPropertiPage() {
   const [unitPhotos, setUnitPhotos] = useState<File[]>([]);
   const [unitVideoFile, setUnitVideoFile] = useState<File | null>(null);
   const [unitVideo360File, setUnitVideo360File] = useState<File | null>(null);
+  const [blockMediaFiles, setBlockMediaFiles] = useState<BlockMediaDrafts>({});
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTenant, setIsSavingTenant] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSavingMediaOrder, setIsSavingMediaOrder] = useState(false);
+  const [savingBlockMediaId, setSavingBlockMediaId] = useState<number | null>(null);
   const [isSavingUnit, setIsSavingUnit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingTenantLeaseId, setIsDeletingTenantLeaseId] = useState<number | null>(
@@ -738,7 +749,7 @@ export default function DetailPropertiPage() {
   const blockNameOptions = useMemo(() => {
     return propertyStructure.blocks
       .map((block) => block.name)
-      .filter((name) => name !== "Bangunan belum diatur");
+      .filter((name) => name !== "Blok belum diatur");
   }, [propertyStructure]);
 
   const activeTenantOptions = useMemo(() => {
@@ -976,6 +987,135 @@ export default function DetailPropertiPage() {
     }
   };
 
+  const updateBlockMediaDraft = (
+    blockKey: string,
+    nextDraft: Partial<{ photos: File[]; video: File | null; video360: File | null }>
+  ) => {
+    setBlockMediaFiles((prev) => {
+      const current = prev[blockKey] || {
+        photos: [],
+        video: null,
+        video360: null,
+      };
+
+      return {
+        ...prev,
+        [blockKey]: {
+          ...current,
+          ...nextDraft,
+        },
+      };
+    });
+  };
+
+  const resetBlockMediaDraft = (blockKey: string) => {
+    setBlockMediaFiles((prev) => {
+      const next = { ...prev };
+      delete next[blockKey];
+      return next;
+    });
+  };
+
+  const handleSaveBlockMedia = async (block: PropertyStructure["blocks"][number]) => {
+    if (!propertyId || !block.id || savingBlockMediaId) {
+      return;
+    }
+
+    const draft = blockMediaFiles[block.key] || {
+      photos: [],
+      video: null,
+      video360: null,
+    };
+
+    if (draft.photos.length === 0 && !draft.video && !draft.video360) {
+      setNotice({
+        variant: "error",
+        message: "Pilih media blok terlebih dahulu.",
+      });
+      return;
+    }
+
+    setSavingBlockMediaId(block.id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await updateAdminPropertyBlockMedia(propertyId, block.id, {
+        photos: draft.photos,
+        video: draft.video,
+        video_360: draft.video360,
+      });
+
+      setPropertyDetail(response.data);
+      resetBlockMediaDraft(block.key);
+      setNotice({
+        variant: "success",
+        message: `Media ${block.name} berhasil disimpan.`,
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (blockMediaError) {
+      setError(
+        getApiErrorMessage(
+          blockMediaError,
+          "Gagal menyimpan media blok. Coba lagi beberapa saat."
+        )
+      );
+    } finally {
+      setSavingBlockMediaId(null);
+    }
+  };
+
+  const handleDeleteBlockMedia = async (
+    block: PropertyStructure["blocks"][number],
+    mediaType: "photo" | "video" | "video_360",
+    photoIndex?: number
+  ) => {
+    if (!propertyId || !block.id || savingBlockMediaId) {
+      return;
+    }
+
+    const agreed = window.confirm(
+      "Hapus media blok ini? Tindakan ini tidak bisa dibatalkan."
+    );
+    if (!agreed) {
+      return;
+    }
+
+    setSavingBlockMediaId(block.id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const nextPhotoUrls =
+        mediaType === "photo"
+          ? block.photoUrls.filter((_, index) => index !== photoIndex)
+          : undefined;
+
+      const response = await updateAdminPropertyBlockMedia(propertyId, block.id, {
+        photo_urls: nextPhotoUrls,
+        roomphoto_urls: nextPhotoUrls,
+        delete_video: mediaType === "video",
+        delete_video_360: mediaType === "video_360",
+      });
+
+      setPropertyDetail(response.data);
+      setNotice({
+        variant: "success",
+        message: `Media ${block.name} berhasil dihapus.`,
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (blockMediaError) {
+      setError(
+        getApiErrorMessage(
+          blockMediaError,
+          "Gagal menghapus media blok. Coba lagi beberapa saat."
+        )
+      );
+    } finally {
+      setSavingBlockMediaId(null);
+    }
+  };
+
   const openCreateTenantForm = () => {
     setNotice(null);
     setError(null);
@@ -1144,7 +1284,7 @@ export default function DetailPropertiPage() {
       parsedPrice <= 0
     ) {
       setError(
-        "Data unit belum valid. Periksa bangunan/blok, nama unit, kapasitas, dan harga."
+        "Data unit belum valid. Periksa blok, nama unit, kapasitas, dan harga."
       );
       return;
     }
@@ -1241,7 +1381,7 @@ export default function DetailPropertiPage() {
       buildingName: unit.building_name || unit.block_name,
     });
     setUnitForm({
-      buildingName: identity.buildingName === "Bangunan belum diatur" ? "" : identity.buildingName,
+      buildingName: identity.buildingName === "Blok belum diatur" ? "" : identity.buildingName,
       ownerId: unit.owner_id
         ? String(unit.owner_id)
         : propertyDetail?.property.user?.id
@@ -1431,7 +1571,7 @@ export default function DetailPropertiPage() {
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <StatCard
               icon={<Building2 size={16} />}
-              label="Bangunan/Blok"
+              label="Blok"
               value={String(propertyStructure.blockCount)}
               tone="default"
             />
@@ -1791,7 +1931,14 @@ export default function DetailPropertiPage() {
             </div>
           </section>
 
-          <PropertyMappingSection structure={propertyStructure} />
+          <PropertyMappingSection
+            structure={propertyStructure}
+            blockMediaFiles={blockMediaFiles}
+            savingBlockMediaId={savingBlockMediaId}
+            onUpdateBlockMediaDraft={updateBlockMediaDraft}
+            onSaveBlockMedia={handleSaveBlockMedia}
+            onDeleteBlockMedia={handleDeleteBlockMedia}
+          />
 
           <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1968,7 +2115,7 @@ export default function DetailPropertiPage() {
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
                     <th className="p-3 text-left font-semibold">Nama</th>
-                    <th className="p-3 text-left font-semibold">Bangunan / Unit</th>
+                    <th className="p-3 text-left font-semibold">Blok / Unit</th>
                     <th className="p-3 text-left font-semibold">Check-in</th>
                     <th className="p-3 text-left font-semibold">Nomor Telepon</th>
                     <th className="p-3 text-left font-semibold">Check-out</th>
@@ -2091,7 +2238,7 @@ export default function DetailPropertiPage() {
               >
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
-                    Bangunan / Blok
+                    Blok
                   </label>
                   <input
                     list="property-block-options"
@@ -2114,7 +2261,7 @@ export default function DetailPropertiPage() {
 
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
-                    Owner Bangunan
+                    Owner Blok
                   </label>
                   <select
                     value={unitForm.ownerId}
@@ -2439,7 +2586,7 @@ export default function DetailPropertiPage() {
               <table className="min-w-[1240px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
-                    <th className="p-3 text-left font-semibold">Bangunan/Blok</th>
+                    <th className="p-3 text-left font-semibold">Blok</th>
                     <th className="p-3 text-left font-semibold">Nomor Unit</th>
                     <th className="p-3 text-left font-semibold">Tipe</th>
                     <th className="p-3 text-left font-semibold">Owner</th>
@@ -2858,7 +3005,28 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PropertyMappingSection({ structure }: { structure: PropertyStructure }) {
+function PropertyMappingSection({
+  structure,
+  blockMediaFiles,
+  savingBlockMediaId,
+  onUpdateBlockMediaDraft,
+  onSaveBlockMedia,
+  onDeleteBlockMedia,
+}: {
+  structure: PropertyStructure;
+  blockMediaFiles: BlockMediaDrafts;
+  savingBlockMediaId: number | null;
+  onUpdateBlockMediaDraft: (
+    blockKey: string,
+    nextDraft: Partial<BlockMediaDraft>
+  ) => void;
+  onSaveBlockMedia: (block: PropertyStructure["blocks"][number]) => void;
+  onDeleteBlockMedia: (
+    block: PropertyStructure["blocks"][number],
+    mediaType: "photo" | "video" | "video_360",
+    photoIndex?: number
+  ) => void;
+}) {
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2870,7 +3038,7 @@ function PropertyMappingSection({ structure }: { structure: PropertyStructure })
             Data Unit dan Penghuni
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
-            Lihat daftar bangunan, unit, status hunian, dan penghuni dalam satu
+            Lihat daftar blok, unit, status hunian, dan penghuni dalam satu
             tampilan.
           </p>
         </div>
@@ -2884,7 +3052,7 @@ function PropertyMappingSection({ structure }: { structure: PropertyStructure })
 
       {structure.blocks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-          Belum ada unit. Tambahkan bangunan/blok saat membuat unit pertama.
+          Belum ada unit. Tambahkan blok saat membuat unit pertama.
         </div>
       ) : (
         <div className="space-y-4">
@@ -2909,6 +3077,154 @@ function PropertyMappingSection({ structure }: { structure: PropertyStructure })
                   <StatusPill label="Booking" value={block.bookingUnits} />
                   <StatusPill label="Maintenance" value={block.maintenanceUnits} />
                 </div>
+              </div>
+
+              <div className="border-t border-slate-200 bg-white px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">
+                      Media Blok
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onSaveBlockMedia(block)}
+                    disabled={!block.id || savingBlockMediaId === block.id}
+                    className="inline-flex h-9 items-center justify-center rounded-lg bg-[#1E2746] px-3 text-xs font-semibold text-white transition hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {savingBlockMediaId === block.id ? "Menyimpan..." : "Simpan Media"}
+                  </button>
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-800">Foto Blok</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.heic,.heif"
+                      disabled={!block.id || savingBlockMediaId === block.id}
+                      onChange={(event) => {
+                        onUpdateBlockMediaDraft(block.key, {
+                          photos: Array.from(event.target.files || []),
+                        });
+                      }}
+                      className="mt-2 block w-full text-xs"
+                    />
+                    {blockMediaFiles[block.key]?.photos.length ? (
+                      <span className="mt-1 block">
+                        {blockMediaFiles[block.key].photos.length} foto dipilih
+                      </span>
+                    ) : null}
+                  </label>
+
+                  <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-800">Video Blok</span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      disabled={!block.id || savingBlockMediaId === block.id}
+                      onChange={(event) => {
+                        onUpdateBlockMediaDraft(block.key, {
+                          video: event.target.files?.[0] || null,
+                        });
+                      }}
+                      className="mt-2 block w-full text-xs"
+                    />
+                    {blockMediaFiles[block.key]?.video ? (
+                      <span className="mt-1 block truncate">
+                        {blockMediaFiles[block.key].video?.name}
+                      </span>
+                    ) : null}
+                  </label>
+
+                  <label className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-800">Media 360</span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      disabled={!block.id || savingBlockMediaId === block.id}
+                      onChange={(event) => {
+                        onUpdateBlockMediaDraft(block.key, {
+                          video360: event.target.files?.[0] || null,
+                        });
+                      }}
+                      className="mt-2 block w-full text-xs"
+                    />
+                    {blockMediaFiles[block.key]?.video360 ? (
+                      <span className="mt-1 block truncate">
+                        {blockMediaFiles[block.key].video360?.name}
+                      </span>
+                    ) : null}
+                  </label>
+                </div>
+
+                {block.photoUrls.length > 0 || block.videoUrl || block.video360Url ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {block.photoUrls.map((photoUrl, photoIndex) => (
+                      <div
+                        key={`${block.key}-${photoUrl}-${photoIndex}`}
+                        className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+                      >
+                        <img
+                          src={resolveMediaImageUrl(photoUrl)}
+                          alt={`${block.name} ${photoIndex + 1}`}
+                          className="h-28 w-full object-cover"
+                          loading="lazy"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onDeleteBlockMedia(block, "photo", photoIndex)}
+                          disabled={savingBlockMediaId === block.id}
+                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-100 bg-white/95 text-red-600 shadow-sm hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Hapus foto blok"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {block.videoUrl ? (
+                      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
+                        <video
+                          src={toAbsoluteAssetUrl(block.videoUrl) || block.videoUrl}
+                          controls
+                          preload="metadata"
+                          className="h-28 w-full"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onDeleteBlockMedia(block, "video")}
+                          disabled={savingBlockMediaId === block.id}
+                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-100 bg-white/95 text-red-600 shadow-sm hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Hapus video blok"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {block.video360Url ? (
+                      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
+                        <video
+                          src={toAbsoluteAssetUrl(block.video360Url) || block.video360Url}
+                          controls
+                          preload="metadata"
+                          className="h-28 w-full"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onDeleteBlockMedia(block, "video_360")}
+                          disabled={savingBlockMediaId === block.id}
+                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-100 bg-white/95 text-red-600 shadow-sm hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Hapus media 360 blok"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               <div className="overflow-x-auto">

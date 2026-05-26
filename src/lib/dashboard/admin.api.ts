@@ -67,6 +67,15 @@ export interface AdminPropertyDetailPayload {
     video_url?: string | null;
     video_360_url?: string | null;
     photo_360_url?: string | null;
+    buildings?: Array<{
+      id: number;
+      name: string;
+      block_name?: string | null;
+      roomphoto_urls?: string[];
+      photo_urls?: string[];
+      video_url?: string | null;
+      video_360_url?: string | null;
+    }>;
     user?: {
       id: number;
       full_name: string;
@@ -140,6 +149,16 @@ export interface AdminPropertyMediaOrderPayload {
   delete_video_360?: boolean;
 }
 
+export interface AdminBlockMediaUpdatePayload {
+  photos?: File[];
+  photo_urls?: string[];
+  roomphoto_urls?: string[];
+  video?: File | null;
+  video_360?: File | null;
+  delete_video?: boolean;
+  delete_video_360?: boolean;
+}
+
 export interface AdminPropertyTenantRow {
   lease_id: number;
   tenant_id: number;
@@ -203,6 +222,10 @@ export interface AdminPropertyUnitRow {
   block_name?: string | null;
   block_owner_id?: number | null;
   block_owner_name?: string | null;
+  block_photo_urls?: string[];
+  block_roomphoto_urls?: string[];
+  block_video_url?: string | null;
+  block_video_360_url?: string | null;
   owner_id?: number | null;
   owner_name?: string | null;
   notes?: string | null;
@@ -1231,6 +1254,64 @@ export const updateAdminPropertyMediaOrder = async (
     `/api/v1/properties/${id}/media_order`,
     {
       property: payload,
+    }
+  );
+
+  return {
+    data: normalizeAdminPropertyDetailPayload(response.data.data),
+    message: response.data.message,
+  };
+};
+
+const toBlockMediaFormData = async (payload: AdminBlockMediaUpdatePayload) => {
+  const formData = new FormData();
+
+  (payload.photo_urls || []).forEach((url) => {
+    if (url) {
+      formData.append("block[photo_urls][]", url);
+    }
+  });
+
+  (payload.roomphoto_urls || []).forEach((url) => {
+    if (url) {
+      formData.append("block[roomphoto_urls][]", url);
+    }
+  });
+
+  await appendOptimizedPhotos(formData, "block[photos][]", payload.photos);
+
+  if (payload.video) {
+    formData.append("block[video]", payload.video);
+  }
+
+  if (payload.video_360) {
+    formData.append("block[video_360]", payload.video_360);
+  }
+
+  if (payload.delete_video !== undefined) {
+    formData.append("block[delete_video]", String(payload.delete_video));
+  }
+
+  if (payload.delete_video_360 !== undefined) {
+    formData.append("block[delete_video_360]", String(payload.delete_video_360));
+  }
+
+  return formData;
+};
+
+export const updateAdminPropertyBlockMedia = async (
+  propertyId: number | string,
+  blockId: number | string,
+  payload: AdminBlockMediaUpdatePayload
+) => {
+  const formData = await toBlockMediaFormData(payload);
+  const response = await axiosInstance.patch<ApiResponse<AdminPropertyDetailPayload>>(
+    `/api/v1/properties/${propertyId}/blocks/${blockId}/media`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     }
   );
 

@@ -378,12 +378,24 @@ const getUnitStatusBadgeClass = (status: string) => {
 
 const buildUnitMedias = (unit: PublicPropertyUnitSummary): PropertyMedia[] => {
   const photoCandidates = Array.from(
-    new Set([...(unit.photo_urls || []), ...(unit.roomphoto_urls || []), unit.photo_url || ""])
+    new Set([
+      ...(unit.block_photo_urls || []),
+      ...(unit.block_roomphoto_urls || []),
+      ...(unit.photo_urls || []),
+      ...(unit.roomphoto_urls || []),
+      unit.photo_url || "",
+    ])
   )
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
   const videoCandidates = Array.from(
-    new Set([...(unit.video_urls || []), unit.video_url || "", unit.video_360_url || ""])
+    new Set([
+      unit.block_video_url || "",
+      unit.block_video_360_url || "",
+      ...(unit.video_urls || []),
+      unit.video_url || "",
+      unit.video_360_url || "",
+    ])
   )
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
@@ -1461,8 +1473,13 @@ export default function SewaPropertyDetailPage() {
                           </span>
                         </div>
                       ) : (
-                        <div className="mb-3 flex aspect-[16/9] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs font-medium text-slate-500">
-                          Media unit belum tersedia
+                        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
+                          <Image
+                            src="/bg-1200.webp"
+                            alt={unit.displayName}
+                            fill
+                            className="object-cover"
+                          />
                         </div>
                       )}
 

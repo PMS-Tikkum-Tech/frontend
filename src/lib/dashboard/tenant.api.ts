@@ -307,6 +307,10 @@ export interface PublicPropertyUnitSummary {
   building_name?: string | null;
   block_id?: number | null;
   block_name?: string | null;
+  block_photo_urls?: string[];
+  block_roomphoto_urls?: string[];
+  block_video_url?: string | null;
+  block_video_360_url?: string | null;
   unit_type?: string | null;
   status?: "vacant" | "occupied" | "maintenance" | string;
   people_allowed?: number | null;
@@ -355,6 +359,10 @@ type ManualRentalCatalogUnit = {
   building_name?: string | null;
   block_id?: number | null;
   block_name?: string | null;
+  block_photo_urls?: string[];
+  block_roomphoto_urls?: string[];
+  block_video_url?: string | null;
+  block_video_360_url?: string | null;
   unit_type?: string | null;
   status?: string | null;
   people_allowed?: number | null;
@@ -1194,6 +1202,10 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
     building_name: unit.building_name || unit.block_name || null,
     block_id: unit.block_id ?? unit.building_id ?? null,
     block_name: unit.block_name || unit.building_name || null,
+    block_photo_urls: unit.block_photo_urls || unit.block_roomphoto_urls || [],
+    block_roomphoto_urls: unit.block_roomphoto_urls || unit.block_photo_urls || [],
+    block_video_url: unit.block_video_url || null,
+    block_video_360_url: unit.block_video_360_url || null,
     unit_type: unit.unit_type || null,
     status: unit.status || "vacant",
     people_allowed: unit.people_allowed || null,

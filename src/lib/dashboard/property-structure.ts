@@ -46,6 +46,9 @@ export interface PropertyStructureBlock {
   name: string;
   ownerId?: number | null;
   ownerName: string;
+  photoUrls: string[];
+  videoUrl?: string | null;
+  video360Url?: string | null;
   totalUnits: number;
   occupiedUnits: number;
   bookingUnits: number;
@@ -66,7 +69,7 @@ export interface PropertyStructure {
   blocks: PropertyStructureBlock[];
 }
 
-const UNSET_BUILDING_NAME = "Bangunan belum diatur";
+const UNSET_BUILDING_NAME = "Blok belum diatur";
 
 const toOptionalString = (value: unknown) => {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -283,6 +286,15 @@ export const buildPropertyStructure = ({
       toOptionalNumber(unit.block_id) ??
       toOptionalNumber(tenant?.building_id) ??
       toOptionalNumber(tenant?.block_id);
+    const blockPhotoUrls = Array.from(
+      new Set([
+        ...((unit.block_photo_urls || unit.block_roomphoto_urls || []) as string[]),
+      ])
+    ).filter(Boolean);
+    const blockVideoUrl =
+      toOptionalString(unit.block_video_url) || null;
+    const blockVideo360Url =
+      toOptionalString(unit.block_video_360_url) || null;
     const blockKey = blockId
       ? `id:${blockId}`
       : parsedIdentity.buildingName.toLowerCase();
@@ -326,6 +338,9 @@ export const buildPropertyStructure = ({
       name: parsedIdentity.buildingName,
       ownerId,
       ownerName,
+      photoUrls: blockPhotoUrls,
+      videoUrl: blockVideoUrl,
+      video360Url: blockVideo360Url,
       totalUnits: 0,
       occupiedUnits: 0,
       bookingUnits: 0,
@@ -335,6 +350,9 @@ export const buildPropertyStructure = ({
     };
 
     block.units.push(structuredUnit);
+    block.photoUrls = block.photoUrls.length > 0 ? block.photoUrls : blockPhotoUrls;
+    block.videoUrl = block.videoUrl || blockVideoUrl;
+    block.video360Url = block.video360Url || blockVideo360Url;
     block.totalUnits = block.units.length;
     block.occupiedUnits = getStatusCount(block.units, "occupied");
     block.bookingUnits = getStatusCount(block.units, "booking");
