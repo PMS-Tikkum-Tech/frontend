@@ -1652,8 +1652,8 @@ const isVisitDatePast = (value?: string | null) => {
   return visitDate.getTime() < today.getTime();
 };
 
-const buildTenantVisitRequestSubject = (propertyName: string) =>
-  `${VISIT_REQUEST_SUBJECT_PREFIX} - ${propertyName}`;
+const buildTenantVisitRequestSubject = (_propertyName: string) =>
+  VISIT_REQUEST_SUBJECT_PREFIX;
 
 const buildTenantVisitRequestMessage = ({
   tenantName,
