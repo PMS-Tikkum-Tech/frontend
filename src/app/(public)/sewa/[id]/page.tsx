@@ -4,7 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type TouchEvent,
+} from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -322,6 +329,128 @@ type AvailableUnitCard = {
   facilities: string[];
   media: PropertyMedia[];
 };
+
+function UnitMediaCarousel({
+  media,
+  displayName,
+}: {
+  media: PropertyMedia[];
+  displayName: string;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const safeActiveIndex =
+    activeIndex >= 0 && activeIndex < media.length ? activeIndex : 0;
+  const activeMedia = media[safeActiveIndex] || null;
+  const canSlide = media.length > 1;
+
+  const shiftMedia = (direction: -1 | 1) => {
+    if (!canSlide) {
+      return;
+    }
+
+    setActiveIndex((current) => {
+      return (current + direction + media.length) % media.length;
+    });
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null) {
+      return;
+    }
+
+    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+    const deltaX = endX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (Math.abs(deltaX) < 40) {
+      return;
+    }
+
+    shiftMedia(deltaX < 0 ? 1 : -1);
+  };
+
+  if (!activeMedia) {
+    return (
+      <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
+        <Image
+          src="/bg-1200.webp"
+          alt={displayName}
+          fill
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {activeMedia.type === "video" ? (
+        <video
+          src={activeMedia.src}
+          controls
+          preload="metadata"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <Image
+          src={activeMedia.src}
+          alt={`Media ${displayName}`}
+          fill
+          unoptimized
+          className="object-cover"
+        />
+      )}
+
+      <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-900/75 px-2 py-1 text-[11px] font-semibold text-white">
+        {activeMedia.type === "video" ? <Video size={12} /> : <ImageIcon size={12} />}
+        {canSlide ? `${safeActiveIndex + 1}/${media.length}` : "1 media"}
+      </span>
+
+      {canSlide ? (
+        <>
+          <button
+            type="button"
+            onClick={() => shiftMedia(-1)}
+            className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white"
+            aria-label="Media sebelumnya"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => shiftMedia(1)}
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-sm transition hover:bg-white"
+            aria-label="Media berikutnya"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+            {media.map((item, index) => (
+              <button
+                key={`${item.type}-${item.src}-${index}`}
+                type="button"
+                onClick={() => setActiveIndex(index)}
+                className={`h-1.5 rounded-full transition ${
+                  index === safeActiveIndex ? "w-5 bg-white" : "w-1.5 bg-white/60"
+                }`}
+                aria-label={`Media ${index + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 type VisitRequestFormPayload = {
   preferredDate: string;
@@ -1445,43 +1574,10 @@ export default function SewaPropertyDetailPage() {
                       key={unit.id}
                       className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:border-blue-200"
                     >
-                      {unit.media.length > 0 ? (
-                        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
-                          {unit.media[0].type === "video" ? (
-                            <video
-                              src={unit.media[0].src}
-                              controls
-                              preload="metadata"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Image
-                              src={unit.media[0].src}
-                              alt={`Media ${unit.displayName}`}
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
-                          )}
-                          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-900/75 px-2 py-1 text-[11px] font-semibold text-white">
-                            {unit.media[0].type === "video" ? (
-                              <Video size={12} />
-                            ) : (
-                              <ImageIcon size={12} />
-                            )}
-                            {unit.media.length} media
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
-                          <Image
-                            src="/bg-1200.webp"
-                            alt={unit.displayName}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
+                      <UnitMediaCarousel
+                        media={unit.media}
+                        displayName={unit.displayName}
+                      />
 
                       <div className="flex items-start justify-between gap-2">
                         <div>

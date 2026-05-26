@@ -1064,6 +1064,15 @@ export const getApiErrorMessage = (
       return "Data tidak bisa dihapus karena masih memiliki data terkait.";
     }
 
+    if (
+      normalized.includes("heic file could not be converted") ||
+      normalized.includes("file heic/heif tidak bisa diproses") ||
+      normalized.includes("bad seek") ||
+      normalized.includes("metadata not correctly assigned")
+    ) {
+      return "File HEIC/HEIF tidak bisa diproses. Unggah ulang sebagai JPG, PNG, atau WEBP.";
+    }
+
     return message;
   };
 

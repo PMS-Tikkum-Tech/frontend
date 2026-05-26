@@ -897,13 +897,13 @@ const normalizePublicProperty = (
   );
   const videoUrls = dedupeMediaPaths(property.video_urls, property.video_url);
   const priceMin =
-    getNumberValue(availablePriceRange?.min) ??
+    getPositivePriceValue(availablePriceRange?.min) ??
     previewPriceRange.min ??
-    getNumberValue(priceRange?.min ?? property.price_min);
+    getPositivePriceValue(priceRange?.min ?? property.price_min);
   const priceMax =
-    getNumberValue(availablePriceRange?.max) ??
+    getPositivePriceValue(availablePriceRange?.max) ??
     previewPriceRange.max ??
-    getNumberValue(priceRange?.max ?? property.price_max);
+    getPositivePriceValue(priceRange?.max ?? property.price_max);
   const totalUnits = getNumberValue(stats.total_units ?? property.total_units);
   const occupiedUnits = getNumberValue(
     stats.occupied_units ?? property.occupied_units
