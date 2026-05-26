@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import {
   approveAdminManualRentalBooking,
+  createAdminFinancialTransaction,
   createAdminPayment,
   deleteAdminPayment,
   getAdminManualRentalBookings,
@@ -255,6 +256,31 @@ const getProofDownloadName = (
     getProofExtensionFromUrl(sourceUrl);
 
   return `bukti-transfer-${safeInvoiceId}${extension}`;
+};
+
+const recordPaymentAsIncome = async (payment: AdminPayment) => {
+  const propertyId = payment.property.id;
+  const amount = Number(payment.amount || 0);
+
+  if (!propertyId || amount <= 0) {
+    return;
+  }
+
+  const tenantName = payment.tenant.full_name?.trim() || "Penyewa";
+  const description = `Pembayaran sewa #${payment.invoice_id} - ${tenantName}`;
+
+  try {
+    await createAdminFinancialTransaction({
+      property_id: propertyId,
+      ...(payment.unit.id ? { unit_id: payment.unit.id } : {}),
+      category: "income",
+      transaction_date: new Date().toISOString().slice(0, 10),
+      amount,
+      description,
+    });
+  } catch {
+    // Kegagalan pencatatan keuangan tidak memblokir proses ACC
+  }
 };
 
 export default function AdminBillingPage() {
@@ -774,9 +800,11 @@ export default function AdminBillingPage() {
           notes: "Disetujui dari tagihan administrator",
         });
 
+        void recordPaymentAsIncome(payment);
+
         setNotice({
           variant: "success",
-          message: `Pembayaran pemesanan #${payment.invoice_id} berhasil di-ACC.`,
+          message: `Pembayaran pemesanan #${payment.invoice_id} berhasil di-ACC dan tercatat di keuangan.`,
         });
         setApproveConfirmationPayment(null);
         setRefreshKey((previous) => previous + 1);
@@ -808,9 +836,11 @@ export default function AdminBillingPage() {
         paid_at: new Date().toISOString(),
       });
 
+      void recordPaymentAsIncome(payment);
+
       setNotice({
         variant: "success",
-        message: `Pembayaran #${payment.invoice_id} berhasil di-ACC.`,
+        message: `Pembayaran #${payment.invoice_id} berhasil di-ACC dan tercatat di keuangan.`,
       });
       setApproveConfirmationPayment(null);
       setRefreshKey((previous) => previous + 1);
