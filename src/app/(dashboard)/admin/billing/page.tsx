@@ -19,8 +19,8 @@ import {
   approveAdminManualRentalBooking,
   createAdminFinancialTransaction,
   createAdminPayment,
-  deleteAdminManualRentalBooking,
   deleteAdminPayment,
+  denyAdminManualRentalBooking,
   getAdminManualRentalBookings,
   getAdminPayments,
   getAdminProperties,
@@ -649,9 +649,12 @@ export default function AdminBillingPage() {
   };
 
   const handleDeletePayment = async (payment: AdminPayment) => {
-    const agreed = window.confirm(
-      `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`
-    );
+    const isManual = isManualBookingRecord(payment);
+    const confirmMessage = isManual
+      ? `Tolak & batalkan pemesanan #${payment.invoice_id}? Status akan berubah menjadi ditolak.`
+      : `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`;
+
+    const agreed = window.confirm(confirmMessage);
 
     if (!agreed) {
       return;
@@ -661,21 +664,28 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      if (isManualBookingRecord(payment)) {
-        await deleteAdminManualRentalBooking(payment.id);
+      if (isManual) {
+        await denyAdminManualRentalBooking(payment.id);
+        setNotice({
+          variant: "success",
+          message: `Pemesanan #${payment.invoice_id} berhasil ditolak dan dibatalkan.`,
+        });
       } else {
         await deleteAdminPayment(payment.id);
+        setNotice({
+          variant: "success",
+          message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
+        });
       }
 
-      setNotice({
-        variant: "success",
-        message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
-      });
       setRefreshKey((previous) => previous + 1);
     } catch (deleteError) {
       setNotice({
         variant: "error",
-        message: getApiErrorMessage(deleteError, "Gagal menghapus tagihan."),
+        message: getApiErrorMessage(
+          deleteError,
+          isManual ? "Gagal membatalkan pemesanan." : "Gagal menghapus tagihan."
+        ),
       });
     } finally {
       setIsDeletingId(null);
