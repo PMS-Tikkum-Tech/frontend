@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 const rawWhatsappNumber =
-  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "082114224431";
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "082260773748";
 const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
 const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`

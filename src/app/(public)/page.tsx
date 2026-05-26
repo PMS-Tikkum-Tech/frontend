@@ -65,7 +65,7 @@ const heroSlides = [
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 const rawWhatsappNumber =
-  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "082114224431";
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "082260773748";
 const normalizedWhatsappDigits = rawWhatsappNumber.replace(/[^\d]/g, "");
 const whatsappNumber = normalizedWhatsappDigits.startsWith("0")
   ? `62${normalizedWhatsappDigits.slice(1)}`
@@ -218,18 +218,6 @@ const extractDistrict = (address?: string | null) => {
   return address.split(",")[0]?.trim() || "Bogor";
 };
 
-const extractSearchLocation = (property: Pick<PropertyItem, "area" | "district">) => {
-  const normalizedAddress = property.area.toLowerCase();
-  const matchedKeyword = AREA_COORDINATES.flatMap((area) => area.keywords).find(
-    (keyword) => normalizedAddress.includes(keyword)
-  );
-
-  if (matchedKeyword) {
-    return formatLabel(matchedKeyword);
-  }
-
-  return property.district;
-};
 
 const FALLBACK_COORDINATE = {
   lat: -6.5667,
@@ -707,12 +695,6 @@ export default function PublicHomePage() {
     return ["Semua", ...availableDistricts];
   }, [properties]);
 
-  const searchLocationExamples = useMemo(() => {
-    return Array.from(
-      new Set(properties.map((property) => extractSearchLocation(property)).filter(Boolean))
-    ).slice(0, 3);
-  }, [properties]);
-
   useEffect(() => {
     if (activeDistrict === "Semua") {
       return;
@@ -866,13 +848,10 @@ export default function PublicHomePage() {
             </div>
           </div>
 
-          <div className="-mb-20 mt-10">
-            <SearchPanel locationExamples={searchLocationExamples} />
-          </div>
         </div>
       </section>
 
-      <main className="mx-auto max-w-7xl space-y-14 px-6 pb-16 pt-28">
+      <main className="mx-auto max-w-7xl space-y-14 px-6 pb-16 pt-10">
         <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-600 via-cyan-600 to-teal-600 p-5 text-white shadow-sm md:p-6">
             <div className="pointer-events-none absolute inset-0 bg-slate-950/10" />
@@ -1277,162 +1256,6 @@ export default function PublicHomePage() {
   );
 }
 
-function SearchPanel({ locationExamples }: { locationExamples: string[] }) {
-  const router = useRouter();
-  const [location, setLocation] = useState("");
-  const [unitType, setUnitType] = useState("Semua");
-  const [moveInDate, setMoveInDate] = useState("");
-  const locationPlaceholder =
-    locationExamples.length > 0
-      ? `Contoh: ${locationExamples.join(", ")}`
-      : "Contoh: Dramaga";
-
-  const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (location.trim()) {
-      params.set("location", location.trim());
-    }
-    if (unitType && unitType !== "Semua") {
-      params.set("type", unitType);
-    }
-    if (moveInDate) {
-      params.set("move_in", moveInDate);
-    }
-
-    const query = params.toString();
-    router.push(query ? `/sewa?${query}` : "/sewa");
-  };
-
-  return (
-    <div className="relative overflow-hidden rounded-[28px] border border-white/70 bg-white/95 p-5 shadow-2xl backdrop-blur md:p-6">
-      <div className="pointer-events-none absolute -left-8 top-0 h-24 w-24 rounded-full bg-sky-200/40 blur-2xl" />
-      <div className="pointer-events-none absolute -right-10 -top-6 h-28 w-28 rounded-full bg-emerald-200/40 blur-3xl" />
-
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
-            <Search size={13} />
-            Pencarian Cerdas
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-slate-900">
-            Cari Kost Sesuai Kebutuhanmu
-          </h3>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setLocation("Dramaga")}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
-          >
-            Dekat IPB
-          </button>
-          <button
-            type="button"
-            onClick={() => setUnitType("Kost Putri")}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
-          >
-            Kost Putri
-          </button>
-          <button
-            type="button"
-            onClick={() => setUnitType("Kost Campur")}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
-          >
-            Kost Campur
-          </button>
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <Field
-          icon={<MapPin size={16} />}
-          label="Lokasi"
-          input={
-            <input
-              type="text"
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-              placeholder={locationPlaceholder}
-              className="h-10 w-full rounded-lg bg-transparent px-1 text-sm text-slate-700 outline-none placeholder:text-slate-400"
-            />
-          }
-        />
-        <Field
-          icon={<Home size={16} />}
-          label="Tipe Hunian"
-          input={
-            <select
-              value={unitType}
-              onChange={(event) => setUnitType(event.target.value)}
-              className="h-10 w-full rounded-lg bg-transparent px-1 text-sm text-slate-700 outline-none"
-            >
-              <option value="Semua">Semua Tipe</option>
-              <option value="Kost Putra">Kost Putra</option>
-              <option value="Kost Putri">Kost Putri</option>
-              <option value="Kost Campur">Kost Campur</option>
-              <option value="Coliving">Coliving</option>
-            </select>
-          }
-        />
-        <Field
-          icon={<Calendar size={16} />}
-          label="Tanggal Masuk"
-          input={
-            <input
-              type="date"
-              value={moveInDate}
-              onChange={(event) => setMoveInDate(event.target.value)}
-              className="h-10 w-full rounded-lg bg-transparent px-1 text-sm text-slate-700 outline-none"
-            />
-          }
-        />
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Link
-            href="/sewa"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-          >
-            Lihat Semua
-          </Link>
-          <button
-            type="button"
-            onClick={handleSearch}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 text-sm font-semibold text-white shadow-lg shadow-sky-200/70 transition hover:from-sky-700 hover:to-cyan-700"
-          >
-            <Search size={16} />
-            Cari Kost Sekarang
-            <ArrowRight size={15} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({
-  icon,
-  label,
-  input,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  input: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 transition focus-within:border-sky-300 focus-within:bg-white focus-within:shadow-sm">
-      <p className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-white text-slate-600">
-          {icon}
-        </span>
-        {label}
-      </p>
-      {input}
-    </div>
-  );
-}
 
 function PromoChip({
   title,
