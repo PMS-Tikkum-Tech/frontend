@@ -937,7 +937,12 @@ export default function AdminCommunicationPage() {
                     </td>
 
                     <td className="p-4 text-slate-700">
-                      {audienceLabelMap[message.audience_type] || message.audience_label}
+                      {isVisitRequestCommunication(message)
+                        ? (() => {
+                            const tenantName = extractVisitRequestContext(message.message || "").tenantName;
+                            return tenantName && tenantName !== "-" ? tenantName : audienceLabelMap[message.audience_type] || message.audience_label;
+                          })()
+                        : audienceLabelMap[message.audience_type] || message.audience_label}
                     </td>
 
                     <td className="p-4">
