@@ -133,6 +133,13 @@ export interface AdminPropertyUpdatePayload {
   photo_360?: File | null;
 }
 
+export interface AdminPropertyMediaOrderPayload {
+  photo_urls?: string[];
+  roomphoto_urls?: string[];
+  delete_video?: boolean;
+  delete_video_360?: boolean;
+}
+
 export interface AdminPropertyTenantRow {
   lease_id: number;
   tenant_id: number;
@@ -713,7 +720,7 @@ const normalizeVideoUrls = (property: {
 }) => {
   return mergeUniqueMedia(
     property.video_urls || [],
-    [property.video_url, property.video_360_url, property.photo_360_url]
+    [property.video_url]
   );
 };
 
@@ -732,10 +739,8 @@ const normalizeAdminPropertyListItem = (
     photo_urls: roomphotoUrls,
     video_urls: videoUrls,
     video_url: property.video_url || videoUrls[0] || null,
-    video_360_url:
-      property.video_360_url || property.photo_360_url || videoUrls[1] || null,
-    photo_360_url:
-      property.photo_360_url || property.video_360_url || videoUrls[1] || null,
+    video_360_url: property.video_360_url || property.photo_360_url || null,
+    photo_360_url: property.photo_360_url || property.video_360_url || null,
   };
 };
 
@@ -759,12 +764,10 @@ const normalizeAdminPropertyDetailPayload = (
       video_360_url:
         payload.property.video_360_url ||
         payload.property.photo_360_url ||
-        videoUrls[1] ||
         null,
       photo_360_url:
         payload.property.photo_360_url ||
         payload.property.video_360_url ||
-        videoUrls[1] ||
         null,
     },
   };
@@ -1211,6 +1214,23 @@ export const updateAdminProperty = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
+    }
+  );
+
+  return {
+    data: normalizeAdminPropertyDetailPayload(response.data.data),
+    message: response.data.message,
+  };
+};
+
+export const updateAdminPropertyMediaOrder = async (
+  id: number | string,
+  payload: AdminPropertyMediaOrderPayload
+) => {
+  const response = await axiosInstance.patch<ApiResponse<AdminPropertyDetailPayload>>(
+    `/api/v1/properties/${id}/media_order`,
+    {
+      property: payload,
     }
   );
 

@@ -8,9 +8,12 @@ import {
   ArrowLeft,
   ArrowUpDown,
   Building2,
+  ChevronLeft,
+  ChevronRight,
   CircleX,
   DoorOpen,
   Filter,
+  GripVertical,
   Image as ImageIcon,
   MapPin,
   Pencil,
@@ -48,6 +51,7 @@ import {
   updateAdminPropertyTenant,
   updateAdminUnit,
   updateAdminProperty,
+  updateAdminPropertyMediaOrder,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 import {
@@ -350,6 +354,7 @@ export default function DetailPropertiPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTenant, setIsSavingTenant] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSavingMediaOrder, setIsSavingMediaOrder] = useState(false);
   const [isSavingUnit, setIsSavingUnit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingTenantLeaseId, setIsDeletingTenantLeaseId] = useState<number | null>(
@@ -359,6 +364,7 @@ export default function DetailPropertiPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!propertyId) {
@@ -479,19 +485,27 @@ export default function DetailPropertiPage() {
     });
   }, [maintenanceRows]);
 
-  const images = useMemo(() => {
+  const propertyPhotoUrls = useMemo(() => {
     if (!propertyDetail) {
-      return ["/bg-1200.webp"];
+      return [];
     }
 
     const source = propertyDetail.property.photo_urls?.length
       ? propertyDetail.property.photo_urls
       : propertyDetail.property.roomphoto_urls?.length
         ? propertyDetail.property.roomphoto_urls
-        : ["/bg-1200.webp"];
+        : [];
 
-    return source.map((item) => resolveMediaImageUrl(item));
+    return source.filter((item): item is string => Boolean(item));
   }, [propertyDetail]);
+
+  const images = useMemo(() => {
+    if (propertyPhotoUrls.length === 0) {
+      return ["/bg-1200.webp"];
+    }
+
+    return propertyPhotoUrls.map((item) => resolveMediaImageUrl(item));
+  }, [propertyPhotoUrls]);
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -822,6 +836,143 @@ export default function DetailPropertiPage() {
       throw new Error(message);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const savePropertyPhotoOrder = async (
+    nextPhotoUrls: string[],
+    successMessage: string
+  ) => {
+    if (!propertyId || !propertyDetail || isSavingMediaOrder) {
+      return;
+    }
+
+    setIsSavingMediaOrder(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await updateAdminPropertyMediaOrder(propertyId, {
+        photo_urls: nextPhotoUrls,
+        roomphoto_urls: nextPhotoUrls,
+      });
+
+      setPropertyDetail(response.data);
+      setActiveImageIndex((currentIndex) => {
+        if (nextPhotoUrls.length === 0) {
+          return 0;
+        }
+
+        return Math.min(currentIndex, nextPhotoUrls.length - 1);
+      });
+      setNotice({
+        variant: "success",
+        message: successMessage,
+      });
+    } catch (mediaError) {
+      setError(
+        getApiErrorMessage(
+          mediaError,
+          "Gagal memperbarui media properti. Coba lagi beberapa saat."
+        )
+      );
+    } finally {
+      setIsSavingMediaOrder(false);
+      setDraggedPhotoIndex(null);
+    }
+  };
+
+  const movePropertyPhoto = (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= propertyPhotoUrls.length ||
+      toIndex >= propertyPhotoUrls.length
+    ) {
+      return;
+    }
+
+    const nextPhotoUrls = [...propertyPhotoUrls];
+    const [movedPhoto] = nextPhotoUrls.splice(fromIndex, 1);
+    nextPhotoUrls.splice(toIndex, 0, movedPhoto);
+    setActiveImageIndex(toIndex);
+
+    void savePropertyPhotoOrder(
+      nextPhotoUrls,
+      "Urutan media properti berhasil diperbarui."
+    );
+  };
+
+  const handleDropPropertyPhoto = (toIndex: number) => {
+    if (draggedPhotoIndex === null) {
+      return;
+    }
+
+    movePropertyPhoto(draggedPhotoIndex, toIndex);
+  };
+
+  const handleDeletePropertyPhoto = (index: number) => {
+    const photoUrl = propertyPhotoUrls[index];
+    if (!photoUrl) {
+      return;
+    }
+
+    const agreed = window.confirm(
+      "Hapus media ini dari galeri properti? Tindakan ini tidak bisa dibatalkan."
+    );
+    if (!agreed) {
+      return;
+    }
+
+    const nextPhotoUrls = propertyPhotoUrls.filter((_, photoIndex) => {
+      return photoIndex !== index;
+    });
+
+    void savePropertyPhotoOrder(
+      nextPhotoUrls,
+      "Media properti berhasil dihapus."
+    );
+  };
+
+  const handleDeletePropertyVideo = async (
+    mediaType: "video" | "video_360"
+  ) => {
+    if (!propertyId || !propertyDetail || isSavingMediaOrder) {
+      return;
+    }
+
+    const agreed = window.confirm(
+      "Hapus media ini dari properti? Tindakan ini tidak bisa dibatalkan."
+    );
+    if (!agreed) {
+      return;
+    }
+
+    setIsSavingMediaOrder(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await updateAdminPropertyMediaOrder(propertyId, {
+        delete_video: mediaType === "video",
+        delete_video_360: mediaType === "video_360",
+      });
+
+      setPropertyDetail(response.data);
+      setNotice({
+        variant: "success",
+        message: "Media properti berhasil dihapus.",
+      });
+    } catch (mediaError) {
+      setError(
+        getApiErrorMessage(
+          mediaError,
+          "Gagal menghapus media properti. Coba lagi beberapa saat."
+        )
+      );
+    } finally {
+      setIsSavingMediaOrder(false);
     }
   };
 
@@ -1352,30 +1503,98 @@ export default function DetailPropertiPage() {
                   />
                 </div>
 
-                {images.length > 1 && (
-                  <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-                    {images.map((image, index) => (
-                      <button
-                        key={`${image}-${index}`}
-                        type="button"
-                        onClick={() => setActiveImageIndex(index)}
-                        className={`overflow-hidden rounded-xl border transition ${
-                          index === activeImageIndex
-                            ? "border-[#1E2746] ring-2 ring-[#1E2746]/20"
-                            : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <img
-                          src={image}
-                          alt={`${propertyDetail.property.name} ${index + 1}`}
-                          loading="lazy"
-                          onError={(event) => {
-                            event.currentTarget.src = "/bg-1200.webp";
+                {propertyPhotoUrls.length > 0 && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+                    {propertyPhotoUrls.map((photoUrl, index) => {
+                      const image = resolveMediaImageUrl(photoUrl);
+                      const isActive = index === activeImageIndex;
+                      const isDragged = index === draggedPhotoIndex;
+
+                      return (
+                        <div
+                          key={`${photoUrl}-${index}`}
+                          draggable={!isSavingMediaOrder}
+                          onDragStart={(event) => {
+                            setDraggedPhotoIndex(index);
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", String(index));
                           }}
-                          className="h-20 w-full object-cover"
-                        />
-                      </button>
-                    ))}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "move";
+                          }}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            handleDropPropertyPhoto(index);
+                          }}
+                          onDragEnd={() => setDraggedPhotoIndex(null)}
+                          className={`rounded-xl border bg-white p-1.5 transition ${
+                            isActive
+                              ? "border-[#1E2746] ring-2 ring-[#1E2746]/20"
+                              : "border-slate-200 hover:border-slate-300"
+                          } ${isDragged ? "opacity-60" : ""}`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setActiveImageIndex(index)}
+                            disabled={isSavingMediaOrder}
+                            className="relative block h-20 w-full overflow-hidden rounded-lg bg-slate-100 disabled:opacity-70"
+                            title={`Pilih media ${index + 1}`}
+                          >
+                            <img
+                              src={image}
+                              alt={`${propertyDetail.property.name} ${index + 1}`}
+                              loading="lazy"
+                              onError={(event) => {
+                                event.currentTarget.src = "/bg-1200.webp";
+                              }}
+                              className="h-full w-full object-cover"
+                            />
+                            <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                              {index + 1}
+                            </span>
+                          </button>
+                          <div className="mt-1.5 grid grid-cols-4 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => movePropertyPhoto(index, index - 1)}
+                              disabled={isSavingMediaOrder || index === 0}
+                              className="inline-flex h-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Geser ke kiri"
+                            >
+                              <ChevronLeft size={14} />
+                            </button>
+                            <span
+                              className="inline-flex h-7 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500"
+                              title="Geser dengan drag"
+                            >
+                              <GripVertical size={14} />
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => movePropertyPhoto(index, index + 1)}
+                              disabled={
+                                isSavingMediaOrder ||
+                                index === propertyPhotoUrls.length - 1
+                              }
+                              className="inline-flex h-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Geser ke kanan"
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePropertyPhoto(index)}
+                              disabled={isSavingMediaOrder}
+                              className="inline-flex h-7 items-center justify-center rounded-md border border-red-100 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Hapus media"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1402,7 +1621,7 @@ export default function DetailPropertiPage() {
                         {videos.map((video, index) => (
                           <div
                             key={`${video}-${index}`}
-                            className="overflow-hidden rounded-xl border border-slate-200 bg-black"
+                            className="relative overflow-hidden rounded-xl border border-slate-200 bg-black"
                           >
                             <video
                               src={video}
@@ -1412,6 +1631,15 @@ export default function DetailPropertiPage() {
                             >
                               Browser Anda tidak mendukung pemutar video.
                             </video>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeletePropertyVideo("video")}
+                              disabled={isSavingMediaOrder}
+                              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white/95 text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Hapus video"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -1421,16 +1649,25 @@ export default function DetailPropertiPage() {
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-slate-700">Media 360</p>
                     {video360Url ? (
-                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-black">
+                      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
                         <video
                           src={video360Url}
                           controls
                           preload="metadata"
                           className="h-52 w-full"
                         />
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePropertyVideo("video_360")}
+                          disabled={isSavingMediaOrder}
+                          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white/95 text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Hapus media 360"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     ) : photo360Url ? (
-                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                         <img
                           src={photo360Url}
                           alt={`Foto 360 ${propertyDetail.property.name}`}
@@ -1440,6 +1677,15 @@ export default function DetailPropertiPage() {
                           }}
                           className="h-52 w-full object-cover"
                         />
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePropertyVideo("video_360")}
+                          disabled={isSavingMediaOrder}
+                          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white/95 text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Hapus media 360"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     ) : (
                       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">

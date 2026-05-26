@@ -14,11 +14,13 @@ import {
   ChevronRight,
   CheckCircle2,
   Home,
+  Image as ImageIcon,
   MapPin,
   Tag,
   ShieldCheck,
   Sparkles,
   Users,
+  Video,
   Wifi,
   X,
 } from "lucide-react";
@@ -133,6 +135,33 @@ const formatLabel = (value?: string | null) => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+};
+
+const FACILITY_LABELS: Record<string, string> = {
+  wifi: "WiFi",
+  parking_area: "Area Parkir",
+  kitchen: "Dapur",
+  pet_friendly: "Ramah Hewan",
+  cctv: "CCTV",
+  ac: "AC",
+  laundry: "Laundry",
+  swimming_pool: "Kolam Renang",
+  gym: "Pusat Kebugaran",
+  security_24h: "Keamanan 24 Jam",
+  elevator: "Lift",
+  generator_backup: "Genset",
+  balcony: "Balkon",
+  furnished: "Berperabot",
+  garden: "Taman",
+  rooftop_access: "Akses Rooftop",
+};
+
+const formatFacilityLabel = (value?: string | null) => {
+  if (!value) {
+    return "-";
+  }
+
+  return FACILITY_LABELS[value] || formatLabel(value);
 };
 
 const resolvePropertyImage = (path?: string | null) => {
@@ -371,6 +400,19 @@ const buildUnitMedias = (unit: PublicPropertyUnitSummary): PropertyMedia[] => {
   ];
 };
 
+const resolveUnitFacilities = (
+  unit: PublicPropertyUnitSummary,
+  property: PublicPropertySummary
+) => {
+  const facilities = unit.facilities?.length
+    ? unit.facilities
+    : property.facilities || [];
+
+  return Array.from(
+    new Set(facilities.map((facility) => facility.trim()).filter(Boolean))
+  );
+};
+
 const mapPublicUnitToCard = (
   unit: PublicPropertyUnitSummary,
   property: PublicPropertySummary
@@ -400,7 +442,7 @@ const mapPublicUnitToCard = (
     priceMax: monthlyPrice,
     priceValue: monthlyPrice,
     priceLabel: formatCurrency(monthlyPrice),
-    facilities: (property.facilities || []).slice(0, 3),
+    facilities: resolveUnitFacilities(unit, property),
     media: buildUnitMedias(unit),
   };
 };
@@ -480,6 +522,9 @@ const groupUnitsByBuilding = (
 
     const typeLabels = Array.from(typeEntries.values());
     const media = sortedGroup.flatMap((unit) => unit.media);
+    const facilities = Array.from(
+      new Set(sortedGroup.flatMap((unit) => unit.facilities))
+    );
 
     return {
       ...representative,
@@ -508,6 +553,7 @@ const groupUnitsByBuilding = (
       media: Array.from(
         new Map(media.map((item) => [`${item.type}-${item.src}`, item])).values()
       ),
+      facilities,
     };
   });
 };
@@ -1170,7 +1216,7 @@ export default function SewaPropertyDetailPage() {
               <HeroStat icon={<Users size={14} />} label="Data Unit Terisi" value={`${property.occupied_units || 0}`} />
               <HeroStat
                 icon={<CheckCircle2 size={14} />}
-                label="Bangunan Tersedia"
+                label="Blok Tersedia"
                 value={`${availableUnits.length}`}
               />
             </div>
@@ -1180,7 +1226,7 @@ export default function SewaPropertyDetailPage() {
                 href="#unit-tersedia"
                 className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Lihat Bangunan Tersedia
+                Lihat Blok Tersedia
                 <ArrowRight size={14} />
               </Link>
 
@@ -1252,7 +1298,7 @@ export default function SewaPropertyDetailPage() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
                   >
                     <span className="text-blue-700">{getFacilityIcon(facility)}</span>
-                    {formatLabel(facility)}
+                    {formatFacilityLabel(facility)}
                   </span>
                 ))
               ) : (
@@ -1285,19 +1331,18 @@ export default function SewaPropertyDetailPage() {
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                   <Sparkles size={13} />
-                  Unit per Bangunan
+                  Unit per Blok
                 </p>
                 <h2 className="mt-2 text-lg font-semibold text-slate-900">
-                  Pilihan unit per bangunan
+                  Pilihan unit per blok
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Tenant memilih berdasarkan bangunan/blok seperti A1, A2, A3,
-                  bukan berdasarkan nomor kamar.
+                  Tenant memilih berdasarkan blok seperti A1, A2, A3, bukan berdasarkan nomor kamar.
                 </p>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700">
                 <Home size={13} />
-                {filteredAvailableUnits.length} dari {availableUnits.length} bangunan
+                {filteredAvailableUnits.length} dari {availableUnits.length} blok
               </span>
             </div>
 
@@ -1336,7 +1381,7 @@ export default function SewaPropertyDetailPage() {
                 <option value="all">Semua Fasilitas</option>
                 {unitFacilityOptions.map((facility) => (
                   <option key={facility} value={facility}>
-                    {formatLabel(facility)}
+                    {formatFacilityLabel(facility)}
                   </option>
                 ))}
               </select>
@@ -1364,7 +1409,7 @@ export default function SewaPropertyDetailPage() {
               {availableUnits.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-blue-100 bg-white px-4 py-5 text-sm text-slate-600">
                   <p className="font-medium text-slate-800">
-                    Saat ini belum ada bangunan/unit kosong pada properti ini.
+                    Saat ini belum ada blok/unit kosong pada properti ini.
                   </p>
                   <p className="mt-1">
                     Kamu tetap bisa mengajukan kunjungan untuk masuk daftar prioritas saat
@@ -1388,6 +1433,39 @@ export default function SewaPropertyDetailPage() {
                       key={unit.id}
                       className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:border-blue-200"
                     >
+                      {unit.media.length > 0 ? (
+                        <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
+                          {unit.media[0].type === "video" ? (
+                            <video
+                              src={unit.media[0].src}
+                              controls
+                              preload="metadata"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Image
+                              src={unit.media[0].src}
+                              alt={`Media ${unit.displayName}`}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          )}
+                          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-slate-900/75 px-2 py-1 text-[11px] font-semibold text-white">
+                            {unit.media[0].type === "video" ? (
+                              <Video size={12} />
+                            ) : (
+                              <ImageIcon size={12} />
+                            )}
+                            {unit.media.length} media
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="mb-3 flex aspect-[16/9] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs font-medium text-slate-500">
+                          Media unit belum tersedia
+                        </div>
+                      )}
+
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">
@@ -1398,7 +1476,7 @@ export default function SewaPropertyDetailPage() {
                           </p>
                           {unit.availableOptionCount > 1 ? (
                             <p className="mt-1 text-xs font-medium text-blue-700">
-                              {unit.availableOptionCount} pilihan tersedia di bangunan ini
+                              {unit.availableOptionCount} pilihan tersedia di blok ini
                             </p>
                           ) : null}
                         </div>
@@ -1431,7 +1509,7 @@ export default function SewaPropertyDetailPage() {
                               key={`${unit.id}-${facility}`}
                               className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700"
                             >
-                              {formatLabel(facility)}
+                              {formatFacilityLabel(facility)}
                             </span>
                           ))
                         ) : (
@@ -1452,7 +1530,7 @@ export default function SewaPropertyDetailPage() {
                           }
                           className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-700 px-3.5 text-xs font-semibold text-white transition hover:bg-blue-800"
                         >
-                          Pilih Bangunan
+                          Pilih Blok
                           <ArrowRight size={13} />
                         </Link>
                       </div>
@@ -1473,7 +1551,7 @@ export default function SewaPropertyDetailPage() {
               <SidebarItem label="Alamat" value={property.address || "-"} />
               <SidebarItem
                 label="Ketersediaan"
-                value={`${availableUnits.length} bangunan tersedia`}
+                value={`${availableUnits.length} blok tersedia`}
               />
             </div>
           </article>

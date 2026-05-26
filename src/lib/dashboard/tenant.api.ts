@@ -311,6 +311,7 @@ export interface PublicPropertyUnitSummary {
   status?: "vacant" | "occupied" | "maintenance" | string;
   people_allowed?: number | null;
   price?: number | null;
+  facilities?: string[];
   photo_url?: string | null;
   photo_urls?: string[];
   roomphoto_urls?: string[];
@@ -359,6 +360,7 @@ type ManualRentalCatalogUnit = {
   people_allowed?: number | null;
   monthly_rent_amount?: number | null;
   price?: number | string | null;
+  facilities?: string[];
   roomphoto_urls?: string[];
   photo_urls?: string[];
   video_urls?: string[];
@@ -1196,6 +1198,7 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
     status: unit.status || "vacant",
     people_allowed: unit.people_allowed || null,
     price: getCatalogUnitPrice(unit),
+    facilities: unit.facilities || unit.property?.facilities || [],
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,
     roomphoto_urls: photoUrls,
