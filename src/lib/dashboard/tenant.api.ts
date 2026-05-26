@@ -341,6 +341,7 @@ export type TenantBookingPaymentPayload = {
   property_id: number;
   unit_id: number;
   check_in_date: string;
+  end_date?: string;
   duration_months: number;
   duration_type?: "daily" | "monthly";
   payment_method: string;
@@ -2384,6 +2385,9 @@ export const createTenantBookingPayment = async (
   formData.append("booking[duration_type]", payload.duration_type || "monthly");
   formData.append("booking[duration_months]", String(payload.duration_months));
   formData.append("booking[start_date]", payload.check_in_date);
+  if (payload.end_date) {
+    formData.append("booking[end_date]", payload.end_date);
+  }
   formData.append("booking[tenant_full_name]", tenantName);
   formData.append("booking[tenant_email]", tenantEmail);
   formData.append("booking[tenant_phone_number]", tenantPhone);

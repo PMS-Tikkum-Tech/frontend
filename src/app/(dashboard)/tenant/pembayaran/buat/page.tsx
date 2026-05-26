@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Building2,
   CalendarClock,
+  CalendarDays,
   ChevronDown,
   CheckCircle2,
   CircleAlert,
@@ -73,12 +74,28 @@ const ACCEPTED_FILE_TYPES = [
 const DAYS_IN_MONTH_FOR_DAILY_RATE = 30;
 
 const RENT_DURATION_OPTIONS = [
-  { value: "daily", label: "1 Hari" },
-  { value: "6", label: "6 bulan" },
-  { value: "12", label: "12 bulan" },
+  { value: "7d", label: "7 Hari" },
+  { value: "14d", label: "14 Hari" },
+  { value: "21d", label: "21 Hari" },
+  { value: "1m", label: "1 Bulan" },
+  { value: "6m", label: "6 Bulan" },
+  { value: "12m", label: "1 Tahun" },
+  { value: "custom", label: "Custom" },
 ] as const;
 
 type RentDurationValue = (typeof RENT_DURATION_OPTIONS)[number]["value"];
+
+const DAILY_DURATION_DAYS: Record<Extract<RentDurationValue, `${number}d`>, number> = {
+  "7d": 7,
+  "14d": 14,
+  "21d": 21,
+};
+
+const MONTHLY_DURATION_MONTHS: Record<Exclude<RentDurationValue, `${number}d` | "custom">, number> = {
+  "1m": 1,
+  "6m": 6,
+  "12m": 12,
+};
 
 const PAYMENT_METHODS = [
   {
@@ -365,7 +382,8 @@ function TenantCreatePaymentPageContent() {
   const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
-  const [rentDuration, setRentDuration] = useState<RentDurationValue>("6");
+  const [checkOutDate, setCheckOutDate] = useState("");
+  const [rentDuration, setRentDuration] = useState<RentDurationValue>("6m");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>(
     PAYMENT_METHODS[0].value
   );
@@ -398,8 +416,55 @@ function TenantCreatePaymentPageContent() {
   const monthlyPrice = useMemo(() => {
     return resolveMonthlyPrice(property, unit);
   }, [property, unit]);
-  const isDailyRent = rentDuration === "daily";
-  const durationMonths = isDailyRent ? 1 : Number(rentDuration);
+  const isCustomDuration = rentDuration === "custom";
+  const isDailyRent = rentDuration.endsWith("d") || isCustomDuration;
+  const isMonthlyDuration = rentDuration.endsWith("m");
+  const durationDays = isDailyRent
+    ? rentDuration === "custom"
+      ? 0
+      : DAILY_DURATION_DAYS[rentDuration as Extract<RentDurationValue, `${number}d`>]
+    : 0;
+  const durationMonths = isMonthlyDuration
+    ? MONTHLY_DURATION_MONTHS[rentDuration as Exclude<RentDurationValue, `${number}d` | "custom">]
+    : 1;
+  const customDurationDays = useMemo(() => {
+    if (!isCustomDuration || !checkInDate || !checkOutDate) {
+      return 0;
+    }
+
+    const start = new Date(`${checkInDate}T00:00:00`);
+    const end = new Date(`${checkOutDate}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 0;
+    }
+
+    const duration = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    return duration > 0 ? duration : 0;
+  }, [checkInDate, checkOutDate, isCustomDuration]);
+  const calculatedEndDateInput = useMemo(() => {
+    if (!checkInDate) {
+      return "";
+    }
+
+    const parsed = new Date(`${checkInDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      return "";
+    }
+
+    if (isCustomDuration) {
+      return checkOutDate;
+    }
+
+    const endDate = new Date(parsed);
+    if (isDailyRent) {
+      endDate.setDate(endDate.getDate() + Math.max(1, durationDays) - 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + durationMonths);
+      endDate.setDate(endDate.getDate() - 1);
+    }
+
+    return toDateInput(endDate);
+  }, [checkInDate, checkOutDate, durationDays, durationMonths, isCustomDuration, isDailyRent]);
   const dailyPrice = useMemo(() => {
     if (!monthlyPrice || monthlyPrice <= 0) {
       return 0;
@@ -419,7 +484,7 @@ function TenantCreatePaymentPageContent() {
 
   const estimatedTotal = useMemo(() => {
     if (isDailyRent) {
-      return dailyPrice;
+      return dailyPrice * Math.max(1, isCustomDuration ? customDurationDays : durationDays);
     }
 
     if (!monthlyPrice || durationMonths <= 0) {
@@ -427,28 +492,11 @@ function TenantCreatePaymentPageContent() {
     }
 
     return monthlyPrice * durationMonths;
-  }, [dailyPrice, durationMonths, isDailyRent, monthlyPrice]);
+  }, [checkInDate, customDurationDays, dailyPrice, durationDays, durationMonths, isCustomDuration, isDailyRent, monthlyPrice]);
 
   const estimatedEndDate = useMemo(() => {
-    if (!checkInDate) {
-      return "-";
-    }
-
-    const parsed = new Date(`${checkInDate}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) {
-      return "-";
-    }
-
-    if (isDailyRent) {
-      return formatDate(parsed.toISOString());
-    }
-
-    const endDate = new Date(parsed);
-    endDate.setMonth(endDate.getMonth() + durationMonths);
-    endDate.setDate(endDate.getDate() - 1);
-
-    return formatDate(endDate.toISOString());
-  }, [checkInDate, durationMonths, isDailyRent]);
+    return calculatedEndDateInput ? formatDate(calculatedEndDateInput) : "-";
+  }, [calculatedEndDateInput]);
 
   useEffect(() => {
     let active = true;
@@ -712,6 +760,16 @@ function TenantCreatePaymentPageContent() {
       return;
     }
 
+    if (isCustomDuration && !checkOutDate) {
+      setSubmitError("Tanggal keluar wajib diisi untuk durasi custom.");
+      return;
+    }
+
+    if (isCustomDuration && customDurationDays <= 0) {
+      setSubmitError("Tanggal keluar harus lebih besar atau sama dengan tanggal mulai.");
+      return;
+    }
+
     if (durationMonths <= 0) {
       setSubmitError("Durasi sewa tidak valid.");
       return;
@@ -748,6 +806,7 @@ function TenantCreatePaymentPageContent() {
         property_id: property.id,
         unit_id: unit.id,
         check_in_date: checkInDate,
+        end_date: isDailyRent ? calculatedEndDateInput : undefined,
         duration_months: durationMonths,
         duration_type: isDailyRent ? "daily" : "monthly",
         payment_method: paymentMethod,
@@ -916,9 +975,13 @@ function TenantCreatePaymentPageContent() {
                 <div className="relative">
                   <select
                     value={rentDuration}
-                    onChange={(event) =>
-                      setRentDuration(event.target.value as RentDurationValue)
-                    }
+                    onChange={(event) => {
+                      const nextDuration = event.target.value as RentDurationValue;
+                      setRentDuration(nextDuration);
+                      if (nextDuration !== "custom") {
+                        setCheckOutDate("");
+                      }
+                    }}
                     className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-10 text-sm text-slate-700 outline-none transition focus:border-blue-400"
                   >
                     {RENT_DURATION_OPTIONS.map((option) => (
@@ -933,6 +996,18 @@ function TenantCreatePaymentPageContent() {
                   />
                 </div>
               </LabelField>
+
+              {isCustomDuration ? (
+                <LabelField label="Tanggal Keluar">
+                  <input
+                    type="date"
+                    min={checkInDate || minCheckInDate}
+                    value={checkOutDate}
+                    onChange={(event) => setCheckOutDate(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+                  />
+                </LabelField>
+              ) : null}
             </div>
 
             <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
@@ -1257,12 +1332,23 @@ function TenantCreatePaymentPageContent() {
               <SummaryRow
                 icon={<CalendarClock size={14} />}
                 label="Durasi"
-                value={isDailyRent ? "1 Hari" : `${durationMonths} bulan`}
+                value={
+                  isCustomDuration
+                    ? "Custom"
+                    : isDailyRent
+                      ? `${isCustomDuration ? customDurationDays : durationDays} Hari`
+                      : `${durationMonths} Bulan`
+                }
               />
               <SummaryRow
                 icon={<Clock3 size={14} />}
                 label="Mulai sewa"
                 value={formatDate(checkInDate)}
+              />
+              <SummaryRow
+                icon={<CalendarDays size={14} />}
+                label="Tanggal Keluar"
+                value={estimatedEndDate}
               />
 
               <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">

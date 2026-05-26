@@ -375,16 +375,7 @@ function UnitMediaCarousel({
   };
 
   if (!activeMedia) {
-    return (
-      <div className="relative mb-3 aspect-[16/9] overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
-        <Image
-          src="/bg-1200.webp"
-          alt={displayName}
-          fill
-          className="object-cover"
-        />
-      </div>
-    );
+    return null;
   }
 
   return (
