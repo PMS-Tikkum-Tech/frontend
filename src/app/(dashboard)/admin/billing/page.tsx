@@ -12,15 +12,12 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
 import {
   approveAdminManualRentalBooking,
   createAdminFinancialTransaction,
   createAdminPayment,
-  deleteAdminPayment,
-  denyAdminManualRentalBooking,
   getAdminManualRentalBookings,
   getAdminPayments,
   getAdminProperties,
@@ -311,7 +308,6 @@ export default function AdminBillingPage() {
   const [form, setForm] = useState<BillingFormState>(getInitialForm());
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
   const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<string | null>(
     null
@@ -645,50 +641,6 @@ export default function AdminBillingPage() {
       setFormError(getApiErrorMessage(saveError, "Gagal menyimpan tagihan."));
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleDeletePayment = async (payment: AdminPayment) => {
-    const isManual = isManualBookingRecord(payment);
-    const confirmMessage = isManual
-      ? `Tolak & batalkan pemesanan #${payment.invoice_id}? Status akan berubah menjadi ditolak.`
-      : `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`;
-
-    const agreed = window.confirm(confirmMessage);
-
-    if (!agreed) {
-      return;
-    }
-
-    setIsDeletingId(payment.id);
-    setNotice(null);
-
-    try {
-      if (isManual) {
-        await denyAdminManualRentalBooking(payment.id);
-        setNotice({
-          variant: "success",
-          message: `Pemesanan #${payment.invoice_id} berhasil ditolak dan dibatalkan.`,
-        });
-      } else {
-        await deleteAdminPayment(payment.id);
-        setNotice({
-          variant: "success",
-          message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
-        });
-      }
-
-      setRefreshKey((previous) => previous + 1);
-    } catch (deleteError) {
-      setNotice({
-        variant: "error",
-        message: getApiErrorMessage(
-          deleteError,
-          isManual ? "Gagal membatalkan pemesanan." : "Gagal menghapus tagihan."
-        ),
-      });
-    } finally {
-      setIsDeletingId(null);
     }
   };
 
@@ -1178,17 +1130,6 @@ export default function AdminBillingPage() {
                           title="Ubah tagihan"
                         >
                           <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleDeletePayment(payment);
-                          }}
-                          disabled={isDeletingId === payment.id}
-                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Hapus tagihan"
-                        >
-                          <Trash2 size={16} />
                         </button>
                         <button
                           type="button"

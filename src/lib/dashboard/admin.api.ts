@@ -1750,9 +1750,18 @@ export const approveAdminManualRentalBooking = async (
   };
 };
 
-export const denyAdminManualRentalBooking = async (id: number | string) => {
+export const denyAdminManualRentalBooking = async (
+  id: number | string,
+  payload?: { denied_reason?: string; notes?: string }
+) => {
   const response = await axiosInstance.post<ApiResponse<AdminManualRentalBooking>>(
-    `/api/v1/manual_rentals/admin/bookings/${id}/deny`
+    `/api/v1/manual_rentals/admin/bookings/${id}/deny`,
+    {
+      review: {
+        denied_reason: payload?.denied_reason || "Dibatalkan oleh administrator",
+        notes: payload?.notes || "",
+      },
+    }
   );
 
   return {
