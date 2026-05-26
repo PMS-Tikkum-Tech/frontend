@@ -26,6 +26,7 @@ import { getApiErrorMessage } from "@/lib/dashboard/admin.api";
 import { updateSelfProfilePicture } from "@/lib/profile.api";
 import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
 import { getProfilePictureValidationError } from "@/lib/profile-picture";
+import AdminNotificationBell from "@/components/ui/AdminNotificationBell";
 
 export default function AdminDashboardLayout({
   children,
@@ -258,6 +259,8 @@ export default function AdminDashboardLayout({
                 >
                   Beranda KIKOST
                 </Link>
+
+                <AdminNotificationBell />
 
                 <div className="flex items-center gap-2 sm:gap-3">
                   <input
