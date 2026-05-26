@@ -242,6 +242,7 @@ export interface TenantStaySummary {
   booking_code?: string | null;
   occupancy_status?: string | null;
   status_label?: string | null;
+  property_id?: number | null;
   property_name?: string | null;
   unit_name?: string | null;
   unit_number?: string | number | null;

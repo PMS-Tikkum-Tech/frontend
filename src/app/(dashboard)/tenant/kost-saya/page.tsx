@@ -219,9 +219,9 @@ export default function KostSayaPage() {
     })[0] || null;
   }, [activeBills]);
 
-  const detailHref = primaryStay
-    ? `/tenant/kost-saya/detail?booking_id=${primaryStay.booking_id}`
-    : "/tenant/kost-saya/detail";
+  const detailHref = primaryStay?.property_id
+    ? `/sewa/${primaryStay.property_id}`
+    : "/sewa";
 
   const recentActivities = useMemo<TenantActivityItem[]>(() => {
     const paymentActivities = payments.map((payment) => {
@@ -845,7 +845,7 @@ function ActiveStayCard({
               Tagihan
             </Link>
             <Link
-              href={`/tenant/kost-saya/detail?booking_id=${stay.booking_id}`}
+              href={stay.property_id ? `/sewa/${stay.property_id}` : "/sewa"}
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
             >
               Detail Kost

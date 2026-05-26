@@ -39,6 +39,7 @@ import {
   getApiErrorMessage,
   getPublicProperties,
   getPublicPropertyUnits,
+  getTenantProfile,
   isPublicPropertyLoginRequiredMessage,
   type PublicPropertyUnitSummary,
   type PublicPropertySummary,
@@ -452,6 +453,8 @@ type VisitRequestFormPayload = {
 type VisitNotice = {
   variant: "success" | "error";
   message: string;
+  actionHref?: string;
+  actionLabel?: string;
 } | null;
 
 const toUnitStatusLabel = (status?: string | null) => {
@@ -1365,8 +1368,24 @@ export default function SewaPropertyDetailPage() {
               {isTenant ? (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setVisitNotice(null);
+                    try {
+                      const profileResponse = await getTenantProfile();
+                      const profile = profileResponse.data;
+                      if (!profile.email?.trim() || !profile.phone_number?.toString().trim()) {
+                        setVisitNotice({
+                          variant: "error",
+                          message:
+                            "Lengkapi email dan nomor HP di profil kamu terlebih dahulu sebelum mengajukan jadwal survei.",
+                          actionHref: "/tenant/akun",
+                          actionLabel: "Lengkapi Profil",
+                        });
+                        return;
+                      }
+                    } catch {
+                      // Jika profil gagal dimuat, tetap buka modal dan biarkan validasi berjalan saat submit
+                    }
                     setIsVisitModalOpen(true);
                   }}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
@@ -1400,6 +1419,13 @@ export default function SewaPropertyDetailPage() {
                     className="mt-1 inline-flex font-semibold underline underline-offset-2"
                   >
                     Lihat Jadwal Kunjungan
+                  </Link>
+                ) : visitNotice.actionHref ? (
+                  <Link
+                    href={visitNotice.actionHref}
+                    className="mt-1 inline-flex font-semibold underline underline-offset-2"
+                  >
+                    {visitNotice.actionLabel ?? "Perbaiki"}
                   </Link>
                 ) : null}
               </div>
