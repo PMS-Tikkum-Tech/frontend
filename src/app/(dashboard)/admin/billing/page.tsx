@@ -256,6 +256,35 @@ const getProofDownloadName = (
   return `bukti-transfer-${safeInvoiceId}${extension}`;
 };
 
+const fetchProofAsFile = async (proofUrl: string): Promise<File | null> => {
+  try {
+    const absoluteUrl = resolveAssetUrl(proofUrl);
+    if (!absoluteUrl) {
+      return null;
+    }
+
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) {
+      return null;
+    }
+
+    const blob = await response.blob();
+    const contentType = blob.type || response.headers.get("content-type") || "application/octet-stream";
+    const ext = contentType.includes("pdf")
+      ? ".pdf"
+      : contentType.includes("png")
+        ? ".png"
+        : contentType.includes("jpeg") || contentType.includes("jpg")
+          ? ".jpg"
+          : "";
+    const fileName = `bukti-transfer-${Date.now()}${ext}`;
+
+    return new File([blob], fileName, { type: contentType });
+  } catch {
+    return null;
+  }
+};
+
 const recordPaymentAsIncome = async (payment: AdminPayment) => {
   const propertyId = payment.property.id;
   const amount = Number(payment.amount || 0);
@@ -267,6 +296,10 @@ const recordPaymentAsIncome = async (payment: AdminPayment) => {
   const tenantName = payment.tenant.full_name?.trim() || "Penyewa";
   const description = `Pembayaran sewa #${payment.invoice_id} - ${tenantName}`;
 
+  const receiptFile = payment.transfer_proof_url
+    ? await fetchProofAsFile(payment.transfer_proof_url)
+    : null;
+
   try {
     await createAdminFinancialTransaction({
       property_id: propertyId,
@@ -275,6 +308,7 @@ const recordPaymentAsIncome = async (payment: AdminPayment) => {
       transaction_date: new Date().toISOString().slice(0, 10),
       amount,
       description,
+      ...(receiptFile ? { receipt: receiptFile } : {}),
     });
   } catch {
     // Kegagalan pencatatan keuangan tidak memblokir proses ACC
