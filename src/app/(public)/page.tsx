@@ -900,7 +900,11 @@ export default function PublicHomePage() {
 
               <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/45 bg-slate-950/20 px-3 py-1.5 text-xs font-medium text-white shadow-sm">
                 <Calendar size={14} />
-                Periode promo: April 2026
+                Periode promo:{" "}
+                {new Date().toLocaleDateString("id-ID", {
+                  month: "long",
+                  year: "numeric",
+                })}
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-3">

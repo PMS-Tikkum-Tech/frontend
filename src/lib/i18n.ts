@@ -52,7 +52,7 @@ const EXACT_ID_TO_EN: Record<string, string> = {
     "Admin fee discounts and special bonuses for new residents",
   "Klaim promo saat memesan unit. Berlaku untuk periode pendaftaran bulan ini.":
     "Claim the promo when booking a unit. Valid for this month's registration period.",
-  "Periode promo: April 2026": "Promo period: April 2026",
+  "Periode promo:": "Promo period:",
   "Diskon Khusus": "Special Discount",
   "Hingga Rp300.000": "Up to Rp300,000",
   "Survei Gratis": "Free Survey",
