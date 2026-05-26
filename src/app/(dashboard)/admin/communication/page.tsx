@@ -330,6 +330,7 @@ const getInitialForm = (): CommunicationFormState => ({
 export default function AdminCommunicationPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [visitOnly, setVisitOnly] = useState(false);
   const [propertyFilter, setPropertyFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "scheduled">(
     "newest"
@@ -438,7 +439,8 @@ export default function AdminCommunicationPage() {
       return (
         searchable.includes(search.toLowerCase()) &&
         (status ? message.status === status : true) &&
-        (propertyFilter ? String(message.property.id || "") === propertyFilter : true)
+        (propertyFilter ? String(message.property.id || "") === propertyFilter : true) &&
+        (visitOnly ? isVisitRequestCommunication(message) : true)
       );
     });
     return filteredMessages.sort((a, b) => {
@@ -477,7 +479,7 @@ export default function AdminCommunicationPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, status, propertyFilter, sortBy]);
+  }, [search, status, propertyFilter, sortBy, visitOnly]);
 
   useEffect(() => {
     if (!hasFilterOption(statusFilterOptions, status)) {
@@ -832,11 +834,24 @@ export default function AdminCommunicationPage() {
 
           <button
             type="button"
+            onClick={() => setVisitOnly((prev) => !prev)}
+            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition ${
+              visitOnly
+                ? "border-sky-300 bg-sky-50 text-sky-700"
+                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {visitOnly ? "Semua Komunikasi" : "Permintaan Kunjungan"}
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               setSearch("");
               setStatus("");
               setPropertyFilter("");
               setSortBy("newest");
+              setVisitOnly(false);
               setCurrentPage(1);
             }}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
