@@ -1750,6 +1750,16 @@ export const approveAdminManualRentalBooking = async (
   };
 };
 
+export const deleteAdminManualRentalBooking = async (id: number | string) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/manual_rentals/admin/bookings/${id}`
+  );
+
+  return {
+    message: response.data.message,
+  };
+};
+
 export const getAdminPayment = (id: number | string) =>
   getItem<AdminPayment>(`/api/v1/payments/${id}`);
 

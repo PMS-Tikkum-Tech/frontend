@@ -19,6 +19,7 @@ import {
   approveAdminManualRentalBooking,
   createAdminFinancialTransaction,
   createAdminPayment,
+  deleteAdminManualRentalBooking,
   deleteAdminPayment,
   getAdminManualRentalBookings,
   getAdminPayments,
@@ -648,15 +649,6 @@ export default function AdminBillingPage() {
   };
 
   const handleDeletePayment = async (payment: AdminPayment) => {
-    if (isManualBookingRecord(payment)) {
-      setNotice({
-        variant: "error",
-        message:
-          "Pemesanan pembayaran penyewa manual tidak bisa dihapus dari tabel tagihan ini.",
-      });
-      return;
-    }
-
     const agreed = window.confirm(
       `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`
     );
@@ -669,7 +661,12 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      await deleteAdminPayment(payment.id);
+      if (isManualBookingRecord(payment)) {
+        await deleteAdminManualRentalBooking(payment.id);
+      } else {
+        await deleteAdminPayment(payment.id);
+      }
+
       setNotice({
         variant: "success",
         message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
