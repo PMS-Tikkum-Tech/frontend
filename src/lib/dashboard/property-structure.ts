@@ -75,6 +75,12 @@ const toOptionalString = (value: unknown) => {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 };
 
+const compareText = (first?: string | null, second?: string | null) =>
+  (first || "").localeCompare(second || "", "id-ID", {
+    numeric: true,
+    sensitivity: "base",
+  });
+
 const toOptionalNumber = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -175,7 +181,7 @@ const getOwnerName = ({
   if (ownerId) {
     const owner = owners.find((item) => item.id === ownerId);
     if (owner) {
-      return owner.full_name;
+      return owner.full_name || owner.email || "Owner belum diatur";
     }
   }
 
@@ -299,16 +305,18 @@ export const buildPropertyStructure = ({
       ? `id:${blockId}`
       : parsedIdentity.buildingName.toLowerCase();
     const unitStatus = normalizeStatus(unit, tenant);
+    const unitName = toOptionalString(unit.unit_name) || `Unit ${unit.unit_id}`;
+    const unitType = toOptionalString(unit.unit_type) || "Tipe belum diatur";
     const leaseStart =
       tenant?.lease_start || unit.lease_start || unit.check_in_date || null;
     const leaseEnd =
       tenant?.lease_end || unit.lease_end || unit.check_out_date || null;
     const structuredUnit: PropertyStructureUnit = {
       id: unit.unit_id,
-      name: unit.unit_name,
+      name: unitName,
       displayName: parsedIdentity.unitName,
       buildingName: parsedIdentity.buildingName,
-      unitType: unit.unit_type,
+      unitType,
       status: unitStatus,
       peopleAllowed: Number(unit.people_allowed || 0),
       price: Number(unit.price || 0),
@@ -365,16 +373,10 @@ export const buildPropertyStructure = ({
     .map((block) => ({
       ...block,
       units: [...block.units].sort((a, b) =>
-        a.displayName.localeCompare(b.displayName, "id-ID", {
-          numeric: true,
-        })
+        compareText(a.displayName, b.displayName)
       ),
     }))
-    .sort((a, b) =>
-      a.name.localeCompare(b.name, "id-ID", {
-        numeric: true,
-      })
-    );
+    .sort((a, b) => compareText(a.name, b.name));
   const allUnits = blocks.flatMap((block) => block.units);
 
   return {

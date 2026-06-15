@@ -655,6 +655,10 @@ const getNumberValue = (value: unknown) => {
   return null;
 };
 
+const getStringValue = (value: unknown) => {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+};
+
 const normalizeAvailabilityStatus = (
   value?: string | null,
   fallback?: {
@@ -932,20 +936,19 @@ const normalizePublicProperty = (
 
   return {
     id: property.id,
-    name: property.name || `Properti #${property.id}`,
-    address: property.address || null,
+    name: getStringValue(property.name) || `Properti #${property.id}`,
+    address: getStringValue(property.address),
     latitude: getNumberValue(property.latitude),
     longitude: getNumberValue(property.longitude),
-    property_type: property.property_type || null,
-    condition: property.condition || null,
-    description: property.description || null,
-    rules: property.rules || null,
+    property_type: getStringValue(property.property_type),
+    condition: getStringValue(property.condition),
+    description: getStringValue(property.description),
+    rules: getStringValue(property.rules),
     facilities: property.facilities || [],
     owner_name:
-      property.owner_name ||
-      property.owner?.full_name ||
-      property.user?.full_name ||
-      null,
+      getStringValue(property.owner_name) ||
+      getStringValue(property.owner?.full_name) ||
+      getStringValue(property.user?.full_name),
     total_units: totalUnits == null ? undefined : Math.max(0, totalUnits),
     occupied_units:
       occupiedUnits == null ? undefined : Math.max(0, occupiedUnits),
@@ -999,15 +1002,12 @@ const fetchAllCatalogUnits = async (params?: QueryParams) => {
 
 const fetchAllCatalogProperties = async (params?: QueryParams) => {
   const perPage = 100;
-  const [firstResponse, unitsResponse] = await Promise.all([
-    axiosInstance.get<ApiResponse<PublicPropertyApiItem[], ApiPaginationMeta>>(
-      "/api/v1/manual_rentals/catalog/properties",
-      {
-        params: buildCatalogQuery(params, 1, perPage),
-      }
-    ),
-    fetchAllCatalogUnits(params).catch(() => null),
-  ]);
+  const firstResponse = await axiosInstance.get<
+    ApiResponse<PublicPropertyApiItem[], ApiPaginationMeta>
+  >("/api/v1/manual_rentals/catalog/properties", {
+    params: buildCatalogQuery(params, 1, perPage),
+  });
+  const unitsResponse = await fetchAllCatalogUnits(params).catch(() => null);
 
   const properties: PublicPropertyApiItem[] = [...firstResponse.data.data];
   const totalPages = firstResponse.data.meta?.total_pages || 0;
@@ -1090,18 +1090,17 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
     if (!existing) {
       propertyMap.set(property.id, {
         id: property.id,
-        name: property.name || `Properti #${property.id}`,
-        address: property.address || null,
+        name: getStringValue(property.name) || `Properti #${property.id}`,
+        address: getStringValue(property.address),
         latitude: getNumberValue(property.latitude),
         longitude: getNumberValue(property.longitude),
-        property_type: property.property_type || null,
-        condition: property.condition || null,
+        property_type: getStringValue(property.property_type),
+        condition: getStringValue(property.condition),
         facilities: property.facilities || [],
         owner_name:
-          unit.owner?.full_name ||
-          unit.owner?.email ||
-          unit.owner?.phone_number ||
-          null,
+          getStringValue(unit.owner?.full_name) ||
+          getStringValue(unit.owner?.email) ||
+          getStringValue(unit.owner?.phone_number),
         total_units: 1,
         occupied_units: 0,
         vacant_units: 1,
@@ -1196,20 +1195,22 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
 
   return {
     id: unit.id,
-    name: unit.name || `Unit ${unit.id}`,
+    name: getStringValue(unit.name) || `Unit ${unit.id}`,
     unit_number: unit.unit_number ?? unit.room_number ?? unit.number ?? null,
     room_number: unit.room_number ?? null,
     number: unit.number ?? null,
     building_id: unit.building_id ?? unit.block_id ?? null,
-    building_name: unit.building_name || unit.block_name || null,
+    building_name:
+      getStringValue(unit.building_name) || getStringValue(unit.block_name),
     block_id: unit.block_id ?? unit.building_id ?? null,
-    block_name: unit.block_name || unit.building_name || null,
+    block_name:
+      getStringValue(unit.block_name) || getStringValue(unit.building_name),
     block_photo_urls: unit.block_photo_urls || unit.block_roomphoto_urls || [],
     block_roomphoto_urls: unit.block_roomphoto_urls || unit.block_photo_urls || [],
     block_video_url: unit.block_video_url || null,
     block_video_360_url: unit.block_video_360_url || null,
-    unit_type: unit.unit_type || null,
-    status: unit.status || "vacant",
+    unit_type: getStringValue(unit.unit_type),
+    status: getStringValue(unit.status) || "vacant",
     people_allowed: unit.people_allowed || null,
     price: getCatalogUnitPrice(unit),
     facilities: unit.facilities || unit.property?.facilities || [],
@@ -1286,7 +1287,10 @@ const mergePublicProperties = (
 
     return {
       ...item,
-      name: masterProperty.name || secondaryProperty.name,
+      name:
+        getStringValue(masterProperty.name) ||
+        getStringValue(secondaryProperty.name) ||
+        `Properti #${item.id}`,
       address: masterProperty.address || secondaryProperty.address || null,
       latitude: masterProperty.latitude ?? secondaryProperty.latitude ?? null,
       longitude: masterProperty.longitude ?? secondaryProperty.longitude ?? null,
@@ -1366,7 +1370,11 @@ const getPublicPropertiesFromCatalog = async (
 
     return await aggregatePublicPropertiesFromCatalogUnits(params);
   } catch (error) {
-    if (!isStatusError(error, [401, 403, 404, 405])) {
+    if (isStatusError(error, [401, 403])) {
+      throw error;
+    }
+
+    if (!isStatusError(error, [404, 405])) {
       throw error;
     }
 
@@ -2130,8 +2138,19 @@ export const getPublicProperties = async (
     };
   };
 
+  const hasClientAccessToken = getClientAccessToken() != null;
   const clientRole = getClientRoleFromAccessToken();
   const isAdminSession = clientRole === "admin";
+
+  if (!hasClientAccessToken) {
+    try {
+      return await fetchAdminPropertiesForPublic(params);
+    } catch (adminError) {
+      if (!isStatusError(adminError, [401, 403, 404, 405])) {
+        throw adminError;
+      }
+    }
+  }
 
   if (isAdminSession) {
     try {
@@ -2178,6 +2197,14 @@ export const getPublicProperties = async (
     }
   } catch (error) {
     if (isStatusError(error, [401, 403, 404, 405])) {
+      try {
+        return await fetchAdminPropertiesForPublic(params);
+      } catch (adminError) {
+        if (!isStatusError(adminError, [401, 403, 404, 405])) {
+          throw adminError;
+        }
+      }
+
       return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
     }
 

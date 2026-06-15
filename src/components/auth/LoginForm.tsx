@@ -52,6 +52,8 @@ type GoogleApi = {
 declare global {
   interface Window {
     google?: GoogleApi;
+    __kyraGoogleCredentialHandler?: (response: GoogleCredentialResponse) => void;
+    __kyraGoogleInitializedClientId?: string;
   }
 }
 
@@ -127,7 +129,7 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const { setSession } = useAuth();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
-  const googleInitializedRef = useRef(false);
+  const googleButtonRenderedRef = useRef(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || "";
 
   const completeSession = useCallback(
@@ -266,25 +268,40 @@ export default function LoginForm() {
   );
 
   useEffect(() => {
-    googleInitializedRef.current = false;
+    googleButtonRenderedRef.current = false;
     if (!googleClientId) return;
 
     let active = true;
+    window.__kyraGoogleCredentialHandler = handleGoogleCredential;
+
+    const initializeGoogle = () => {
+      if (!window.google?.accounts?.id) {
+        return false;
+      }
+
+      if (window.__kyraGoogleInitializedClientId !== googleClientId) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: (response) => {
+            window.__kyraGoogleCredentialHandler?.(response);
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.__kyraGoogleInitializedClientId = googleClientId;
+      }
+
+      return true;
+    };
 
     const renderGoogleButton = () => {
       if (
         !active ||
-        !window.google?.accounts?.id ||
         !googleButtonRef.current ||
-        googleInitializedRef.current
+        googleButtonRenderedRef.current ||
+        !initializeGoogle()
       ) return;
 
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: handleGoogleCredential,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
       googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleButtonRef.current, {
         type: "icon",
@@ -292,12 +309,17 @@ export default function LoginForm() {
         size: "large",
         shape: "circle",
       });
-      googleInitializedRef.current = true;
+      googleButtonRenderedRef.current = true;
     };
 
     if (window.google?.accounts?.id) {
       renderGoogleButton();
-      return () => { active = false; };
+      return () => {
+        active = false;
+        if (window.__kyraGoogleCredentialHandler === handleGoogleCredential) {
+          window.__kyraGoogleCredentialHandler = undefined;
+        }
+      };
     }
 
     const existingScript = document.querySelector(
@@ -308,6 +330,9 @@ export default function LoginForm() {
       existingScript.addEventListener("load", renderGoogleButton, { once: true });
       return () => {
         active = false;
+        if (window.__kyraGoogleCredentialHandler === handleGoogleCredential) {
+          window.__kyraGoogleCredentialHandler = undefined;
+        }
         existingScript.removeEventListener("load", renderGoogleButton);
       };
     }
@@ -324,6 +349,9 @@ export default function LoginForm() {
 
     return () => {
       active = false;
+      if (window.__kyraGoogleCredentialHandler === handleGoogleCredential) {
+        window.__kyraGoogleCredentialHandler = undefined;
+      }
       script.onload = null;
       script.onerror = null;
     };

@@ -542,11 +542,19 @@ export default function PublicHomePage() {
   const [propertyError, setPropertyError] = useState<string | null>(null);
   const [propertyNotice, setPropertyNotice] = useState<string | null>(null);
   const [activeDistrict, setActiveDistrict] = useState("Semua");
+  const [promoPeriodLabel, setPromoPeriodLabel] = useState("bulan ini");
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+
+    setPromoPeriodLabel(
+      new Date().toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+      })
+    );
 
     const shouldShowPendingApprovalNotice = window.sessionStorage.getItem(
       TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY
@@ -719,7 +727,10 @@ export default function PublicHomePage() {
         return b.totalUnits - a.totalUnits;
       }
 
-      return a.name.localeCompare(b.name);
+      return (a.name || "").localeCompare(b.name || "", "id-ID", {
+        numeric: true,
+        sensitivity: "base",
+      });
     });
 
     return ranked.slice(0, 6);
@@ -880,10 +891,7 @@ export default function PublicHomePage() {
               <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/45 bg-slate-950/20 px-3 py-1.5 text-xs font-medium text-white shadow-sm">
                 <Calendar size={14} />
                 Periode promo:{" "}
-                {new Date().toLocaleDateString("id-ID", {
-                  month: "long",
-                  year: "numeric",
-                })}
+                {promoPeriodLabel}
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-3">

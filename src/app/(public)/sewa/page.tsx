@@ -128,6 +128,10 @@ const formatLabel = (value?: string | null) => {
     .join(" ");
 };
 
+const getPropertyDisplayName = (
+  property: Pick<PublicPropertySummary, "id" | "name">
+) => property.name?.trim() || `Properti #${property.id}`;
+
 const normalizePropertyTypeQuery = (value?: string | null) => {
   const normalized = value?.trim().toLowerCase();
 
@@ -375,7 +379,7 @@ const resolveCoordinate = (
     return backendCoordinate;
   }
 
-  const searchText = `${item.property.name || ""} ${item.property.address || ""}`.toLowerCase();
+  const searchText = `${getPropertyDisplayName(item.property)} ${item.property.address || ""}`.toLowerCase();
   const matched =
     AREA_COORDINATES.find((area) =>
       area.keywords.some((keyword) => searchText.includes(keyword))
@@ -640,7 +644,7 @@ export default function SewaPage() {
 
         const coordinate = await geocodePropertyAddress(
           item.property.address,
-          item.property.name
+          getPropertyDisplayName(item.property)
         );
         if (!active || !coordinate) {
           continue;
@@ -691,7 +695,7 @@ export default function SewaPage() {
 
   const filteredItems = useMemo(() => {
     let nextItems = items.filter((item) => {
-      const searchable = `${item.property.name} ${item.property.address || ""}`.toLowerCase();
+      const searchable = `${getPropertyDisplayName(item.property)} ${item.property.address || ""}`.toLowerCase();
       const matchSearch = search.trim()
         ? searchable.includes(search.trim().toLowerCase())
         : true;
@@ -708,7 +712,13 @@ export default function SewaPage() {
 
     const sorted = [...nextItems];
     if (sortBy === "name") {
-      sorted.sort((a, b) => a.property.name.localeCompare(b.property.name));
+      sorted.sort((a, b) =>
+        getPropertyDisplayName(a.property).localeCompare(
+          getPropertyDisplayName(b.property),
+          "id-ID",
+          { numeric: true, sensitivity: "base" }
+        )
+      );
     } else if (sortBy === "price_low") {
       sorted.sort(
         (a, b) =>
@@ -735,7 +745,7 @@ export default function SewaPage() {
 
       return {
         id: item.property.id,
-        name: item.property.name,
+        name: getPropertyDisplayName(item.property),
         address: item.property.address || "-",
         lat: coordinate.lat,
         lng: coordinate.lng,
@@ -810,7 +820,7 @@ export default function SewaPage() {
 
       return {
         id: item.property.id,
-        name: item.property.name,
+        name: getPropertyDisplayName(item.property),
         district: extractDistrict(item.property.address),
         priceLabel: formatMonthlyPriceLabel(getPropertyStartingPrice(item.property)),
         distanceLabel: nearestPopular
@@ -1099,7 +1109,7 @@ export default function SewaPage() {
               <div className="relative h-40">
                 <Image
                   src={selectedPreviewSrc}
-                  alt={selectedProperty.property.name}
+                  alt={getPropertyDisplayName(selectedProperty.property)}
                   fill
                   unoptimized
                   onError={() => {
@@ -1115,7 +1125,7 @@ export default function SewaPage() {
 
               <div className="space-y-2 p-4">
                 <p className="text-base font-semibold text-slate-900">
-                  {selectedProperty.property.name}
+                  {getPropertyDisplayName(selectedProperty.property)}
                 </p>
                 <p className="text-sm text-slate-600">
                   {selectedProperty.property.address || "-"}
@@ -1630,7 +1640,7 @@ function PropertyCard({
         ) : (
           <Image
             src={activeMedia.src}
-            alt={item.property.name}
+            alt={getPropertyDisplayName(item.property)}
             fill
             unoptimized
             onError={() => {
@@ -1718,7 +1728,7 @@ function PropertyCard({
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-2 text-base font-semibold text-slate-900">
-            {item.property.name}
+            {getPropertyDisplayName(item.property)}
           </h3>
           <span
             className={`inline-flex flex-shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${getAvailabilityBadgeClass(availabilityStatus)}`}

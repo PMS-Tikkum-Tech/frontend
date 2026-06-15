@@ -755,7 +755,9 @@ export default function DetailPropertiPage() {
   const activeTenantOptions = useMemo(() => {
     return [...availableTenants]
       .filter((tenant) => tenant.role === "tenant")
-      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+      .sort((a, b) =>
+        naturalCollator.compare(a.full_name || a.email || "", b.full_name || b.email || "")
+      );
   }, [availableTenants]);
 
   const availableUnitOptions = useMemo(() => {
@@ -767,7 +769,7 @@ export default function DetailPropertiPage() {
 
         return !unit.tenant_name && unit.status !== "maintenance";
       })
-      .sort((a, b) => a.unit_name.localeCompare(b.unit_name));
+      .sort((a, b) => naturalCollator.compare(a.unit_name || "", b.unit_name || ""));
   }, [editingTenantRow, unitRows]);
 
   const resetUnitMediaInputs = () => {

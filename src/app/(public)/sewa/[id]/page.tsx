@@ -635,7 +635,7 @@ const groupUnitsByBuilding = (
         return priceCompare;
       }
 
-      return first.unitNumber.localeCompare(second.unitNumber, "id-ID", {
+      return (first.unitNumber || "").localeCompare(second.unitNumber || "", "id-ID", {
         numeric: true,
       });
     });
@@ -1015,7 +1015,7 @@ export default function SewaPropertyDetailPage() {
           return buildingCompare;
         }
 
-        return first.unitNumber.localeCompare(second.unitNumber, "id-ID", {
+        return (first.unitNumber || "").localeCompare(second.unitNumber || "", "id-ID", {
           numeric: true,
         });
       });
