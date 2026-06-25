@@ -97,12 +97,10 @@ export interface AdminPropertyDetailPayload {
     vacant_units: number;
     maintenance_units: number;
     total_tenants: number;
-    price_range:
-      | {
-          min: number;
-          max: number;
-        }
-      | null;
+    price_range: {
+      min: number;
+      max: number;
+    } | null;
   };
 }
 
@@ -297,6 +295,7 @@ export interface AdminUser {
   nik?: string | null;
   role: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status: "active" | "inactive" | "pending_verification";
+  occupation?: string | null;
   profile_picture_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -311,6 +310,7 @@ export interface AdminUserCreatePayload {
   emergency_contact_number?: string;
   relationship?: string;
   nik?: string;
+  occupation?: string;
   role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status?: "active" | "inactive" | "pending_verification";
 }
@@ -324,6 +324,7 @@ export interface AdminUserUpdatePayload {
   emergency_contact_number?: string;
   relationship?: string;
   nik?: string;
+  occupation?: string;
   role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status?: "active" | "inactive" | "pending_verification";
 }
@@ -666,13 +667,13 @@ const sanitizeParams = (params?: QueryParams) => {
 
 const getList = async <T>(
   path: string,
-  params?: QueryParams
+  params?: QueryParams,
 ): Promise<ListResult<T>> => {
   const response = await axiosInstance.get<ApiResponse<T[], ApiPaginationMeta>>(
     path,
     {
       params: sanitizeParams(params),
-    }
+    },
   );
 
   return {
@@ -685,7 +686,7 @@ const getList = async <T>(
 const getAllList = async <T>(
   path: string,
   params?: QueryParams,
-  perPage = 100
+  perPage = 100,
 ): Promise<ListResult<T>> => {
   const firstResponse = await getList<T>(path, {
     ...params,
@@ -712,7 +713,7 @@ const getAllList = async <T>(
 
 const getItem = async <T>(
   path: string,
-  params?: QueryParams
+  params?: QueryParams,
 ): Promise<ItemResult<T>> => {
   const response = await axiosInstance.get<ApiResponse<T>>(path, {
     params: sanitizeParams(params),
@@ -724,14 +725,16 @@ const getItem = async <T>(
   };
 };
 
-const mergeUniqueMedia = (...items: Array<Array<string | null | undefined>>) => {
+const mergeUniqueMedia = (
+  ...items: Array<Array<string | null | undefined>>
+) => {
   return Array.from(
     new Set(
       items
         .flat()
         .map((item) => item?.trim())
-        .filter((item): item is string => Boolean(item))
-    )
+        .filter((item): item is string => Boolean(item)),
+    ),
   );
 };
 
@@ -741,18 +744,15 @@ const normalizeVideoUrls = (property: {
   video_360_url?: string | null;
   photo_360_url?: string | null;
 }) => {
-  return mergeUniqueMedia(
-    property.video_urls || [],
-    [property.video_url]
-  );
+  return mergeUniqueMedia(property.video_urls || [], [property.video_url]);
 };
 
 const normalizeAdminPropertyListItem = (
-  property: AdminPropertyListItem
+  property: AdminPropertyListItem,
 ): AdminPropertyListItem => {
   const roomphotoUrls = mergeUniqueMedia(
     property.roomphoto_urls || [],
-    property.photo_urls || []
+    property.photo_urls || [],
   );
   const videoUrls = normalizeVideoUrls(property);
 
@@ -768,11 +768,11 @@ const normalizeAdminPropertyListItem = (
 };
 
 const normalizeAdminPropertyDetailPayload = (
-  payload: AdminPropertyDetailPayload
+  payload: AdminPropertyDetailPayload,
 ): AdminPropertyDetailPayload => {
   const roomphotoUrls = mergeUniqueMedia(
     payload.property.roomphoto_urls || [],
-    payload.property.photo_urls || []
+    payload.property.photo_urls || [],
   );
   const videoUrls = normalizeVideoUrls(payload.property);
 
@@ -799,7 +799,7 @@ const normalizeAdminPropertyDetailPayload = (
 const appendOptimizedPhotos = async (
   formData: FormData,
   key: string,
-  photos?: File[]
+  photos?: File[],
 ) => {
   const sourcePhotos = photos || [];
   const backendOptimizedPhotos = sourcePhotos.filter((photo) => {
@@ -816,9 +816,12 @@ const appendOptimizedPhotos = async (
   const browserOptimizedPhotos = sourcePhotos.filter((photo) => {
     return !backendOptimizedPhotos.includes(photo);
   });
-  const optimizedPhotos = await optimizeImageFilesForUpload(browserOptimizedPhotos, {
-    fallbackToOriginal: false,
-  });
+  const optimizedPhotos = await optimizeImageFilesForUpload(
+    browserOptimizedPhotos,
+    {
+      fallbackToOriginal: false,
+    },
+  );
 
   [...optimizedPhotos, ...backendOptimizedPhotos].forEach((photo) => {
     formData.append(key, photo);
@@ -833,10 +836,16 @@ const toPropertyFormData = async (payload: AdminPropertyUpsertPayload) => {
   }
   formData.append("property[name]", payload.name);
   formData.append("property[address]", payload.address);
-  if (typeof payload.latitude === "number" && Number.isFinite(payload.latitude)) {
+  if (
+    typeof payload.latitude === "number" &&
+    Number.isFinite(payload.latitude)
+  ) {
     formData.append("property[latitude]", String(payload.latitude));
   }
-  if (typeof payload.longitude === "number" && Number.isFinite(payload.longitude)) {
+  if (
+    typeof payload.longitude === "number" &&
+    Number.isFinite(payload.longitude)
+  ) {
     formData.append("property[longitude]", String(payload.longitude));
   }
   formData.append("property[property_type]", payload.property_type);
@@ -867,7 +876,9 @@ const toPropertyFormData = async (payload: AdminPropertyUpsertPayload) => {
   return formData;
 };
 
-const toPropertyUpdateFormData = async (payload: AdminPropertyUpdatePayload) => {
+const toPropertyUpdateFormData = async (
+  payload: AdminPropertyUpdatePayload,
+) => {
   const formData = new FormData();
 
   if (typeof payload.owner_id === "number") {
@@ -882,11 +893,17 @@ const toPropertyUpdateFormData = async (payload: AdminPropertyUpdatePayload) => 
     formData.append("property[address]", payload.address);
   }
 
-  if (typeof payload.latitude === "number" && Number.isFinite(payload.latitude)) {
+  if (
+    typeof payload.latitude === "number" &&
+    Number.isFinite(payload.latitude)
+  ) {
     formData.append("property[latitude]", String(payload.latitude));
   }
 
-  if (typeof payload.longitude === "number" && Number.isFinite(payload.longitude)) {
+  if (
+    typeof payload.longitude === "number" &&
+    Number.isFinite(payload.longitude)
+  ) {
     formData.append("property[longitude]", String(payload.longitude));
   }
 
@@ -934,7 +951,7 @@ const toPropertyUpdateFormData = async (payload: AdminPropertyUpdatePayload) => 
 const appendUnitFormDataValue = (
   formData: FormData,
   key: string,
-  value: string | number | undefined | null
+  value: string | number | undefined | null,
 ) => {
   if (value === undefined || value === null) {
     return;
@@ -944,7 +961,7 @@ const appendUnitFormDataValue = (
 };
 
 const toUnitFormData = async (
-  payload: AdminUnitCreatePayload | AdminUnitUpdatePayload
+  payload: AdminUnitCreatePayload | AdminUnitUpdatePayload,
 ) => {
   const formData = new FormData();
 
@@ -977,14 +994,14 @@ const toUnitFormData = async (
 const toFinancialTransactionFormData = (
   payload:
     | AdminFinancialTransactionCreatePayload
-    | AdminFinancialTransactionUpdatePayload
+    | AdminFinancialTransactionUpdatePayload,
 ) => {
   const formData = new FormData();
 
   if (payload.property_id !== undefined) {
     formData.append(
       "financial_transaction[property_id]",
-      String(payload.property_id)
+      String(payload.property_id),
     );
   }
 
@@ -999,7 +1016,7 @@ const toFinancialTransactionFormData = (
   if (payload.transaction_date !== undefined) {
     formData.append(
       "financial_transaction[transaction_date]",
-      payload.transaction_date
+      payload.transaction_date,
     );
   }
 
@@ -1024,7 +1041,7 @@ const toFinancialTransactionFormData = (
 
 export const getApiErrorMessage = (
   error: unknown,
-  fallback = "Gagal memuat data. Silakan coba lagi."
+  fallback = "Gagal memuat data. Silakan coba lagi.",
 ) => {
   const normalizeApiMessage = (message?: string) => {
     if (!message) {
@@ -1051,8 +1068,12 @@ export const getApiErrorMessage = (
     }
 
     if (
-      normalized.includes("cannot delete record because of dependent rental_bookings") ||
-      normalized.includes("cannot delete record because of dependent rental bookings")
+      normalized.includes(
+        "cannot delete record because of dependent rental_bookings",
+      ) ||
+      normalized.includes(
+        "cannot delete record because of dependent rental bookings",
+      )
     ) {
       return "Data tidak bisa dihapus karena masih memiliki pemesanan sewa terkait.";
     }
@@ -1105,7 +1126,7 @@ export const toAbsoluteAssetUrl = (path?: string | null) => {
 };
 
 const normalizeFinancialTransaction = (
-  transaction: AdminFinancialTransaction
+  transaction: AdminFinancialTransaction,
 ): AdminFinancialTransaction => ({
   ...transaction,
   receipt_url: toAbsoluteAssetUrl(transaction.receipt_url) || null,
@@ -1115,7 +1136,7 @@ export const mapPropertyStatus = (
   property: Pick<
     AdminPropertyListItem,
     "occupied_units" | "booking_units" | "vacant_units" | "maintenance_units"
-  >
+  >,
 ): PropertyStatus => {
   if (property.maintenance_units > 0) {
     return "maintenance";
@@ -1132,7 +1153,9 @@ export const mapPropertyStatus = (
   return "vacant";
 };
 
-export const mapPropertyToCard = (property: AdminPropertyListItem): Property => {
+export const mapPropertyToCard = (
+  property: AdminPropertyListItem,
+): Property => {
   const image =
     toAbsoluteAssetUrl(property.photo_urls?.[0]) ||
     toAbsoluteAssetUrl(property.roomphoto_urls?.[0]) ||
@@ -1188,7 +1211,10 @@ const toDateInput = (date: Date) => {
 };
 
 export const getAdminProperties = async (params?: QueryParams) => {
-  const response = await getList<AdminPropertyListItem>("/api/v1/properties", params);
+  const response = await getList<AdminPropertyListItem>(
+    "/api/v1/properties",
+    params,
+  );
   return {
     ...response,
     data: response.data.map(normalizeAdminPropertyListItem),
@@ -1198,7 +1224,7 @@ export const getAdminProperties = async (params?: QueryParams) => {
 export const getAllAdminProperties = async (params?: QueryParams) => {
   const response = await getAllList<AdminPropertyListItem>(
     "/api/v1/properties",
-    params
+    params,
   );
   return {
     ...response,
@@ -1206,17 +1232,17 @@ export const getAllAdminProperties = async (params?: QueryParams) => {
   };
 };
 
-export const createAdminProperty = async (payload: AdminPropertyUpsertPayload) => {
+export const createAdminProperty = async (
+  payload: AdminPropertyUpsertPayload,
+) => {
   const formData = await toPropertyFormData(payload);
-  const response = await axiosInstance.post<ApiResponse<AdminPropertyDetailPayload>>(
-    "/api/v1/properties",
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const response = await axiosInstance.post<
+    ApiResponse<AdminPropertyDetailPayload>
+  >("/api/v1/properties", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   return {
     data: normalizeAdminPropertyDetailPayload(response.data.data),
@@ -1226,7 +1252,7 @@ export const createAdminProperty = async (payload: AdminPropertyUpsertPayload) =
 
 export const deleteAdminProperty = async (id: number | string) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/properties/${id}`
+    `/api/v1/properties/${id}`,
   );
 
   return {
@@ -1236,18 +1262,16 @@ export const deleteAdminProperty = async (id: number | string) => {
 
 export const updateAdminProperty = async (
   id: number | string,
-  payload: AdminPropertyUpdatePayload
+  payload: AdminPropertyUpdatePayload,
 ) => {
   const formData = await toPropertyUpdateFormData(payload);
-  const response = await axiosInstance.patch<ApiResponse<AdminPropertyDetailPayload>>(
-    `/api/v1/properties/${id}`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminPropertyDetailPayload>
+  >(`/api/v1/properties/${id}`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   return {
     data: normalizeAdminPropertyDetailPayload(response.data.data),
@@ -1257,14 +1281,13 @@ export const updateAdminProperty = async (
 
 export const updateAdminPropertyMediaOrder = async (
   id: number | string,
-  payload: AdminPropertyMediaOrderPayload
+  payload: AdminPropertyMediaOrderPayload,
 ) => {
-  const response = await axiosInstance.patch<ApiResponse<AdminPropertyDetailPayload>>(
-    `/api/v1/properties/${id}/media_order`,
-    {
-      property: payload,
-    }
-  );
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminPropertyDetailPayload>
+  >(`/api/v1/properties/${id}/media_order`, {
+    property: payload,
+  });
 
   return {
     data: normalizeAdminPropertyDetailPayload(response.data.data),
@@ -1302,7 +1325,10 @@ const toBlockMediaFormData = async (payload: AdminBlockMediaUpdatePayload) => {
   }
 
   if (payload.delete_video_360 !== undefined) {
-    formData.append("block[delete_video_360]", String(payload.delete_video_360));
+    formData.append(
+      "block[delete_video_360]",
+      String(payload.delete_video_360),
+    );
   }
 
   return formData;
@@ -1311,18 +1337,16 @@ const toBlockMediaFormData = async (payload: AdminBlockMediaUpdatePayload) => {
 export const updateAdminPropertyBlockMedia = async (
   propertyId: number | string,
   blockId: number | string,
-  payload: AdminBlockMediaUpdatePayload
+  payload: AdminBlockMediaUpdatePayload,
 ) => {
   const formData = await toBlockMediaFormData(payload);
-  const response = await axiosInstance.patch<ApiResponse<AdminPropertyDetailPayload>>(
-    `/api/v1/properties/${propertyId}/blocks/${blockId}/media`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminPropertyDetailPayload>
+  >(`/api/v1/properties/${propertyId}/blocks/${blockId}/media`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   return {
     data: normalizeAdminPropertyDetailPayload(response.data.data),
@@ -1331,7 +1355,9 @@ export const updateAdminPropertyBlockMedia = async (
 };
 
 export const getAdminPropertyDetail = async (id: number | string) => {
-  const response = await getItem<AdminPropertyDetailPayload>(`/api/v1/properties/${id}`);
+  const response = await getItem<AdminPropertyDetailPayload>(
+    `/api/v1/properties/${id}`,
+  );
   return {
     ...response,
     data: normalizeAdminPropertyDetailPayload(response.data),
@@ -1340,24 +1366,28 @@ export const getAdminPropertyDetail = async (id: number | string) => {
 
 export const getAdminPropertyTenants = (
   id: number | string,
-  params?: QueryParams
-) => getList<AdminPropertyTenantRow>(`/api/v1/properties/${id}/tenants`, params);
+  params?: QueryParams,
+) =>
+  getList<AdminPropertyTenantRow>(`/api/v1/properties/${id}/tenants`, params);
 
 export const getAllAdminPropertyTenants = (
   id: number | string,
-  params?: QueryParams
-) => getAllList<AdminPropertyTenantRow>(`/api/v1/properties/${id}/tenants`, params);
+  params?: QueryParams,
+) =>
+  getAllList<AdminPropertyTenantRow>(
+    `/api/v1/properties/${id}/tenants`,
+    params,
+  );
 
 export const createAdminPropertyTenant = async (
   propertyId: number | string,
-  payload: AdminPropertyTenantCreatePayload
+  payload: AdminPropertyTenantCreatePayload,
 ) => {
-  const response = await axiosInstance.post<ApiResponse<AdminPropertyTenantRow>>(
-    `/api/v1/properties/${propertyId}/tenants`,
-    {
-      tenant_assignment: payload,
-    }
-  );
+  const response = await axiosInstance.post<
+    ApiResponse<AdminPropertyTenantRow>
+  >(`/api/v1/properties/${propertyId}/tenants`, {
+    tenant_assignment: payload,
+  });
 
   return {
     data: response.data.data,
@@ -1368,14 +1398,13 @@ export const createAdminPropertyTenant = async (
 export const updateAdminPropertyTenant = async (
   propertyId: number | string,
   leaseId: number | string,
-  payload: AdminPropertyTenantUpdatePayload
+  payload: AdminPropertyTenantUpdatePayload,
 ) => {
-  const response = await axiosInstance.patch<ApiResponse<AdminPropertyTenantRow>>(
-    `/api/v1/properties/${propertyId}/tenants/${leaseId}`,
-    {
-      tenant_assignment: payload,
-    }
-  );
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminPropertyTenantRow>
+  >(`/api/v1/properties/${propertyId}/tenants/${leaseId}`, {
+    tenant_assignment: payload,
+  });
 
   return {
     data: response.data.data,
@@ -1385,10 +1414,10 @@ export const updateAdminPropertyTenant = async (
 
 export const deleteAdminPropertyTenant = async (
   propertyId: number | string,
-  leaseId: number | string
+  leaseId: number | string,
 ) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/properties/${propertyId}/tenants/${leaseId}`
+    `/api/v1/properties/${propertyId}/tenants/${leaseId}`,
   );
 
   return {
@@ -1396,12 +1425,14 @@ export const deleteAdminPropertyTenant = async (
   };
 };
 
-export const getAdminPropertyUnits = (id: number | string, params?: QueryParams) =>
-  getList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
+export const getAdminPropertyUnits = (
+  id: number | string,
+  params?: QueryParams,
+) => getList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
 
 export const getAllAdminPropertyUnits = (
   id: number | string,
-  params?: QueryParams
+  params?: QueryParams,
 ) => getAllList<AdminPropertyUnitRow>(`/api/v1/properties/${id}/units`, params);
 
 export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
@@ -1413,7 +1444,7 @@ export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return {
@@ -1424,7 +1455,7 @@ export const createAdminUnit = async (payload: AdminUnitCreatePayload) => {
 
 export const updateAdminUnit = async (
   id: number | string,
-  payload: AdminUnitUpdatePayload
+  payload: AdminUnitUpdatePayload,
 ) => {
   const formData = await toUnitFormData(payload);
   const response = await axiosInstance.patch<ApiResponse<unknown>>(
@@ -1434,7 +1465,7 @@ export const updateAdminUnit = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return {
@@ -1444,7 +1475,9 @@ export const updateAdminUnit = async (
 };
 
 export const deleteAdminUnit = async (id: number | string) => {
-  const response = await axiosInstance.delete<ApiResponse<null>>(`/api/v1/units/${id}`);
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/units/${id}`,
+  );
 
   return {
     message: response.data.message,
@@ -1453,20 +1486,20 @@ export const deleteAdminUnit = async (id: number | string) => {
 
 export const getAdminPropertyMaintenance = (
   id: number | string,
-  params?: QueryParams
+  params?: QueryParams,
 ) =>
   getList<AdminPropertyMaintenanceRow>(
     `/api/v1/properties/${id}/maintenance`,
-    params
+    params,
   );
 
 export const getAllAdminPropertyMaintenance = (
   id: number | string,
-  params?: QueryParams
+  params?: QueryParams,
 ) =>
   getAllList<AdminPropertyMaintenanceRow>(
     `/api/v1/properties/${id}/maintenance`,
-    params
+    params,
   );
 
 export const getAdminTenants = (params?: QueryParams) =>
@@ -1486,7 +1519,7 @@ export const createAdminUser = async (payload: AdminUserCreatePayload) => {
     "/api/v1/users",
     {
       user: payload,
-    }
+    },
   );
 
   return {
@@ -1497,13 +1530,13 @@ export const createAdminUser = async (payload: AdminUserCreatePayload) => {
 
 export const updateAdminUser = async (
   id: number | string,
-  payload: AdminUserUpdatePayload
+  payload: AdminUserUpdatePayload,
 ) => {
   const response = await axiosInstance.patch<ApiResponse<AdminUser>>(
     `/api/v1/users/${id}`,
     {
       user: payload,
-    }
+    },
   );
 
   return {
@@ -1514,7 +1547,7 @@ export const updateAdminUser = async (
 
 export const deleteAdminUser = async (id: number | string) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/users/${id}`
+    `/api/v1/users/${id}`,
   );
 
   return {
@@ -1530,14 +1563,13 @@ export const getAdminMaintenanceRequest = (id: number | string) =>
 
 export const updateAdminMaintenanceRequest = async (
   id: number | string,
-  payload: AdminMaintenanceUpdatePayload
+  payload: AdminMaintenanceUpdatePayload,
 ) => {
-  const response = await axiosInstance.patch<ApiResponse<AdminMaintenanceRequest>>(
-    `/api/v1/maintenance_requests/${id}`,
-    {
-      maintenance_request: payload,
-    }
-  );
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminMaintenanceRequest>
+  >(`/api/v1/maintenance_requests/${id}`, {
+    maintenance_request: payload,
+  });
 
   return {
     data: response.data.data,
@@ -1547,7 +1579,7 @@ export const updateAdminMaintenanceRequest = async (
 
 export const deleteAdminMaintenanceRequest = async (id: number | string) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/maintenance_requests/${id}`
+    `/api/v1/maintenance_requests/${id}`,
   );
 
   return {
@@ -1556,10 +1588,13 @@ export const deleteAdminMaintenanceRequest = async (id: number | string) => {
 };
 
 export const exportAdminMaintenanceRequests = async (params?: QueryParams) => {
-  const response = await axiosInstance.get<Blob>("/api/v1/maintenance_requests/export", {
-    params: sanitizeParams(params),
-    responseType: "blob",
-  });
+  const response = await axiosInstance.get<Blob>(
+    "/api/v1/maintenance_requests/export",
+    {
+      params: sanitizeParams(params),
+      responseType: "blob",
+    },
+  );
 
   return {
     blob: response.data,
@@ -1570,7 +1605,7 @@ export const exportAdminMaintenanceRequests = async (params?: QueryParams) => {
 export const getAdminFinancialTransactions = async (params?: QueryParams) => {
   const result = await getList<AdminFinancialTransaction>(
     "/api/v1/financial_transactions",
-    params
+    params,
   );
 
   return {
@@ -1581,7 +1616,7 @@ export const getAdminFinancialTransactions = async (params?: QueryParams) => {
 
 export const getAdminFinancialTransaction = async (id: number | string) => {
   const result = await getItem<AdminFinancialTransaction>(
-    `/api/v1/financial_transactions/${id}`
+    `/api/v1/financial_transactions/${id}`,
   );
 
   return {
@@ -1591,17 +1626,15 @@ export const getAdminFinancialTransaction = async (id: number | string) => {
 };
 
 export const createAdminFinancialTransaction = async (
-  payload: AdminFinancialTransactionCreatePayload
+  payload: AdminFinancialTransactionCreatePayload,
 ) => {
-  const response = await axiosInstance.post<ApiResponse<AdminFinancialTransaction>>(
-    "/api/v1/financial_transactions",
-    toFinancialTransactionFormData(payload),
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const response = await axiosInstance.post<
+    ApiResponse<AdminFinancialTransaction>
+  >("/api/v1/financial_transactions", toFinancialTransactionFormData(payload), {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   return {
     data: normalizeFinancialTransaction(response.data.data),
@@ -1611,16 +1644,18 @@ export const createAdminFinancialTransaction = async (
 
 export const updateAdminFinancialTransaction = async (
   id: number | string,
-  payload: AdminFinancialTransactionUpdatePayload
+  payload: AdminFinancialTransactionUpdatePayload,
 ) => {
-  const response = await axiosInstance.patch<ApiResponse<AdminFinancialTransaction>>(
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminFinancialTransaction>
+  >(
     `/api/v1/financial_transactions/${id}`,
     toFinancialTransactionFormData(payload),
     {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return {
@@ -1631,7 +1666,7 @@ export const updateAdminFinancialTransaction = async (
 
 export const deleteAdminFinancialTransaction = async (id: number | string) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/financial_transactions/${id}`
+    `/api/v1/financial_transactions/${id}`,
   );
 
   return {
@@ -1639,11 +1674,16 @@ export const deleteAdminFinancialTransaction = async (id: number | string) => {
   };
 };
 
-export const exportAdminFinancialTransactions = async (params?: QueryParams) => {
-  const response = await axiosInstance.get<Blob>("/api/v1/financial_transactions/export", {
-    params: sanitizeParams(params),
-    responseType: "blob",
-  });
+export const exportAdminFinancialTransactions = async (
+  params?: QueryParams,
+) => {
+  const response = await axiosInstance.get<Blob>(
+    "/api/v1/financial_transactions/export",
+    {
+      params: sanitizeParams(params),
+      responseType: "blob",
+    },
+  );
 
   return {
     blob: response.data,
@@ -1654,11 +1694,11 @@ export const exportAdminFinancialTransactions = async (params?: QueryParams) => 
 export const getAdminFinancialDashboard = (params?: QueryParams) =>
   getItem<AdminFinancialDashboardPayload>(
     "/api/v1/financial_transactions/dashboard",
-    params
+    params,
   );
 
 const mapManualBookingStatusToPaymentStatus = (
-  status?: string | null
+  status?: string | null,
 ): AdminPayment["status"] => {
   if (status === "approved") {
     return "paid";
@@ -1672,7 +1712,7 @@ const mapManualBookingStatusToPaymentStatus = (
 };
 
 export const mapAdminManualRentalBookingToPayment = (
-  booking: AdminManualRentalBooking
+  booking: AdminManualRentalBooking,
 ): AdminPayment => {
   return {
     id: booking.id,
@@ -1701,7 +1741,10 @@ export const mapAdminManualRentalBookingToPayment = (
       null,
     payment_method: booking.payment_channel || null,
     description:
-      booking.admin_notes || booking.denied_reason || booking.status_label || null,
+      booking.admin_notes ||
+      booking.denied_reason ||
+      booking.status_label ||
+      null,
     transfer_proof_url: toAbsoluteAssetUrl(booking.transfer_proof_url) || null,
     booking_status:
       (booking.status as AdminPayment["booking_status"] | undefined) || null,
@@ -1723,7 +1766,7 @@ export const getAdminPayments = (params?: QueryParams) =>
 export const getAdminManualRentalBookings = async (params?: QueryParams) => {
   const response = await getList<AdminManualRentalBooking>(
     "/api/v1/manual_rentals/admin/bookings",
-    params
+    params,
   );
 
   return {
@@ -1735,14 +1778,13 @@ export const getAdminManualRentalBookings = async (params?: QueryParams) => {
 
 export const approveAdminManualRentalBooking = async (
   id: number | string,
-  payload: AdminManualRentalBookingApprovePayload
+  payload: AdminManualRentalBookingApprovePayload,
 ) => {
-  const response = await axiosInstance.post<ApiResponse<AdminManualRentalBooking>>(
-    `/api/v1/manual_rentals/admin/bookings/${id}/approve`,
-    {
-      settlement: payload,
-    }
-  );
+  const response = await axiosInstance.post<
+    ApiResponse<AdminManualRentalBooking>
+  >(`/api/v1/manual_rentals/admin/bookings/${id}/approve`, {
+    settlement: payload,
+  });
 
   return {
     data: mapAdminManualRentalBookingToPayment(response.data.data),
@@ -1752,17 +1794,16 @@ export const approveAdminManualRentalBooking = async (
 
 export const denyAdminManualRentalBooking = async (
   id: number | string,
-  payload?: { denied_reason?: string; notes?: string }
+  payload?: { denied_reason?: string; notes?: string },
 ) => {
-  const response = await axiosInstance.post<ApiResponse<AdminManualRentalBooking>>(
-    `/api/v1/manual_rentals/admin/bookings/${id}/deny`,
-    {
-      review: {
-        denied_reason: payload?.denied_reason || "Dibatalkan oleh administrator",
-        notes: payload?.notes || "",
-      },
-    }
-  );
+  const response = await axiosInstance.post<
+    ApiResponse<AdminManualRentalBooking>
+  >(`/api/v1/manual_rentals/admin/bookings/${id}/deny`, {
+    review: {
+      denied_reason: payload?.denied_reason || "Dibatalkan oleh administrator",
+      notes: payload?.notes || "",
+    },
+  });
 
   return {
     data: mapAdminManualRentalBookingToPayment(response.data.data),
@@ -1773,12 +1814,14 @@ export const denyAdminManualRentalBooking = async (
 export const getAdminPayment = (id: number | string) =>
   getItem<AdminPayment>(`/api/v1/payments/${id}`);
 
-export const createAdminPayment = async (payload: AdminPaymentCreatePayload) => {
+export const createAdminPayment = async (
+  payload: AdminPaymentCreatePayload,
+) => {
   const response = await axiosInstance.post<ApiResponse<AdminPayment>>(
     "/api/v1/payments",
     {
       payment: payload,
-    }
+    },
   );
 
   return {
@@ -1789,13 +1832,13 @@ export const createAdminPayment = async (payload: AdminPaymentCreatePayload) => 
 
 export const updateAdminPayment = async (
   id: number | string,
-  payload: AdminPaymentUpdatePayload
+  payload: AdminPaymentUpdatePayload,
 ) => {
   const response = await axiosInstance.patch<ApiResponse<AdminPayment>>(
     `/api/v1/payments/${id}`,
     {
       payment: payload,
-    }
+    },
   );
 
   return {
@@ -1806,7 +1849,7 @@ export const updateAdminPayment = async (
 
 export const deleteAdminPayment = async (id: number | string) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/payments/${id}`
+    `/api/v1/payments/${id}`,
   );
 
   return {
@@ -1816,7 +1859,7 @@ export const deleteAdminPayment = async (id: number | string) => {
 
 export const pushAdminPaymentInvoice = async (id: number | string) => {
   const response = await axiosInstance.post<ApiResponse<AdminPayment>>(
-    `/api/v1/payments/${id}/push_invoice`
+    `/api/v1/payments/${id}/push_invoice`,
   );
 
   return {
@@ -1832,13 +1875,13 @@ export const getAdminCommunication = (id: number | string) =>
   getItem<AdminCommunication>(`/api/v1/communications/${id}`);
 
 export const createAdminCommunication = async (
-  payload: AdminCommunicationCreatePayload
+  payload: AdminCommunicationCreatePayload,
 ) => {
   const response = await axiosInstance.post<ApiResponse<AdminCommunication>>(
     "/api/v1/communications",
     {
       communication: payload,
-    }
+    },
   );
 
   return {
@@ -1849,13 +1892,13 @@ export const createAdminCommunication = async (
 
 export const updateAdminCommunication = async (
   id: number | string,
-  payload: AdminCommunicationUpdatePayload
+  payload: AdminCommunicationUpdatePayload,
 ) => {
   const response = await axiosInstance.patch<ApiResponse<AdminCommunication>>(
     `/api/v1/communications/${id}`,
     {
       communication: payload,
-    }
+    },
   );
 
   return {
@@ -1866,7 +1909,7 @@ export const updateAdminCommunication = async (
 
 export const deleteAdminCommunication = async (id: number | string) => {
   const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/communications/${id}`
+    `/api/v1/communications/${id}`,
   );
 
   return {

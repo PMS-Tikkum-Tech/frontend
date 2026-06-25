@@ -53,6 +53,7 @@ import {
   resolveBackendCoordinate,
   type PropertyCoordinate,
 } from "@/lib/maps/property-coordinate";
+import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 
@@ -924,10 +925,13 @@ export default function SewaPage() {
         <div className="pointer-events-none absolute -bottom-28 right-0 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
 
         <div className="mx-auto max-w-7xl px-6 pb-14 pt-10">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-xs font-medium">
-            <Sparkles size={14} />
-            Rekomendasi Hunian Mahasiswa IPB
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <BookingVersionBadge version="Versi 1" tone="dark" />
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-xs font-medium">
+              <Sparkles size={14} />
+              Rekomendasi Hunian Mahasiswa IPB
+            </p>
+          </div>
           <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight">
             Temukan Kost yang Nyaman, Aman, dan Sesuai Anggaran Kamu
           </h1>

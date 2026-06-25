@@ -9,6 +9,21 @@
   --font-manrope:
     "Manrope", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-playfair: "Playfair Display", Georgia, "Times New Roman", serif;
+  --color-primary: #0284c7;
+  --color-primary-dark: #075985;
+  --color-text-primary: #222222;
+  --color-text-secondary: #6a6a6a;
+  --color-border: #dddddd;
+  --color-background: #ffffff;
+  --color-background-soft: #f7f7f7;
+  --color-success: #008a05;
+  --color-error: #c13515;
+  --radius-small: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-pill: 999px;
+  --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .font-plus-jakarta {

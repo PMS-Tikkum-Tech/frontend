@@ -23,6 +23,7 @@ import {
   getAdminProperties,
   getAdminPropertyUnits,
   getAdminTenants,
+  getAdminUsers,
   getApiErrorMessage,
   updateAdminPayment,
   type AdminPayment,
@@ -84,31 +85,59 @@ const toInputDate = (value?: string | null) => {
   return date.toISOString().slice(0, 10);
 };
 
-const toInputDateTime = (value?: string | null) => {
+const parseDateInput = (value: string) => {
   if (!value) {
-    return "";
+    return null;
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return localDate.toISOString().slice(0, 16);
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const toApiDateTime = (value: string) => {
-  if (!value) {
-    return undefined;
+const getWholeMonthDifference = (startDate: Date, endDate: Date) => {
+  let months =
+    (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+    endDate.getMonth() -
+    startDate.getMonth();
+
+  if (endDate.getDate() < startDate.getDate()) {
+    months -= 1;
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
+  return Math.max(0, months);
+};
+
+const formatRentalDuration = (checkInDate: string, checkOutDate: string) => {
+  const startDate = parseDateInput(checkInDate);
+  const endDate = parseDateInput(checkOutDate);
+
+  if (!startDate || !endDate) {
+    return "";
   }
 
-  return date.toISOString();
+  const dayCount = Math.round(
+    (endDate.getTime() - startDate.getTime()) / 86_400_000,
+  );
+
+  if (dayCount < 0) {
+    return "";
+  }
+
+  if (dayCount === 0) {
+    return "1 hari";
+  }
+
+  const wholeMonths = getWholeMonthDifference(startDate, endDate);
+  if (wholeMonths >= 12 && wholeMonths % 12 === 0) {
+    const years = wholeMonths / 12;
+    return `${years} tahun`;
+  }
+
+  if (wholeMonths > 0 && dayCount >= 28) {
+    return `${wholeMonths} bulan`;
+  }
+
+  return `${dayCount} hari`;
 };
 
 const resolveAssetUrl = (value?: string | null) => {
@@ -157,9 +186,12 @@ type BillingFormState = {
   status: "waiting" | "paid" | "overdue" | "cancelled";
   dueDate: string;
   amount: string;
-  paidAt: string;
   paymentMethod: string;
-  description: string;
+  checkInDate: string;
+  checkOutDate: string;
+  rentalDuration: string;
+  customerService: string;
+  remarks: string;
 };
 
 const getInitialForm = (): BillingFormState => ({
@@ -170,13 +202,131 @@ const getInitialForm = (): BillingFormState => ({
   status: "waiting",
   dueDate: new Date().toISOString().slice(0, 10),
   amount: "",
-  paidAt: "",
   paymentMethod: "",
-  description: "",
+  checkInDate: "",
+  checkOutDate: "",
+  rentalDuration: "",
+  customerService: "",
+  remarks: "",
 });
 
+type BillingDescriptionFields = Pick<
+  BillingFormState,
+  | "checkInDate"
+  | "checkOutDate"
+  | "rentalDuration"
+  | "customerService"
+  | "remarks"
+>;
+
+const getEmptyBillingDescriptionFields = (): BillingDescriptionFields => ({
+  checkInDate: "",
+  checkOutDate: "",
+  rentalDuration: "",
+  customerService: "",
+  remarks: "",
+});
+
+const normalizeBillingDescriptionLabel = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ")
+    .trim();
+
+const parseBillingDescription = (
+  description?: string | null,
+): BillingDescriptionFields => {
+  const parsed = getEmptyBillingDescriptionFields();
+  const value = description?.trim();
+
+  if (!value) {
+    return parsed;
+  }
+
+  const unmatchedLines: string[] = [];
+  const labelToField: Record<string, keyof BillingDescriptionFields> = {
+    "check in": "checkInDate",
+    "check out": "checkOutDate",
+    "lama sewa": "rentalDuration",
+    "durasi sewa": "rentalDuration",
+    cs: "customerService",
+    "customer service": "customerService",
+    keterangan: "remarks",
+    catatan: "remarks",
+  };
+
+  value.split(/\r?\n/).forEach((line) => {
+    const trimmedLine = line.trim();
+    const match = /^([^:]+):\s*(.*)$/.exec(trimmedLine);
+
+    if (!trimmedLine) {
+      return;
+    }
+
+    if (!match) {
+      unmatchedLines.push(trimmedLine);
+      return;
+    }
+
+    const field = labelToField[normalizeBillingDescriptionLabel(match[1])];
+    if (!field) {
+      unmatchedLines.push(trimmedLine);
+      return;
+    }
+
+    parsed[field] = match[2].trim();
+  });
+
+  if (unmatchedLines.length > 0 && !parsed.remarks) {
+    parsed.remarks = unmatchedLines.join("\n");
+  }
+
+  return parsed;
+};
+
+const buildBillingDescription = (form: BillingFormState) =>
+  [
+    ["Check In", form.checkInDate],
+    ["Check Out", form.checkOutDate],
+    [
+      "Lama Sewa",
+      formatRentalDuration(form.checkInDate, form.checkOutDate) ||
+        form.rentalDuration,
+    ],
+    ["CS", form.customerService],
+    ["Keterangan", form.remarks],
+  ]
+    .filter(([, value]) => value.trim())
+    .map(([label, value]) => `${label}: ${value.trim()}`)
+    .join("\n");
+
+const getBillingDescriptionRows = (description?: string | null) => {
+  const details = parseBillingDescription(description);
+
+  return [
+    details.checkInDate
+      ? { label: "Check In", value: formatDate(details.checkInDate) }
+      : null,
+    details.checkOutDate
+      ? { label: "Check Out", value: formatDate(details.checkOutDate) }
+      : null,
+    details.rentalDuration
+      ? { label: "Lama Sewa", value: details.rentalDuration }
+      : null,
+    details.customerService
+      ? { label: "CS", value: details.customerService }
+      : null,
+  ].filter((row): row is { label: string; value: string } => Boolean(row));
+};
+
+const getBillingRemarks = (description?: string | null) => {
+  const details = parseBillingDescription(description);
+
+  return details.remarks || description?.trim() || "-";
+};
+
 const isPaymentAutoCancelledByDueDate = (
-  payment: Pick<AdminPayment, "status" | "due_date" | "booking_status">
+  payment: Pick<AdminPayment, "status" | "due_date" | "booking_status">,
 ) => {
   const canAutoCancelByDueDate =
     !payment.booking_status || payment.booking_status === "awaiting_payment";
@@ -190,7 +340,7 @@ const isPaymentAutoCancelledByDueDate = (
 };
 
 const getPaymentDisplayStatus = (
-  payment: Pick<AdminPayment, "status" | "due_date" | "booking_status">
+  payment: Pick<AdminPayment, "status" | "due_date" | "booking_status">,
 ): AdminPayment["status"] => {
   if (isPaymentAutoCancelledByDueDate(payment)) {
     return "cancelled";
@@ -203,6 +353,14 @@ const normalizeOptional = (value: string) => {
   const trimmed = value.trim();
   return trimmed || undefined;
 };
+
+const getAccountDisplayName = (user: AdminUser) =>
+  user.full_name?.trim() || user.email || `Akun #${user.id}`;
+
+const isSelectableCsAccount = (user: AdminUser) =>
+  user.account_status === "active" &&
+  user.role === "admin" &&
+  user.occupation?.trim().toLowerCase() === "cs";
 
 const getPaymentRowKey = (payment: AdminPayment) =>
   `${payment.record_type || "payment"}:${payment.id}`;
@@ -246,7 +404,7 @@ const getProofExtensionFromUrl = (url?: string | null) => {
 const getProofDownloadName = (
   invoiceId: string,
   sourceUrl?: string | null,
-  contentType?: string | null
+  contentType?: string | null,
 ) => {
   const safeInvoiceId = invoiceId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const extension =
@@ -269,7 +427,10 @@ const fetchProofAsFile = async (proofUrl: string): Promise<File | null> => {
     }
 
     const blob = await response.blob();
-    const contentType = blob.type || response.headers.get("content-type") || "application/octet-stream";
+    const contentType =
+      blob.type ||
+      response.headers.get("content-type") ||
+      "application/octet-stream";
     const ext = contentType.includes("pdf")
       ? ".pdf"
       : contentType.includes("png")
@@ -319,10 +480,13 @@ export default function AdminBillingPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "due_date">("newest");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "due_date">(
+    "newest",
+  );
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [properties, setProperties] = useState<AdminPropertyListItem[]>([]);
   const [tenants, setTenants] = useState<AdminUser[]>([]);
+  const [csAccounts, setCsAccounts] = useState<AdminUser[]>([]);
   const [unitsByProperty, setUnitsByProperty] = useState<
     Record<number, AdminPropertyUnitRow[]>
   >({});
@@ -343,9 +507,9 @@ export default function AdminBillingPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
-  const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<string | null>(
-    null
-  );
+  const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<
+    string | null
+  >(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -361,25 +525,29 @@ export default function AdminBillingPage() {
           manualBookingsResponse,
           propertiesResponse,
           tenantsResponse,
-        ] =
-          await Promise.all([
-            getAdminPayments({
-              page: 1,
-              per_page: 100,
-            }),
-            getAdminManualRentalBookings({
-              page: 1,
-              per_page: 100,
-            }),
-            getAdminProperties({
-              page: 1,
-              per_page: 100,
-            }),
-            getAdminTenants({
-              page: 1,
-              per_page: 100,
-            }),
-          ]);
+          usersResponse,
+        ] = await Promise.all([
+          getAdminPayments({
+            page: 1,
+            per_page: 100,
+          }),
+          getAdminManualRentalBookings({
+            page: 1,
+            per_page: 100,
+          }),
+          getAdminProperties({
+            page: 1,
+            per_page: 100,
+          }),
+          getAdminTenants({
+            page: 1,
+            per_page: 100,
+          }),
+          getAdminUsers({
+            page: 1,
+            per_page: 100,
+          }),
+        ]);
 
         if (!active) {
           return;
@@ -394,13 +562,26 @@ export default function AdminBillingPage() {
         ]);
         setProperties(propertiesResponse.data);
         setTenants(tenantsResponse.data);
+        setCsAccounts(
+          usersResponse.data
+            .filter(isSelectableCsAccount)
+            .sort((first, second) =>
+              getAccountDisplayName(first).localeCompare(
+                getAccountDisplayName(second),
+                "id-ID",
+              ),
+            ),
+        );
       } catch (loadError) {
         if (!active) {
           return;
         }
 
         setError(
-          getApiErrorMessage(loadError, "Data tagihan gagal dimuat. Coba lagi.")
+          getApiErrorMessage(
+            loadError,
+            "Data tagihan gagal dimuat. Coba lagi.",
+          ),
         );
       } finally {
         if (active) {
@@ -438,12 +619,10 @@ export default function AdminBillingPage() {
         [parsedPropertyId]: response.data,
       }));
     } catch (loadError) {
-      setFormError(
-        getApiErrorMessage(loadError, "Daftar unit gagal dimuat.")
-      );
+      setFormError(getApiErrorMessage(loadError, "Daftar unit gagal dimuat."));
     } finally {
       setIsLoadingUnitsPropertyId((current) =>
-        current === parsedPropertyId ? null : current
+        current === parsedPropertyId ? null : current,
       );
     }
   };
@@ -453,9 +632,9 @@ export default function AdminBillingPage() {
       uniqueFilterOptions(
         payments,
         (payment) => getPaymentDisplayStatus(payment),
-        (value) => paymentStatusLabel[value]
+        (value) => paymentStatusLabel[value],
       ),
-    [payments]
+    [payments],
   );
 
   const propertyFilterOptions = useMemo(
@@ -463,24 +642,29 @@ export default function AdminBillingPage() {
       uniqueFilterOptions(
         payments,
         (payment) => payment.property.id || null,
-        (value, payment) => payment.property.name || `Properti #${value}`
+        (value, payment) => payment.property.name || `Properti #${value}`,
       ),
-    [payments]
+    [payments],
   );
 
   const filtered = useMemo(() => {
     const filteredItems = payments.filter((payment) => {
-      const searchable = `${payment.invoice_id} ${payment.property.name || ""} ${
-        payment.unit.name || ""
-      } ${payment.tenant.full_name || ""} ${payment.booking_status_label || ""} ${
-        payment.transfer_sender_name || ""
-      } ${payment.transfer_bank_name || ""}`.toLowerCase();
+      const searchable =
+        `${payment.invoice_id} ${payment.property.name || ""} ${
+          payment.unit.name || ""
+        } ${payment.tenant.full_name || ""} ${payment.booking_status_label || ""} ${
+          payment.transfer_sender_name || ""
+        } ${payment.transfer_bank_name || ""} ${payment.payment_method || ""} ${
+          payment.description || ""
+        }`.toLowerCase();
       const displayStatus = getPaymentDisplayStatus(payment);
 
       return (
         searchable.includes(search.toLowerCase()) &&
         (status ? displayStatus === status : true) &&
-        (propertyFilter ? String(payment.property.id || "") === propertyFilter : true)
+        (propertyFilter
+          ? String(payment.property.id || "") === propertyFilter
+          : true)
       );
     });
 
@@ -499,13 +683,13 @@ export default function AdminBillingPage() {
 
   const stats = useMemo(() => {
     const waiting = payments.filter(
-      (payment) => getPaymentDisplayStatus(payment) === "waiting"
+      (payment) => getPaymentDisplayStatus(payment) === "waiting",
     ).length;
     const paid = payments.filter(
-      (payment) => getPaymentDisplayStatus(payment) === "paid"
+      (payment) => getPaymentDisplayStatus(payment) === "paid",
     ).length;
     const cancelled = payments.filter(
-      (payment) => getPaymentDisplayStatus(payment) === "cancelled"
+      (payment) => getPaymentDisplayStatus(payment) === "cancelled",
     ).length;
     const totalOutstanding = payments
       .filter((payment) => getPaymentDisplayStatus(payment) === "waiting")
@@ -555,6 +739,26 @@ export default function AdminBillingPage() {
     return unitsByProperty[propertyId] || [];
   }, [form.propertyId, unitsByProperty]);
 
+  const customerServiceOptions = useMemo(
+    () =>
+      csAccounts.map((account) => ({
+        id: account.id,
+        value: getAccountDisplayName(account),
+        label: getAccountDisplayName(account),
+      })),
+    [csAccounts],
+  );
+
+  const selectedCustomerServiceIsAvailable =
+    !form.customerService ||
+    customerServiceOptions.some(
+      (option) => option.value === form.customerService,
+    );
+  const computedRentalDuration = formatRentalDuration(
+    form.checkInDate,
+    form.checkOutDate,
+  );
+
   const openCreateModal = () => {
     setNotice(null);
     setFormMode("create");
@@ -565,6 +769,8 @@ export default function AdminBillingPage() {
   };
 
   const openEditModal = (payment: AdminPayment) => {
+    const billingDescription = parseBillingDescription(payment.description);
+
     setNotice(null);
     setFormMode("edit");
     setEditingPaymentId(payment.id);
@@ -576,9 +782,12 @@ export default function AdminBillingPage() {
       status: payment.status,
       dueDate: toInputDate(payment.due_date),
       amount: String(payment.amount || ""),
-      paidAt: toInputDateTime(payment.paid_at),
       paymentMethod: payment.payment_method || "",
-      description: payment.description || "",
+      checkInDate: billingDescription.checkInDate,
+      checkOutDate: billingDescription.checkOutDate,
+      rentalDuration: billingDescription.rentalDuration,
+      customerService: billingDescription.customerService,
+      remarks: billingDescription.remarks,
     });
     setFormError(null);
     setIsFormOpen(true);
@@ -615,17 +824,17 @@ export default function AdminBillingPage() {
     const amount = Number(form.amount);
 
     if (!propertyId || !unitId || !tenantId) {
-      setFormError("Properti, unit, dan penyewa wajib dipilih.");
+      setFormError("Unit, nomor kamar, dan nama penghuni wajib dipilih.");
       return;
     }
 
     if (!form.dueDate) {
-      setFormError("Tanggal batas pembayaran wajib diisi.");
+      setFormError("Tanggal wajib diisi.");
       return;
     }
 
     if (!amount || Number.isNaN(amount) || amount <= 0) {
-      setFormError("Jumlah tagihan harus lebih dari 0.");
+      setFormError("Total harga harus lebih dari 0.");
       return;
     }
 
@@ -642,12 +851,11 @@ export default function AdminBillingPage() {
         amount,
         due_date: form.dueDate,
         ...(leaseId > 0 ? { lease_id: leaseId } : {}),
-        ...(toApiDateTime(form.paidAt) ? { paid_at: toApiDateTime(form.paidAt) } : {}),
         ...(normalizeOptional(form.paymentMethod)
           ? { payment_method: normalizeOptional(form.paymentMethod) }
           : {}),
-        ...(normalizeOptional(form.description)
-          ? { description: normalizeOptional(form.description) }
+        ...(normalizeOptional(buildBillingDescription(form))
+          ? { description: normalizeOptional(buildBillingDescription(form)) }
           : {}),
       };
 
@@ -706,7 +914,7 @@ export default function AdminBillingPage() {
       link.download = getProofDownloadName(
         payment.invoice_id,
         proofUrl,
-        blob.type || response.headers.get("content-type")
+        blob.type || response.headers.get("content-type"),
       );
       document.body.appendChild(link);
       link.click();
@@ -717,7 +925,7 @@ export default function AdminBillingPage() {
         variant: "error",
         message: getApiErrorMessage(
           downloadError,
-          "Gagal mengunduh bukti transfer."
+          "Gagal mengunduh bukti transfer.",
         ),
       });
     } finally {
@@ -731,7 +939,8 @@ export default function AdminBillingPage() {
     if (displayStatus === "cancelled") {
       setNotice({
         variant: "error",
-        message: "Tagihan sudah dibatalkan otomatis karena melewati batas pembayaran.",
+        message:
+          "Tagihan sudah dibatalkan otomatis karena melewati batas pembayaran.",
       });
       return;
     }
@@ -765,7 +974,8 @@ export default function AdminBillingPage() {
     if (displayStatus === "cancelled") {
       setNotice({
         variant: "error",
-        message: "Tagihan sudah dibatalkan otomatis karena melewati batas pembayaran.",
+        message:
+          "Tagihan sudah dibatalkan otomatis karena melewati batas pembayaran.",
       });
       setApproveConfirmationPayment(null);
       return;
@@ -806,7 +1016,7 @@ export default function AdminBillingPage() {
           variant: "error",
           message: getApiErrorMessage(
             approveError,
-            "Gagal melakukan ACC pembayaran pemesanan."
+            "Gagal melakukan ACC pembayaran pemesanan.",
           ),
         });
       } finally {
@@ -840,8 +1050,10 @@ export default function AdminBillingPage() {
     } catch (approveError) {
       setNotice({
         variant: "error",
-        message:
-          getApiErrorMessage(approveError, "Gagal melakukan ACC pembayaran."),
+        message: getApiErrorMessage(
+          approveError,
+          "Gagal melakukan ACC pembayaran.",
+        ),
       });
     } finally {
       setIsApprovingId(null);
@@ -870,7 +1082,8 @@ export default function AdminBillingPage() {
               Kelola Tagihan & Pembayaran
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
-              Pantau status pembayaran, atur tagihan, dan tinjau bukti pembayaran.
+              Pantau status pembayaran, atur tagihan, dan tinjau bukti
+              pembayaran.
             </p>
           </div>
 
@@ -887,9 +1100,17 @@ export default function AdminBillingPage() {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard label="Total Tagihan" value={String(stats.total)} />
-        <SummaryCard label="Menunggu" value={String(stats.waiting)} tone="default" />
+        <SummaryCard
+          label="Menunggu"
+          value={String(stats.waiting)}
+          tone="default"
+        />
         <SummaryCard label="Lunas" value={String(stats.paid)} tone="success" />
-        <SummaryCard label="Dibatalkan" value={String(stats.cancelled)} tone="danger" />
+        <SummaryCard
+          label="Dibatalkan"
+          value={String(stats.cancelled)}
+          tone="danger"
+        />
         <SummaryCard
           label="Nominal Menunggu"
           value={`Rp ${stats.totalOutstanding.toLocaleString("id-ID")}`}
@@ -952,7 +1173,7 @@ export default function AdminBillingPage() {
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
-            <option value="due_date">Batas Pembayaran</option>
+            <option value="due_date">Tanggal</option>
           </select>
 
           <button
@@ -969,12 +1190,11 @@ export default function AdminBillingPage() {
             <RotateCcw size={14} />
             Atur Ulang
           </button>
-
         </div>
 
         <p className="mt-3 text-xs text-slate-500">
-          Menampilkan <span className="font-semibold">{filtered.length}</span> dari{" "}
-          <span className="font-semibold">{payments.length}</span> tagihan.
+          Menampilkan <span className="font-semibold">{filtered.length}</span>{" "}
+          dari <span className="font-semibold">{payments.length}</span> tagihan.
         </p>
       </section>
 
@@ -1011,10 +1231,10 @@ export default function AdminBillingPage() {
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
               <tr>
                 <th className="px-4 py-3 text-left">Faktur</th>
-                <th className="px-4 py-3 text-left">Properti / Unit</th>
-                <th className="px-4 py-3 text-left">Penyewa</th>
-                <th className="px-4 py-3 text-left">Batas Pembayaran</th>
-                <th className="px-4 py-3 text-left">Jumlah</th>
+                <th className="px-4 py-3 text-left">Unit / Nomor Kamar</th>
+                <th className="px-4 py-3 text-left">Nama Penghuni</th>
+                <th className="px-4 py-3 text-left">Tanggal</th>
+                <th className="px-4 py-3 text-left">Total Harga</th>
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-center">Aksi</th>
               </tr>
@@ -1052,7 +1272,9 @@ export default function AdminBillingPage() {
                       {payment.transfer_proof_url ? (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           <a
-                            href={resolveAssetUrl(payment.transfer_proof_url) || "#"}
+                            href={
+                              resolveAssetUrl(payment.transfer_proof_url) || "#"
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex h-7 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
@@ -1066,7 +1288,8 @@ export default function AdminBillingPage() {
                               void handleDownloadProof(payment);
                             }}
                             disabled={
-                              isDownloadingProofKey === getPaymentRowKey(payment)
+                              isDownloadingProofKey ===
+                              getPaymentRowKey(payment)
                             }
                             className="inline-flex h-7 items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-wait disabled:opacity-60"
                           >
@@ -1094,7 +1317,7 @@ export default function AdminBillingPage() {
                         className="mt-1 line-clamp-2 break-words text-xs text-slate-500"
                         title={payment.unit.name || "-"}
                       >
-                        Unit: {payment.unit.name || "-"}
+                        Nomor kamar: {payment.unit.name || "-"}
                       </p>
                     </td>
 
@@ -1181,7 +1404,7 @@ export default function AdminBillingPage() {
                               ? "Pembayaran sudah lunas"
                               : getPaymentDisplayStatus(payment) === "cancelled"
                                 ? "Tagihan sudah dibatalkan"
-                              : "ACC pembayaran"
+                                : "ACC pembayaran"
                           }
                         >
                           <CheckCircle2 size={16} />
@@ -1205,7 +1428,10 @@ export default function AdminBillingPage() {
             <span className="font-semibold text-slate-700">
               {Math.min(startIndex + PAGE_SIZE, filtered.length)}
             </span>{" "}
-            dari <span className="font-semibold text-slate-700">{filtered.length}</span>{" "}
+            dari{" "}
+            <span className="font-semibold text-slate-700">
+              {filtered.length}
+            </span>{" "}
             tagihan
           </p>
 
@@ -1267,30 +1493,30 @@ export default function AdminBillingPage() {
                   </span>
                 </div>
                 <div className="mt-3 flex items-start justify-between gap-4">
-                  <span className="text-slate-500">Penyewa</span>
+                  <span className="text-slate-500">Nama Penghuni</span>
                   <span className="text-right font-medium text-slate-800">
                     {approveConfirmationPayment.tenant.full_name || "-"}
                   </span>
                 </div>
                 <div className="mt-3 flex items-start justify-between gap-4">
-                  <span className="text-slate-500">Properti</span>
+                  <span className="text-slate-500">Unit</span>
                   <span className="text-right font-medium text-slate-800">
                     {approveConfirmationPayment.property.name || "-"}
                   </span>
                 </div>
                 <div className="mt-3 flex items-start justify-between gap-4">
-                  <span className="text-slate-500">Unit</span>
+                  <span className="text-slate-500">Nomor Kamar</span>
                   <span className="text-right font-medium text-slate-800">
                     {approveConfirmationPayment.unit.name || "-"}
                   </span>
                 </div>
                 <div className="mt-3 flex items-start justify-between gap-4">
-                  <span className="text-slate-500">Jumlah</span>
+                  <span className="text-slate-500">Total Harga</span>
                   <span className="whitespace-nowrap text-right font-semibold text-slate-900">
                     Rp{" "}
-                    {Number(approveConfirmationPayment.amount || 0).toLocaleString(
-                      "id-ID"
-                    )}
+                    {Number(
+                      approveConfirmationPayment.amount || 0,
+                    ).toLocaleString("id-ID")}
                   </span>
                 </div>
               </div>
@@ -1320,7 +1546,9 @@ export default function AdminBillingPage() {
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70"
               >
                 <CheckCircle2 size={16} />
-                {isApproveConfirmationBusy ? "Memproses..." : "Ya, ACC Pembayaran"}
+                {isApproveConfirmationBusy
+                  ? "Memproses..."
+                  : "Ya, ACC Pembayaran"}
               </button>
             </div>
           </div>
@@ -1331,7 +1559,9 @@ export default function AdminBillingPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-800">Detail Tagihan</h2>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Detail Tagihan
+              </h2>
               <button
                 type="button"
                 onClick={() => setViewPayment(null)}
@@ -1347,17 +1577,24 @@ export default function AdminBillingPage() {
                   Faktur #{viewPayment.invoice_id}
                 </p>
                 <p className="mt-1 font-semibold text-slate-800">
-                  {viewPayment.property.name || "-"} • {viewPayment.unit.name || "-"}
+                  {viewPayment.property.name || "-"} •{" "}
+                  {viewPayment.unit.name || "-"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Penyewa: {viewPayment.tenant.full_name || "-"}
+                  Nama penghuni: {viewPayment.tenant.full_name || "-"}
                 </p>
               </div>
               <DetailRow label="Faktur" value={`#${viewPayment.invoice_id}`} />
-              <DetailRow label="Properti" value={viewPayment.property.name || "-"} />
-              <DetailRow label="Unit" value={viewPayment.unit.name || "-"} />
               <DetailRow
-                label="Penyewa"
+                label="Unit"
+                value={viewPayment.property.name || "-"}
+              />
+              <DetailRow
+                label="Nomor Kamar"
+                value={viewPayment.unit.name || "-"}
+              />
+              <DetailRow
+                label="Nama Penghuni"
                 value={viewPayment.tenant.full_name || "-"}
               />
               <DetailRow
@@ -1382,13 +1619,20 @@ export default function AdminBillingPage() {
                 value={viewPayment.booking_status_label || "-"}
               />
               <DetailRow
-                label="Jumlah"
+                label="Total Harga"
                 value={`Rp ${viewPayment.amount.toLocaleString("id-ID")}`}
               />
               <DetailRow
-                label="Batas Pembayaran"
+                label="Tanggal"
                 value={formatDueDate(viewPayment.due_date)}
               />
+              {getBillingDescriptionRows(viewPayment.description).map((row) => (
+                <DetailRow
+                  key={row.label}
+                  label={row.label}
+                  value={row.value}
+                />
+              ))}
               {getPaymentDisplayStatus(viewPayment) === "waiting" ? (
                 <DetailRow
                   label="Sisa Waktu Pembayaran"
@@ -1400,7 +1644,7 @@ export default function AdminBillingPage() {
                 value={formatDateTime(viewPayment.paid_at)}
               />
               <DetailRow
-                label="Metode Pembayaran"
+                label="Pembayaran"
                 value={viewPayment.payment_method || "-"}
               />
               <DetailRow
@@ -1425,7 +1669,9 @@ export default function AdminBillingPage() {
                   viewPayment.transfer_proof_url ? (
                     <span className="inline-flex flex-wrap items-center gap-3">
                       <a
-                        href={resolveAssetUrl(viewPayment.transfer_proof_url) || "#"}
+                        href={
+                          resolveAssetUrl(viewPayment.transfer_proof_url) || "#"
+                        }
                         target="_blank"
                         rel="noreferrer"
                         className="font-medium text-blue-600 underline-offset-2 hover:underline"
@@ -1438,7 +1684,8 @@ export default function AdminBillingPage() {
                           void handleDownloadProof(viewPayment);
                         }}
                         disabled={
-                          isDownloadingProofKey === getPaymentRowKey(viewPayment)
+                          isDownloadingProofKey ===
+                          getPaymentRowKey(viewPayment)
                         }
                         className="inline-flex items-center gap-1 font-medium text-emerald-700 underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-60"
                       >
@@ -1453,7 +1700,10 @@ export default function AdminBillingPage() {
                   )
                 }
               />
-              <DetailRow label="Deskripsi" value={viewPayment.description || "-"} />
+              <DetailRow
+                label="Keterangan"
+                value={getBillingRemarks(viewPayment.description)}
+              />
             </div>
 
             <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
@@ -1471,7 +1721,7 @@ export default function AdminBillingPage() {
 
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Tagihan" : "Ubah Tagihan"}
@@ -1490,7 +1740,24 @@ export default function AdminBillingPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Properti
+                    Tanggal
+                  </label>
+                  <input
+                    type="date"
+                    value={form.dueDate}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        dueDate: event.target.value,
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Unit
                   </label>
                   <select
                     value={form.propertyId}
@@ -1501,6 +1768,9 @@ export default function AdminBillingPage() {
                         propertyId: nextPropertyId,
                         unitId: "",
                         leaseId: "",
+                        checkInDate: "",
+                        checkOutDate: "",
+                        amount: "",
                       }));
                       setFormError(null);
                       void loadUnitsByProperty(nextPropertyId);
@@ -1518,16 +1788,36 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Unit
+                    Nomor Kamar
                   </label>
                   <select
                     value={form.unitId}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nextUnitId = event.target.value;
+                      const selectedUnit = availableUnits.find(
+                        (unit) => String(unit.unit_id) === nextUnitId,
+                      );
+                      const nextCheckIn = toInputDate(
+                        selectedUnit?.check_in_date ||
+                          selectedUnit?.lease_start,
+                      );
+                      const nextCheckOut = toInputDate(
+                        selectedUnit?.check_out_date || selectedUnit?.lease_end,
+                      );
+                      const nextAmount =
+                        selectedUnit && Number(selectedUnit.price || 0) > 0
+                          ? String(selectedUnit.price)
+                          : "";
+
                       setForm((previous) => ({
                         ...previous,
-                        unitId: event.target.value,
-                      }))
-                    }
+                        unitId: nextUnitId,
+                        checkInDate: previous.checkInDate || nextCheckIn,
+                        checkOutDate: previous.checkOutDate || nextCheckOut,
+                        rentalDuration: "",
+                        amount: previous.amount || nextAmount,
+                      }));
+                    }}
                     disabled={!form.propertyId}
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
@@ -1548,7 +1838,7 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Penyewa
+                    Nama Penghuni
                   </label>
                   <select
                     value={form.tenantId}
@@ -1571,36 +1861,16 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Status
-                  </label>
-                  <select
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        status: event.target.value as BillingFormState["status"],
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  >
-                    <option value="waiting">Menunggu</option>
-                    <option value="paid">Lunas</option>
-                    <option value="overdue">Dibatalkan Otomatis</option>
-                    <option value="cancelled">Dibatalkan</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Tanggal Batas Pembayaran
+                    Check In
                   </label>
                   <input
                     type="date"
-                    value={form.dueDate}
+                    value={form.checkInDate}
                     onChange={(event) =>
                       setForm((previous) => ({
                         ...previous,
-                        dueDate: event.target.value,
+                        checkInDate: event.target.value,
+                        rentalDuration: "",
                       }))
                     }
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
@@ -1609,7 +1879,37 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Jumlah
+                    Check Out
+                  </label>
+                  <input
+                    type="date"
+                    value={form.checkOutDate}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        checkOutDate: event.target.value,
+                        rentalDuration: "",
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Lama Sewa
+                  </label>
+                  <input
+                    value={computedRentalDuration || form.rentalDuration}
+                    readOnly
+                    className="h-11 w-full rounded-xl border bg-slate-50 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                    placeholder="Terhitung otomatis"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Total Harga
                   </label>
                   <input
                     type="number"
@@ -1626,29 +1926,10 @@ export default function AdminBillingPage() {
                     placeholder="3500000"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Tanggal Bayar (Opsional)
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={form.paidAt}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        paidAt: event.target.value,
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  />
-                </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Metode Pembayaran (Opsional)
+                    Pembayaran
                   </label>
                   <input
                     value={form.paymentMethod}
@@ -1659,26 +1940,76 @@ export default function AdminBillingPage() {
                       }))
                     }
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                    placeholder="Transfer Bank / Tunai / E-Wallet"
+                    placeholder="Transfer Bank / Tunai / E-Wallet / DP"
                   />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Status
+                  </label>
+                  <select
+                    value={form.status}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        status: event.target
+                          .value as BillingFormState["status"],
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  >
+                    <option value="waiting">Menunggu</option>
+                    <option value="paid">Lunas</option>
+                    <option value="overdue">Dibatalkan Otomatis</option>
+                    <option value="cancelled">Dibatalkan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    CS
+                  </label>
+                  <select
+                    value={form.customerService}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        customerService: event.target.value,
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  >
+                    <option value="">Pilih CS</option>
+                    {!selectedCustomerServiceIsAvailable ? (
+                      <option value={form.customerService}>
+                        {form.customerService}
+                      </option>
+                    ) : null}
+                    {customerServiceOptions.map((option) => (
+                      <option key={option.id} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Deskripsi (Opsional)
+                  Keterangan
                 </label>
                 <textarea
-                  value={form.description}
+                  value={form.remarks}
                   onChange={(event) =>
                     setForm((previous) => ({
                       ...previous,
-                      description: event.target.value,
+                      remarks: event.target.value,
                     }))
                   }
                   rows={3}
                   className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  placeholder="Contoh: Tagihan sewa bulanan Maret 2026"
+                  placeholder="Catatan tambahan untuk tagihan ini"
                 />
               </div>
 
@@ -1764,7 +2095,9 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
       <span className="font-medium text-slate-600">{label}</span>
-      <span className="max-w-[62%] break-words text-right text-slate-800">{value}</span>
+      <span className="max-w-[62%] break-words text-right text-slate-800">
+        {value}
+      </span>
     </div>
   );
 }

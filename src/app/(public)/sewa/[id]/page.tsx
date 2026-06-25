@@ -51,6 +51,7 @@ import {
   resolveBackendCoordinate,
   type PropertyCoordinate,
 } from "@/lib/maps/property-coordinate";
+import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
 import {
   getTenantUnitBuildingName,
   getTenantUnitDisplayName,
@@ -1308,6 +1309,7 @@ export default function SewaPropertyDetailPage() {
                 <ArrowLeft size={13} />
                 Kembali
               </Link>
+              <BookingVersionBadge version="Versi 1" tone="dark" />
               <span className="rounded-full border border-white/40 bg-black/35 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
                 {formatLabel(property.property_type)}
               </span>

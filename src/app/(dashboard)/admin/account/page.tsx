@@ -57,6 +57,7 @@ const formatDate = (value?: string | null) => {
 };
 
 const roleLabelMap: Record<string, string> = {
+  cs: "CS",
   admin: "Administrator",
   owner: "Pemilik",
   tenant: "Penyewa",
@@ -65,6 +66,7 @@ const roleLabelMap: Record<string, string> = {
 };
 
 const roleStyleMap: Record<string, string> = {
+  cs: "bg-lime-100 text-lime-700",
   admin: "bg-emerald-100 text-emerald-700",
   owner: "bg-blue-100 text-blue-700",
   tenant: "bg-amber-100 text-amber-700",
@@ -93,7 +95,13 @@ type FormMode = "create" | "edit";
 
 type SortValue = "newest" | "oldest" | "name_asc" | "name_desc";
 
-type UserRole = "admin" | "owner" | "tenant" | "housekeeper" | "technician";
+type UserRole =
+  | "cs"
+  | "admin"
+  | "owner"
+  | "tenant"
+  | "housekeeper"
+  | "technician";
 
 type UserFormState = {
   fullName: string;
@@ -117,7 +125,7 @@ const getInitialForm = (): UserFormState => ({
 
 const getUserFormErrors = (
   form: UserFormState,
-  formMode: FormMode
+  formMode: FormMode,
 ): UserFormErrors => {
   const errors: UserFormErrors = {};
   const operationalRole = isOperationalRole(form.role);
@@ -169,6 +177,17 @@ const normalizeOptional = (value: string) => {
 
 const isOperationalRole = (role: string) =>
   role === "housekeeper" || role === "technician";
+
+const isCsUser = (user: AdminUser) =>
+  user.role === "admin" && user.occupation?.trim().toLowerCase() === "cs";
+
+const getAccountRole = (user: AdminUser): UserRole =>
+  isCsUser(user) ? "cs" : user.role;
+
+const toApiUserRole = (role: UserRole): Exclude<UserRole, "cs"> =>
+  role === "cs" ? "admin" : role;
+
+const toApiOccupation = (role: UserRole) => (role === "cs" ? "cs" : "");
 
 const getUserEmailDisplay = (user: AdminUser) =>
   isOperationalRole(user.role)
@@ -228,7 +247,7 @@ export default function AdminAccountPage() {
         }
 
         setError(
-          getApiErrorMessage(loadError, "Data akun gagal dimuat. Coba lagi.")
+          getApiErrorMessage(loadError, "Data akun gagal dimuat. Coba lagi."),
         );
       } finally {
         if (active) {
@@ -262,7 +281,7 @@ export default function AdminAccountPage() {
       fullName: user.full_name || "",
       email: isOperationalRole(user.role) ? "" : user.email,
       phoneNumber: sanitizePhoneInput(user.phone_number || ""),
-      role: user.role,
+      role: getAccountRole(user),
       accountStatus: user.account_status,
       password: "",
     });
@@ -304,7 +323,8 @@ export default function AdminAccountPage() {
         await createAdminUser({
           full_name: fullName,
           phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
-          role: form.role,
+          role: toApiUserRole(form.role),
+          occupation: toApiOccupation(form.role),
           account_status: form.accountStatus,
           ...(operationalRole ? {} : { email, password }),
         });
@@ -323,7 +343,8 @@ export default function AdminAccountPage() {
         await updateAdminUser(editingUserId, {
           full_name: fullName,
           phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
-          role: form.role,
+          role: toApiUserRole(form.role),
+          occupation: toApiOccupation(form.role),
           account_status: form.accountStatus,
           ...(operationalRole ? {} : { email }),
           ...(!operationalRole && password ? { password } : {}),
@@ -349,7 +370,7 @@ export default function AdminAccountPage() {
 
   const handleDeleteUser = async (user: AdminUser) => {
     const agreed = window.confirm(
-      `Hapus akun ${user.full_name}? Tindakan ini tidak bisa dibatalkan.`
+      `Hapus akun ${user.full_name}? Tindakan ini tidak bisa dibatalkan.`,
     );
 
     if (!agreed) {
@@ -381,41 +402,46 @@ export default function AdminAccountPage() {
       uniqueFilterOptions(
         users,
         (user) => user.account_status,
-        (value) => statusLabelMap[value]
+        (value) => statusLabelMap[value],
       ),
-    [users]
+    [users],
   );
 
   const roleFilterOptions = useMemo(
     () =>
       uniqueFilterOptions(
         users,
-        (user) => user.role,
-        (value) => roleLabelMap[value]
+        (user) => getAccountRole(user),
+        (value) => roleLabelMap[value],
       ),
-    [users]
+    [users],
   );
 
   const filteredUsers = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     const nextUsers = users.filter((user) => {
+      const accountRole = getAccountRole(user);
       const searchable = `${user.full_name || ""} ${user.email} ${
-        roleLabelMap[user.role] || user.role
+        roleLabelMap[accountRole] || accountRole
       } ${user.phone_number || ""}`.toLowerCase();
       return (
         searchable.includes(keyword) &&
         (status ? user.account_status === status : true) &&
-        (role ? user.role === role : true)
+        (role ? accountRole === role : true)
       );
     });
 
     nextUsers.sort((a, b) => {
       if (sortBy === "name_asc") {
-        return (a.full_name || "").localeCompare(b.full_name || "", "id", { sensitivity: "base" });
+        return (a.full_name || "").localeCompare(b.full_name || "", "id", {
+          sensitivity: "base",
+        });
       }
 
       if (sortBy === "name_desc") {
-        return (b.full_name || "").localeCompare(a.full_name || "", "id", { sensitivity: "base" });
+        return (b.full_name || "").localeCompare(a.full_name || "", "id", {
+          sensitivity: "base",
+        });
       }
 
       if (sortBy === "oldest") {
@@ -429,21 +455,26 @@ export default function AdminAccountPage() {
   }, [role, search, sortBy, status, users]);
 
   const summary = useMemo(() => {
-    const activeCount = users.filter((user) => user.account_status === "active").length;
+    const activeCount = users.filter(
+      (user) => user.account_status === "active",
+    ).length;
     const pendingCount = users.filter(
-      (user) => user.account_status === "pending_verification"
+      (user) => user.account_status === "pending_verification",
     ).length;
     const inactiveCount = users.filter(
-      (user) => user.account_status === "inactive"
+      (user) => user.account_status === "inactive",
     ).length;
-    const adminCount = users.filter((user) => user.role === "admin").length;
+    const csCount = users.filter(isCsUser).length;
+    const adminCount = users.filter(
+      (user) => user.role === "admin" && !isCsUser(user),
+    ).length;
     const ownerCount = users.filter((user) => user.role === "owner").length;
     const tenantCount = users.filter((user) => user.role === "tenant").length;
     const housekeeperCount = users.filter(
-      (user) => user.role === "housekeeper"
+      (user) => user.role === "housekeeper",
     ).length;
     const technicianCount = users.filter(
-      (user) => user.role === "technician"
+      (user) => user.role === "technician",
     ).length;
 
     return {
@@ -452,6 +483,7 @@ export default function AdminAccountPage() {
       pendingCount,
       inactiveCount,
       adminCount,
+      csCount,
       ownerCount,
       tenantCount,
       housekeeperCount,
@@ -509,7 +541,8 @@ export default function AdminAccountPage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">Manajemen Akun</h1>
             <p className="text-sm text-blue-100">
-              Kelola akses administrator, pemilik, penyewa, dan data petugas operasional.
+              Kelola akses administrator, pemilik, penyewa, dan data petugas
+              operasional.
             </p>
           </div>
 
@@ -521,7 +554,10 @@ export default function AdminAccountPage() {
               title="Perbarui data"
               className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+              <RefreshCw
+                size={16}
+                className={isLoading ? "animate-spin" : ""}
+              />
               Perbarui
             </button>
 
@@ -538,7 +574,7 @@ export default function AdminAccountPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
         <SummaryCard
           title="Total Akun"
           value={summary.total}
@@ -555,6 +591,12 @@ export default function AdminAccountPage() {
           value={summary.adminCount}
           caption="Akses pengelola sistem"
           tone="info"
+        />
+        <SummaryCard
+          title="CS"
+          value={summary.csCount}
+          caption="Customer service"
+          tone="cyan"
         />
         <SummaryCard
           title="Pemilik"
@@ -646,7 +688,6 @@ export default function AdminAccountPage() {
           >
             Atur Ulang
           </button>
-
         </div>
       </section>
 
@@ -697,11 +738,17 @@ export default function AdminAccountPage() {
                 </tr>
               ) : (
                 pagedUsers.map((user) => (
-                  <tr key={user.id} className="border-t border-slate-100 align-top hover:bg-slate-50">
+                  <tr
+                    key={user.id}
+                    className="border-t border-slate-100 align-top hover:bg-slate-50"
+                  >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <Image
-                          src={toAbsoluteAssetUrl(user.profile_picture_url) || "/bg-1200.webp"}
+                          src={
+                            toAbsoluteAssetUrl(user.profile_picture_url) ||
+                            "/bg-1200.webp"
+                          }
                           alt={user.full_name || user.email}
                           width={40}
                           height={40}
@@ -711,7 +758,9 @@ export default function AdminAccountPage() {
                         <div className="space-y-0.5">
                           <div className="font-medium text-slate-800">
                             {user.full_name || (
-                              <span className="italic text-slate-400">Belum diisi</span>
+                              <span className="italic text-slate-400">
+                                Belum diisi
+                              </span>
                             )}
                           </div>
                           <div className="text-xs text-slate-500">
@@ -722,11 +771,15 @@ export default function AdminAccountPage() {
                     </td>
 
                     <td className="p-4">
-                      <RoleBadge role={user.role} />
+                      <RoleBadge role={getAccountRole(user)} />
                     </td>
 
-                    <td className="p-4 text-slate-700">{user.phone_number || "-"}</td>
-                    <td className="p-4 text-slate-700">{formatDate(user.created_at)}</td>
+                    <td className="p-4 text-slate-700">
+                      {user.phone_number || "-"}
+                    </td>
+                    <td className="p-4 text-slate-700">
+                      {formatDate(user.created_at)}
+                    </td>
                     <td className="p-4">
                       <StatusBadge status={user.account_status} />
                     </td>
@@ -773,7 +826,8 @@ export default function AdminAccountPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
           <p>
-            Menampilkan {showingFrom}-{showingTo} dari {filteredUsers.length} akun
+            Menampilkan {showingFrom}-{showingTo} dari {filteredUsers.length}{" "}
+            akun
           </p>
 
           <div className="flex items-center gap-2">
@@ -825,15 +879,15 @@ export default function AdminAccountPage() {
             </div>
 
             <div className="space-y-4 overflow-y-auto px-6 py-5">
-                <FormField
-                  label="Nama Lengkap"
-                  value={form.fullName}
-                  onChange={(value) =>
-                    setForm((prev) => ({ ...prev, fullName: value }))
-                  }
-                  placeholder="Masukkan nama pengguna"
-                  error={fieldErrors.fullName}
-                />
+              <FormField
+                label="Nama Lengkap"
+                value={form.fullName}
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, fullName: value }))
+                }
+                placeholder="Masukkan nama pengguna"
+                error={fieldErrors.fullName}
+              />
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -849,6 +903,7 @@ export default function AdminAccountPage() {
                   }
                   className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 >
+                  <option value="cs">CS</option>
                   <option value="admin">Administrator</option>
                   <option value="owner">Pemilik</option>
                   <option value="tenant">Penyewa</option>
@@ -859,8 +914,9 @@ export default function AdminAccountPage() {
 
               {formIsOperationalRole ? (
                 <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm leading-6 text-cyan-800">
-                  Peran {roleLabelMap[form.role]} dibuat sebagai data petugas untuk
-                  modul operasional, jadi tidak membutuhkan email dan kata sandi.
+                  Peran {roleLabelMap[form.role]} dibuat sebagai data petugas
+                  untuk modul operasional, jadi tidak membutuhkan email dan kata
+                  sandi.
                 </div>
               ) : (
                 <FormField
@@ -868,7 +924,10 @@ export default function AdminAccountPage() {
                   type="email"
                   value={form.email}
                   onChange={(value) =>
-                    setForm((prev) => ({ ...prev, email: sanitizeEmailInput(value) }))
+                    setForm((prev) => ({
+                      ...prev,
+                      email: sanitizeEmailInput(value),
+                    }))
                   }
                   placeholder="Masukkan email pengguna"
                   maxLength={EMAIL_MAX_LENGTH}
@@ -911,7 +970,9 @@ export default function AdminAccountPage() {
                   className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 >
                   <option value="active">Aktif</option>
-                  <option value="pending_verification">Menunggu Verifikasi</option>
+                  <option value="pending_verification">
+                    Menunggu Verifikasi
+                  </option>
                   <option value="inactive">Nonaktif</option>
                 </select>
               </div>
@@ -975,7 +1036,9 @@ export default function AdminAccountPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-800">Detail Akun</h2>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Detail Akun
+              </h2>
 
               <button
                 type="button"
@@ -989,7 +1052,10 @@ export default function AdminAccountPage() {
             <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm">
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <Image
-                  src={toAbsoluteAssetUrl(viewUser.profile_picture_url) || "/bg-1200.webp"}
+                  src={
+                    toAbsoluteAssetUrl(viewUser.profile_picture_url) ||
+                    "/bg-1200.webp"
+                  }
                   alt={viewUser.full_name || viewUser.email}
                   width={44}
                   height={44}
@@ -1010,14 +1076,23 @@ export default function AdminAccountPage() {
 
               <DetailRow label="Nama" value={viewUser.full_name} />
               <DetailRow label="Email" value={getUserEmailDisplay(viewUser)} />
-              <DetailRow label="Peran" value={roleLabelMap[viewUser.role] || "-"} />
+              <DetailRow
+                label="Peran"
+                value={roleLabelMap[getAccountRole(viewUser)] || "-"}
+              />
               <DetailRow label="Telepon" value={viewUser.phone_number || "-"} />
               <DetailRow
                 label="Status"
                 value={statusLabelMap[viewUser.account_status] || "-"}
               />
-              <DetailRow label="Tanggal Dibuat" value={formatDate(viewUser.created_at)} />
-              <DetailRow label="Terakhir Diperbarui" value={formatDate(viewUser.updated_at)} />
+              <DetailRow
+                label="Tanggal Dibuat"
+                value={formatDate(viewUser.created_at)}
+              />
+              <DetailRow
+                label="Terakhir Diperbarui"
+                value={formatDate(viewUser.updated_at)}
+              />
             </div>
 
             <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-6 py-4">
@@ -1056,7 +1131,7 @@ function SummaryCard({
           ? "border-blue-200 bg-blue-50/70"
           : tone === "cyan"
             ? "border-cyan-200 bg-cyan-50/70"
-          : "border-slate-200 bg-slate-50/70";
+            : "border-slate-200 bg-slate-50/70";
 
   return (
     <div className={`rounded-2xl border p-4 ${toneClass}`}>
@@ -1120,7 +1195,9 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
       <input
         type={type}
         value={value}

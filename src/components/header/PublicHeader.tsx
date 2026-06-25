@@ -30,8 +30,13 @@ export default function PublicHeader() {
     { label: "Beranda", href: "/" },
     { label: "Tentang", href: "/tentang", disabled: true },
     { label: "Sewa", href: "/sewa" },
+    { label: "Booking", href: "/booking" },
     { label: "Kerjasama", href: "/kerjasama", disabled: true },
   ];
+
+  const isNavActive = (href: string) => {
+    return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+  };
 
   useEffect(() => {
     if (previousPathnameRef.current === pathname) {
@@ -137,7 +142,7 @@ export default function PublicHeader() {
                   key={item.href}
                   href={item.href}
                   className={`transition ${
-                    pathname === item.href
+                    isNavActive(item.href)
                       ? "text-green-600 border-b-2 border-green-600 pb-1"
                       : "text-slate-700 hover:text-green-600"
                   }`}
@@ -259,7 +264,7 @@ export default function PublicHeader() {
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      pathname === item.href
+                      isNavActive(item.href)
                         ? "bg-sky-50 text-sky-700"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}

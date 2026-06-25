@@ -62,6 +62,12 @@ import {
   sanitizePhoneInput,
 } from "@/lib/form-validation";
 import type { BackendUser, SessionUser } from "@/types/auth";
+import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
+import {
+  BOOKING_V2_STORAGE_KEY,
+  isBookingV2DurationPreset,
+  type BookingV2Draft,
+} from "@/features/booking/v2/store/bookingV2Store";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("id-ID");
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
@@ -108,6 +114,19 @@ const PAYMENT_METHODS = [
 ] as const;
 
 type PaymentMethodValue = (typeof PAYMENT_METHODS)[number]["value"];
+
+const readBookingV2DraftForPayment = (): BookingV2Draft | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(BOOKING_V2_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as BookingV2Draft) : null;
+  } catch {
+    return null;
+  }
+};
 
 type BasicProfileFormState = {
   fullName: string;
@@ -369,6 +388,7 @@ function TenantCreatePaymentPageContent() {
   const searchParams = useSearchParams();
   const propertyId = Number(searchParams.get("property_id"));
   const unitId = Number(searchParams.get("unit_id"));
+  const isBookingV2Flow = searchParams.get("booking_version") === "v2";
   const minCheckInDate = useMemo(() => toDateInput(new Date()), []);
   const defaultCheckInDate = useMemo(() => {
     const tomorrow = new Date();
@@ -408,6 +428,37 @@ function TenantCreatePaymentPageContent() {
     status: string;
     dueDate: string | null;
   } | null>(null);
+
+  useEffect(() => {
+    if (!isBookingV2Flow) {
+      return;
+    }
+
+    const draft = readBookingV2DraftForPayment();
+    if (!draft) {
+      return;
+    }
+
+    if (draft.propertyId && draft.propertyId !== propertyId) {
+      return;
+    }
+
+    if (draft.unitId && draft.unitId !== unitId) {
+      return;
+    }
+
+    if (draft.checkInDate) {
+      setCheckInDate(draft.checkInDate);
+    }
+
+    if (draft.checkOutDate) {
+      setCheckOutDate(draft.checkOutDate);
+    }
+
+    if (isBookingV2DurationPreset(draft.durationPreset)) {
+      setRentDuration(draft.durationPreset);
+    }
+  }, [isBookingV2Flow, propertyId, unitId]);
 
   const selectedPaymentMethod = useMemo(() => {
     return PAYMENT_METHODS.find((item) => item.value === paymentMethod) || null;
@@ -892,13 +943,19 @@ function TenantCreatePaymentPageContent() {
         <div className="pointer-events-none absolute -right-14 bottom-0 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <Link
-            href={`/sewa/${property.id}`}
-            className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/20"
-          >
-            <ArrowLeft size={13} />
-            Kembali ke Detail Properti
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/sewa/${property.id}`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/20"
+            >
+              <ArrowLeft size={13} />
+              Kembali ke Detail Properti
+            </Link>
+            <BookingVersionBadge
+              version={isBookingV2Flow ? "Versi 2" : "Versi 1"}
+              tone="light"
+            />
+          </div>
           <h1 className="mt-4 text-3xl font-semibold">Pembayaran Sewa</h1>
           <p className="mt-2 max-w-3xl text-sm text-white/90">
             Lengkapi informasi sewa, pilih kanal pembayaran, lalu unggah bukti

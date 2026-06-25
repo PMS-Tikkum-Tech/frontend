@@ -1,0 +1,511 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Building2, MapPin } from "lucide-react";
+import { BOOKING_V2_ENABLED } from "@/features/booking/shared/config/bookingFeatureFlags";
+import {
+  adaptPublicPropertiesToBookingV2,
+  type BookingV2Property,
+} from "@/features/booking/shared/adapters/propertyAdapter";
+import { fetchBookingProperties } from "@/features/booking/shared/api/bookingApi";
+import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
+import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
+import { resolveBackendCoordinate } from "@/lib/maps/property-coordinate";
+import type { BookingV2MapLocation } from "@/features/booking/v2/components/BookingV2PropertyMap";
+import BookingV2Unavailable from "@/features/booking/v2/components/BookingV2Unavailable";
+import CompactSearchBar from "@/features/booking/v2/components/CompactSearchBar";
+import ExpandedSearchBar from "@/features/booking/v2/components/ExpandedSearchBar";
+import FilterBar, {
+  type BookingV2FilterValue,
+} from "@/features/booking/v2/components/FilterBar";
+import PropertyGrid from "@/features/booking/v2/components/PropertyGrid";
+import {
+  getBookingV2DurationLabel,
+  loadBookingV2Draft,
+  loadBookingV2FavoriteIds,
+  mergeBookingV2Draft,
+  saveBookingV2FavoriteIds,
+  type BookingV2DurationPreset,
+} from "@/features/booking/v2/store/bookingV2Store";
+
+const BookingV2PropertyMap = dynamic(
+  () => import("@/features/booking/v2/components/BookingV2PropertyMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-500">
+        Memuat peta...
+      </div>
+    ),
+  }
+);
+
+const FALLBACK_COORDINATE = {
+  lat: -6.5667,
+  lng: 106.7283,
+};
+
+const AREA_COORDINATES: Array<{
+  keywords: string[];
+  lat: number;
+  lng: number;
+}> = [
+  { keywords: ["dramaga", "cibanteng"], lat: -6.5667, lng: 106.7283 },
+  { keywords: ["cihideung"], lat: -6.5709, lng: 106.7468 },
+  { keywords: ["ciampea"], lat: -6.554, lng: 106.703 },
+  { keywords: ["baranangsiang"], lat: -6.5956, lng: 106.8068 },
+  { keywords: ["bubulak"], lat: -6.5579, lng: 106.7689 },
+];
+
+const filterKeywords: Record<BookingV2FilterValue, string[]> = {
+  all: [],
+  available: [],
+  wifi: ["wifi", "internet"],
+  furnished: ["furnished", "furniture", "kasur", "lemari", "meja"],
+  ac: ["ac", "air conditioner"],
+  parking_area: ["parkir", "parking"],
+  cctv: ["cctv", "security", "keamanan"],
+  lowest_price: [],
+};
+
+const formatMarkerPrice = (value?: number | null) => {
+  if (!value || value <= 0) {
+    return "Info";
+  }
+
+  if (value >= 1_000_000) {
+    const jt = value / 1_000_000;
+    const decimal = jt % 1 === 0 ? 0 : 1;
+    return `Rp${jt.toFixed(decimal).replace(".", ",")}jt`;
+  }
+
+  if (value >= 1_000) {
+    return `Rp${Math.round(value / 1_000)}rb`;
+  }
+
+  return `Rp${value}`;
+};
+
+const resolvePropertyCoordinate = (property: BookingV2Property) => {
+  const backendCoordinate = resolveBackendCoordinate(
+    property.raw.latitude,
+    property.raw.longitude
+  );
+  if (backendCoordinate) {
+    return backendCoordinate;
+  }
+
+  const searchText = `${property.name} ${property.address}`.toLowerCase();
+  const matched =
+    AREA_COORDINATES.find((area) =>
+      area.keywords.some((keyword) => searchText.includes(keyword))
+    ) || FALLBACK_COORDINATE;
+
+  return {
+    lat: matched.lat,
+    lng: matched.lng,
+  };
+};
+
+const propertyMatchesFilter = (
+  property: BookingV2Property,
+  activeFilter: BookingV2FilterValue
+) => {
+  if (activeFilter === "all" || activeFilter === "lowest_price") {
+    return true;
+  }
+
+  if (activeFilter === "available") {
+    return property.availableUnits > 0;
+  }
+
+  const keywords = filterKeywords[activeFilter];
+  const facilityText = property.facilities.join(" ").toLowerCase();
+  const propertyText = `${property.name} ${property.address} ${property.propertyTypeLabel}`.toLowerCase();
+
+  return keywords.some(
+    (keyword) => facilityText.includes(keyword) || propertyText.includes(keyword)
+  );
+};
+
+export default function BookingV2PropertyPage() {
+  const [properties, setProperties] = useState<BookingV2Property[]>([]);
+  const [selectedMapPropertyId, setSelectedMapPropertyId] = useState<number | null>(
+    null
+  );
+  const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [durationPreset, setDurationPreset] =
+    useState<BookingV2DurationPreset>("6m");
+  const [occupants, setOccupants] = useState(1);
+  const [activeFilter, setActiveFilter] =
+    useState<BookingV2FilterValue>("all");
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => new Set());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const draft = loadBookingV2Draft();
+    setFavoriteIds(loadBookingV2FavoriteIds());
+    setSearch(draft?.propertyName || "");
+    setStartDate(draft?.checkInDate || "");
+    setDurationPreset(draft?.durationPreset || "6m");
+  }, []);
+
+  useEffect(() => {
+    if (!BOOKING_V2_ENABLED) {
+      setIsLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    const loadProperties = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetchBookingProperties({
+          page: 1,
+          per_page: 100,
+          sort: "newest",
+        });
+
+        if (!active) {
+          return;
+        }
+
+        setProperties(adaptPublicPropertiesToBookingV2(response.data));
+      } catch (caughtError) {
+        if (!active) {
+          return;
+        }
+
+        setProperties([]);
+        setError(
+          getApiErrorMessage(
+            caughtError,
+            "Kami belum bisa memuat data kamar. Silakan coba lagi."
+          )
+        );
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadProperties();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filteredProperties = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    const base = properties.filter((property) => {
+      const matchesKeyword = keyword
+        ? `${property.name} ${property.address} ${property.location} ${property.propertyTypeLabel}`
+            .toLowerCase()
+            .includes(keyword)
+        : true;
+
+      return matchesKeyword && propertyMatchesFilter(property, activeFilter);
+    });
+
+    if (activeFilter === "lowest_price") {
+      return [...base].sort((first, second) => {
+        const firstPrice = first.priceMin || first.priceMax || Number.MAX_SAFE_INTEGER;
+        const secondPrice =
+          second.priceMin || second.priceMax || Number.MAX_SAFE_INTEGER;
+        return firstPrice - secondPrice;
+      });
+    }
+
+    return base;
+  }, [activeFilter, properties, search]);
+
+  const selectedMapProperty = useMemo(() => {
+    if (filteredProperties.length === 0) {
+      return null;
+    }
+
+    return (
+      filteredProperties.find((property) => property.id === selectedMapPropertyId) ||
+      filteredProperties[0]
+    );
+  }, [filteredProperties, selectedMapPropertyId]);
+
+  const mapLocations = useMemo<BookingV2MapLocation[]>(() => {
+    return filteredProperties.map((property) => {
+      const coordinate = resolvePropertyCoordinate(property);
+
+      return {
+        id: property.id,
+        name: property.name,
+        address: property.address,
+        lat: coordinate.lat,
+        lng: coordinate.lng,
+        priceLabel: property.priceLabel,
+        markerLabel: formatMarkerPrice(property.priceMin || property.priceMax),
+        availabilityLabel: property.availabilityLabel,
+        availableUnits: property.availableUnits,
+        imageUrl: property.imageUrl,
+        propertyTypeLabel: property.propertyTypeLabel,
+        href: `/booking/v2/property/${property.slug}`,
+      };
+    });
+  }, [filteredProperties]);
+
+  const handleFavoriteChange = (propertyId: number, isFavorite: boolean) => {
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (isFavorite) {
+        next.add(propertyId);
+      } else {
+        next.delete(propertyId);
+      }
+      saveBookingV2FavoriteIds(next);
+      return next;
+    });
+  };
+
+  const handleSearchSubmit = (value: {
+    location: string;
+    startDate: string;
+    duration: BookingV2DurationPreset;
+    occupants: number;
+  }) => {
+    setSearch(value.location);
+    setStartDate(value.startDate);
+    setDurationPreset(value.duration);
+    setOccupants(value.occupants);
+    mergeBookingV2Draft({
+      propertyName: value.location,
+      checkInDate: value.startDate,
+      durationPreset: value.duration,
+    });
+    setSearchOpen(false);
+  };
+
+  if (!BOOKING_V2_ENABLED) {
+    return <BookingV2Unavailable />;
+  }
+
+  return (
+    <div className="min-h-screen bg-white pb-12 text-[var(--color-text-primary)]">
+      <ExpandedSearchBar
+        open={searchOpen}
+        initialLocation={search}
+        initialStartDate={startDate}
+        initialDuration={durationPreset}
+        initialOccupants={occupants}
+        onClose={() => setSearchOpen(false)}
+        onSubmit={handleSearchSubmit}
+      />
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-[1760px] items-center justify-center px-5 py-4 md:px-8">
+          <CompactSearchBar
+            location={search}
+            startDate={startDate}
+            durationLabel={getBookingV2DurationLabel(durationPreset)}
+            occupants={occupants}
+            onOpen={() => setSearchOpen(true)}
+          />
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="inline-flex h-12 w-full items-center justify-center rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-900 shadow-[var(--shadow-small)] transition hover:border-slate-950 md:hidden"
+          >
+            Cari kost di dekat IPB
+          </button>
+        </div>
+      </section>
+      <FilterBar
+        activeFilter={activeFilter}
+        onChange={setActiveFilter}
+        onOpenFilter={() => setFilterOpen(true)}
+      />
+
+      <main className="mx-auto max-w-[1760px] px-5 py-7 md:px-8">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <BookingVersionBadge version="Versi 2" tone="blue" />
+            <h1 className="mt-3 text-2xl font-semibold tracking-normal text-slate-950 md:text-3xl">
+              Kost yang cocok untukmu
+            </h1>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              Pilih properti dan kamar sesuai kebutuhanmu.
+            </p>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <PropertySearchLoading />
+        ) : error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+            <p className="inline-flex items-center gap-2 font-semibold">
+              <AlertCircle size={16} />
+              Data properti belum siap
+            </p>
+            <p className="mt-2">{error}</p>
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+            <Building2 size={24} className="mx-auto text-slate-400" />
+            <p className="mt-3 text-sm font-semibold text-slate-800">
+              Belum ada kamar yang sesuai dengan pencarianmu.
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Ubah kata kunci, hapus filter, atau lihat properti lainnya.
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="inline-flex h-10 items-center rounded-full border border-slate-300 px-4 text-xs font-semibold text-slate-900"
+              >
+                Ubah tanggal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setActiveFilter("all");
+                }}
+                className="inline-flex h-10 items-center rounded-full bg-slate-950 px-4 text-xs font-semibold text-white"
+              >
+                Hapus filter
+              </button>
+            </div>
+          </div>
+        ) : (
+          <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(420px,38vw)]">
+            <div>
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-slate-950">
+                    {filteredProperties.length} kost tersedia
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    Tersedia untuk periode yang kamu pilih.
+                  </p>
+                </div>
+                {activeFilter !== "all" ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveFilter("all")}
+                    className="text-xs font-semibold text-slate-700 underline underline-offset-4"
+                  >
+                    Hapus filter
+                  </button>
+                ) : null}
+              </div>
+
+              <PropertyGrid
+                properties={filteredProperties}
+                favoriteIds={favoriteIds}
+                selectedPropertyId={selectedMapProperty?.id}
+                onSelectProperty={setSelectedMapPropertyId}
+                onFavoriteChange={handleFavoriteChange}
+              />
+            </div>
+
+            <aside className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[var(--shadow-small)] xl:sticky xl:top-[188px] xl:block xl:h-[calc(100vh_-_220px)]">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <MapPin size={15} className="text-[var(--color-primary)]" />
+                  Peta area kost
+                </p>
+                <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                  {mapLocations.length} titik
+                </span>
+              </div>
+              <div className="relative z-0 h-[calc(100%_-_49px)] w-full">
+                <BookingV2PropertyMap
+                  locations={mapLocations}
+                  selectedId={selectedMapProperty?.id ?? null}
+                  onSelect={setSelectedMapPropertyId}
+                />
+              </div>
+            </aside>
+          </section>
+        )}
+      </main>
+
+      {filterOpen ? (
+        <div className="fixed inset-0 z-[95] flex items-end bg-black/30 p-4 md:items-center md:justify-center">
+          <div className="w-full rounded-3xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-medium)] md:max-w-lg">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">
+                  Filter lainnya
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Filter mengikuti field katalog existing: fasilitas, harga, dan
+                  ketersediaan.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(false)}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold"
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="mt-5 grid gap-2">
+              {(["available", "wifi", "furnished", "ac", "parking_area", "cctv", "lowest_price"] as BookingV2FilterValue[]).map(
+                (filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => {
+                      setActiveFilter(filter);
+                      setFilterOpen(false);
+                    }}
+                    className="flex h-11 items-center justify-between rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-950"
+                  >
+                    <span>
+                      {
+                        {
+                          available: "Tersedia sekarang",
+                          wifi: "WiFi",
+                          furnished: "Fully furnished",
+                          ac: "AC",
+                          parking_area: "Parkir",
+                          cctv: "CCTV",
+                          lowest_price: "Harga terendah",
+                        }[filter]
+                      }
+                    </span>
+                    <span className="text-xs text-slate-400">Pilih</span>
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PropertySearchLoading() {
+  return (
+    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={index} className="animate-pulse">
+          <div className="aspect-square rounded-2xl bg-slate-100" />
+          <div className="mt-3 h-4 w-2/3 rounded bg-slate-100" />
+          <div className="mt-2 h-3 w-1/2 rounded bg-slate-100" />
+          <div className="mt-4 h-4 w-1/3 rounded bg-slate-100" />
+        </div>
+      ))}
+    </div>
+  );
+}

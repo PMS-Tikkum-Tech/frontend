@@ -1,0 +1,183 @@
+"use client";
+
+import { Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { BookingV2DurationPreset } from "../store/bookingV2Store";
+
+const LOCATION_SUGGESTIONS = [
+  "Kinara Signature Kost",
+  "KIKOST Classic",
+  "KIKOST Cozy",
+  "KIKOST Manunggal",
+  "KIKOST Cimanggu",
+  "KIKOST Cifor",
+];
+
+const DURATION_OPTIONS: Array<{ value: BookingV2DurationPreset; label: string }> = [
+  { value: "1m", label: "1 bulan" },
+  { value: "6m", label: "6 bulan" },
+  { value: "12m", label: "12 bulan" },
+];
+
+export default function ExpandedSearchBar({
+  open,
+  initialLocation,
+  initialStartDate,
+  initialDuration,
+  initialOccupants,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  initialLocation: string;
+  initialStartDate: string;
+  initialDuration: BookingV2DurationPreset;
+  initialOccupants: number;
+  onClose: () => void;
+  onSubmit: (value: {
+    location: string;
+    startDate: string;
+    duration: BookingV2DurationPreset;
+    occupants: number;
+  }) => void;
+}) {
+  const [location, setLocation] = useState(initialLocation);
+  const [startDate, setStartDate] = useState(initialStartDate);
+  const [duration, setDuration] = useState<BookingV2DurationPreset>(initialDuration);
+  const [occupants, setOccupants] = useState(initialOccupants);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-black/30 px-4 py-5 md:pt-24">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit({ location, startDate, duration, occupants });
+        }}
+        className="mx-auto max-w-5xl rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.2)] md:p-5"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-slate-950">
+            Mau tinggal di mana?
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup pencarian"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-700"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid overflow-hidden rounded-[24px] border border-slate-200 md:grid-cols-[minmax(0,1.2fr)_180px_170px_160px_76px]">
+          <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+            <span className="block text-xs font-semibold text-slate-950">Lokasi</span>
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="Cari kost dekat kampus"
+              className="mt-1 w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              autoFocus
+            />
+          </label>
+          <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+            <span className="block text-xs font-semibold text-slate-950">
+              Mulai tinggal
+            </span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+              className="mt-1 w-full bg-transparent text-sm outline-none"
+            />
+          </label>
+          <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+            <span className="block text-xs font-semibold text-slate-950">
+              Durasi sewa
+            </span>
+            <select
+              value={duration}
+              onChange={(event) =>
+                setDuration(event.target.value as BookingV2DurationPreset)
+              }
+              className="mt-1 w-full bg-transparent text-sm outline-none"
+            >
+              {DURATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+            <div>
+              <span className="block text-xs font-semibold text-slate-950">
+                Penghuni
+              </span>
+              <span className="mt-1 block text-sm text-slate-500">
+                {occupants} penghuni
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOccupants((value) => Math.max(1, value - 1))}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold"
+                aria-label="Kurangi penghuni"
+              >
+                -
+              </button>
+              <button
+                type="button"
+                onClick={() => setOccupants((value) => Math.min(2, value + 1))}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold"
+                aria-label="Tambah penghuni"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="m-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-5 text-sm font-semibold text-white"
+          >
+            <Search size={16} />
+            Cari
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {LOCATION_SUGGESTIONS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setLocation(item)}
+              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400"
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </form>
+    </div>
+  );
+}
