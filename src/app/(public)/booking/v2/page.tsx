@@ -11,7 +11,11 @@ import {
 import { fetchBookingProperties } from "@/features/booking/shared/api/bookingApi";
 import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
 import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
-import { resolveBackendCoordinate } from "@/lib/maps/property-coordinate";
+import {
+  geocodePropertyAddress,
+  resolveBackendCoordinate,
+  type PropertyCoordinate,
+} from "@/lib/maps/property-coordinate";
 import type { BookingV2MapLocation } from "@/features/booking/v2/components/BookingV2PropertyMap";
 import BookingV2Unavailable from "@/features/booking/v2/components/BookingV2Unavailable";
 import CompactSearchBar from "@/features/booking/v2/components/CompactSearchBar";
@@ -46,6 +50,33 @@ const FALLBACK_COORDINATE = {
   lng: 106.7283,
 };
 
+const SPECIFIC_COORDINATES: Array<{
+  keywords: string[];
+  lat: number;
+  lng: number;
+}> = [
+  {
+    keywords: ["cpmj+qq8", "kinara cozy kost", "kinara classic kost"],
+    lat: -6.565576272465511,
+    lng: 106.73194704615362,
+  },
+  {
+    keywords: ["kinara signature kost", "jl. merdeka no. 10"],
+    lat: -6.9124,
+    lng: 107.6098,
+  },
+  {
+    keywords: ["kinara urban residence", "jl. asia afrika no. 99"],
+    lat: -6.9217,
+    lng: 107.6096,
+  },
+  {
+    keywords: ["kinara green house", "jl. dago atas no. 21"],
+    lat: -6.8669,
+    lng: 107.6191,
+  },
+];
+
 const AREA_COORDINATES: Array<{
   keywords: string[];
   lat: number;
@@ -56,6 +87,7 @@ const AREA_COORDINATES: Array<{
   { keywords: ["ciampea"], lat: -6.554, lng: 106.703 },
   { keywords: ["baranangsiang"], lat: -6.5956, lng: 106.8068 },
   { keywords: ["bubulak"], lat: -6.5579, lng: 106.7689 },
+  { keywords: ["bandung"], lat: -6.9175, lng: 107.6191 },
 ];
 
 const filterKeywords: Record<BookingV2FilterValue, string[]> = {
@@ -87,7 +119,14 @@ const formatMarkerPrice = (value?: number | null) => {
   return `Rp${value}`;
 };
 
-const resolvePropertyCoordinate = (property: BookingV2Property) => {
+const resolvePropertyCoordinate = (
+  property: BookingV2Property,
+  geocodedCoordinate?: PropertyCoordinate | null
+) => {
+  if (geocodedCoordinate) {
+    return geocodedCoordinate;
+  }
+
   const backendCoordinate = resolveBackendCoordinate(
     property.raw.latitude,
     property.raw.longitude
@@ -97,6 +136,16 @@ const resolvePropertyCoordinate = (property: BookingV2Property) => {
   }
 
   const searchText = `${property.name} ${property.address}`.toLowerCase();
+  const specificMatch = SPECIFIC_COORDINATES.find((coordinate) =>
+    coordinate.keywords.some((keyword) => searchText.includes(keyword))
+  );
+  if (specificMatch) {
+    return {
+      lat: specificMatch.lat,
+      lng: specificMatch.lng,
+    };
+  }
+
   const matched =
     AREA_COORDINATES.find((area) =>
       area.keywords.some((keyword) => searchText.includes(keyword))
@@ -146,6 +195,9 @@ export default function BookingV2PropertyPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [geocodedCoordinates, setGeocodedCoordinates] = useState<
+    Record<number, PropertyCoordinate>
+  >({});
 
   useEffect(() => {
     const draft = loadBookingV2Draft();
@@ -205,6 +257,69 @@ export default function BookingV2PropertyPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const unresolvedProperties = properties.filter((property) => {
+      if (!property.address || property.address === "-") {
+        return false;
+      }
+
+      if (geocodedCoordinates[property.id]) {
+        return false;
+      }
+
+      return !resolveBackendCoordinate(
+        property.raw.latitude,
+        property.raw.longitude
+      );
+    });
+
+    if (unresolvedProperties.length === 0) {
+      return () => {
+        active = false;
+      };
+    }
+
+    const resolveMissingCoordinates = async () => {
+      for (const property of unresolvedProperties) {
+        if (!active) {
+          return;
+        }
+
+        const coordinate = await geocodePropertyAddress(
+          property.address,
+          property.name
+        );
+        if (!active || !coordinate) {
+          continue;
+        }
+
+        setGeocodedCoordinates((current) => {
+          const existing = current[property.id];
+          if (existing?.lat === coordinate.lat && existing?.lng === coordinate.lng) {
+            return current;
+          }
+
+          return {
+            ...current,
+            [property.id]: coordinate,
+          };
+        });
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 150);
+        });
+      }
+    };
+
+    void resolveMissingCoordinates();
+
+    return () => {
+      active = false;
+    };
+  }, [geocodedCoordinates, properties]);
+
   const filteredProperties = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     const base = properties.filter((property) => {
@@ -242,7 +357,10 @@ export default function BookingV2PropertyPage() {
 
   const mapLocations = useMemo<BookingV2MapLocation[]>(() => {
     return filteredProperties.map((property) => {
-      const coordinate = resolvePropertyCoordinate(property);
+      const coordinate = resolvePropertyCoordinate(
+        property,
+        geocodedCoordinates[property.id]
+      );
 
       return {
         id: property.id,
@@ -259,7 +377,7 @@ export default function BookingV2PropertyPage() {
         href: `/booking/v2/property/${property.slug}`,
       };
     });
-  }, [filteredProperties]);
+  }, [filteredProperties, geocodedCoordinates]);
 
   const handleFavoriteChange = (propertyId: number, isFavorite: boolean) => {
     setFavoriteIds((current) => {
@@ -384,8 +502,8 @@ export default function BookingV2PropertyPage() {
             </div>
           </div>
         ) : (
-          <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(420px,38vw)]">
-            <div>
+          <section className="grid gap-8 xl:h-[calc(100vh_-_188px)] xl:grid-cols-[minmax(620px,760px)_minmax(0,1fr)] xl:overflow-hidden">
+            <div className="xl:flex xl:min-h-0 xl:flex-col">
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-base font-semibold text-slate-950">
@@ -406,16 +524,18 @@ export default function BookingV2PropertyPage() {
                 ) : null}
               </div>
 
-              <PropertyGrid
-                properties={filteredProperties}
-                favoriteIds={favoriteIds}
-                selectedPropertyId={selectedMapProperty?.id}
-                onSelectProperty={setSelectedMapPropertyId}
-                onFavoriteChange={handleFavoriteChange}
-              />
+              <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-2 xl:pb-6">
+                <PropertyGrid
+                  properties={filteredProperties}
+                  favoriteIds={favoriteIds}
+                  selectedPropertyId={selectedMapProperty?.id}
+                  onSelectProperty={setSelectedMapPropertyId}
+                  onFavoriteChange={handleFavoriteChange}
+                />
+              </div>
             </div>
 
-            <aside className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[var(--shadow-small)] xl:sticky xl:top-[188px] xl:block xl:h-[calc(100vh_-_220px)]">
+            <aside className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[var(--shadow-small)] xl:block xl:h-full">
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <MapPin size={15} className="text-[var(--color-primary)]" />
@@ -497,7 +617,7 @@ export default function BookingV2PropertyPage() {
 
 function PropertySearchLoading() {
   return (
-    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2">
       {Array.from({ length: 8 }).map((_, index) => (
         <div key={index} className="animate-pulse">
           <div className="aspect-square rounded-2xl bg-slate-100" />

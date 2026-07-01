@@ -28,6 +28,7 @@ export type BookingV2MapLocation = {
 };
 
 const DEFAULT_CENTER: [number, number] = [-6.5667, 106.7283];
+const FOCUSED_ZOOM = 16;
 
 function FitToLocations({ locations }: { locations: BookingV2MapLocation[] }) {
   const map = useMap();
@@ -39,7 +40,7 @@ function FitToLocations({ locations }: { locations: BookingV2MapLocation[] }) {
     }
 
     if (locations.length === 1) {
-      map.setView([locations[0].lat, locations[0].lng], 15);
+      map.setView([locations[0].lat, locations[0].lng], FOCUSED_ZOOM);
       return;
     }
 
@@ -71,7 +72,7 @@ function FocusSelected({
       return;
     }
 
-    map.flyTo([selectedLocation.lat, selectedLocation.lng], 15, {
+    map.flyTo([selectedLocation.lat, selectedLocation.lng], FOCUSED_ZOOM, {
       duration: 0.35,
     });
   }, [locations, map, selectedId]);

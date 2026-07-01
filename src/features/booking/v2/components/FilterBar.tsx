@@ -60,26 +60,28 @@ export default function FilterBar({
           <ChevronLeft size={16} />
         </button>
 
-        <div className="flex min-w-0 flex-1 gap-6 overflow-x-auto">
-          {FILTERS.map((filter) => {
-            const isActive = activeFilter === filter.value;
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="mx-auto flex w-max gap-6">
+            {FILTERS.map((filter) => {
+              const isActive = activeFilter === filter.value;
 
-            return (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => onChange(filter.value)}
-                className={`flex min-w-fit flex-col items-center gap-1 border-b-2 px-1 pb-2 pt-1 text-xs font-semibold transition ${
-                  isActive
-                    ? "border-slate-950 text-slate-950"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-950"
-                }`}
-              >
-                {filter.icon}
-                {filter.label}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => onChange(filter.value)}
+                  className={`flex min-w-fit flex-col items-center gap-1 border-b-2 px-1 pb-2 pt-1 text-xs font-semibold transition ${
+                    isActive
+                      ? "border-slate-950 text-slate-950"
+                      : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-950"
+                  }`}
+                >
+                  {filter.icon}
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button
