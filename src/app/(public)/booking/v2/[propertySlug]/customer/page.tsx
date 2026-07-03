@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, UserRound } from "lucide-react";
 import { BOOKING_V2_ENABLED } from "@/features/booking/shared/config/bookingFeatureFlags";
+import { buildExistingPaymentHref } from "@/features/booking/shared/adapters/paymentAdapter";
 import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
 import BookingV2StepBar from "@/features/booking/v2/components/BookingV2StepBar";
 import BookingV2Unavailable from "@/features/booking/v2/components/BookingV2Unavailable";
@@ -16,6 +17,13 @@ export default function BookingV2CustomerPage() {
   const propertySlug = params.propertySlug;
   const { user } = useAuth();
   const [draft] = useState<BookingV2Draft | null>(() => loadBookingV2Draft());
+  const existingPaymentHref = useMemo(() => {
+    return buildExistingPaymentHref({
+      propertyId: draft?.propertyId,
+      unitId: draft?.unitId,
+      bookingVersion: "v2",
+    });
+  }, [draft?.propertyId, draft?.unitId]);
 
   if (!BOOKING_V2_ENABLED) {
     return <BookingV2Unavailable />;
@@ -66,9 +74,13 @@ export default function BookingV2CustomerPage() {
             >
               Masuk sebagai tenant
             </Link>
+          ) : user.role !== "tenant" ? (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Booking hanya dapat dilanjutkan menggunakan akun tenant.
+            </div>
           ) : (
             <Link
-              href={`/booking/v2/${propertySlug}/payment`}
+              href={existingPaymentHref}
               className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-sky-600 px-5 text-sm font-semibold text-white transition hover:bg-sky-700"
             >
               Lanjut Payment

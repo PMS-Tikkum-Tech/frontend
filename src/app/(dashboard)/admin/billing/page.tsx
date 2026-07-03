@@ -451,7 +451,7 @@ const recordPaymentAsIncome = async (payment: AdminPayment) => {
   const amount = Number(payment.amount || 0);
 
   if (!propertyId || amount <= 0) {
-    return;
+    return false;
   }
 
   const tenantName = payment.tenant.full_name?.trim() || "Penyewa";
@@ -471,8 +471,9 @@ const recordPaymentAsIncome = async (payment: AdminPayment) => {
       description,
       ...(receiptFile ? { receipt: receiptFile } : {}),
     });
+    return true;
   } catch {
-    // Kegagalan pencatatan keuangan tidak memblokir proses ACC
+    return false;
   }
 };
 
@@ -1003,11 +1004,13 @@ export default function AdminBillingPage() {
           notes: "Disetujui dari tagihan administrator",
         });
 
-        void recordPaymentAsIncome(payment);
+        const incomeRecorded = await recordPaymentAsIncome(payment);
 
         setNotice({
-          variant: "success",
-          message: `Pembayaran pemesanan #${payment.invoice_id} berhasil di-ACC dan tercatat di keuangan.`,
+          variant: incomeRecorded ? "success" : "error",
+          message: incomeRecorded
+            ? `Pembayaran pemesanan #${payment.invoice_id} berhasil di-ACC dan tercatat di keuangan.`
+            : `Pembayaran pemesanan #${payment.invoice_id} berhasil di-ACC, tetapi pencatatan keuangan gagal. Catat transaksi secara manual di menu Keuangan.`,
         });
         setApproveConfirmationPayment(null);
         setRefreshKey((previous) => previous + 1);
@@ -1039,11 +1042,13 @@ export default function AdminBillingPage() {
         paid_at: new Date().toISOString(),
       });
 
-      void recordPaymentAsIncome(payment);
+      const incomeRecorded = await recordPaymentAsIncome(payment);
 
       setNotice({
-        variant: "success",
-        message: `Pembayaran #${payment.invoice_id} berhasil di-ACC dan tercatat di keuangan.`,
+        variant: incomeRecorded ? "success" : "error",
+        message: incomeRecorded
+          ? `Pembayaran #${payment.invoice_id} berhasil di-ACC dan tercatat di keuangan.`
+          : `Pembayaran #${payment.invoice_id} berhasil di-ACC, tetapi pencatatan keuangan gagal. Catat transaksi secara manual di menu Keuangan.`,
       });
       setApproveConfirmationPayment(null);
       setRefreshKey((previous) => previous + 1);

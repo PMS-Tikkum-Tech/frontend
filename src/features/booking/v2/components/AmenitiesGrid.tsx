@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import {
   Armchair,
   Bath,
@@ -37,13 +34,9 @@ const getAmenityIcon = (amenity: string) => {
 };
 
 export default function AmenitiesGrid({ facilities }: { facilities: string[] }) {
-  const [expanded, setExpanded] = useState(false);
   const uniqueFacilities = Array.from(
     new Set(facilities.map((facility) => facility.trim()).filter(Boolean))
   );
-  const visibleFacilities = expanded
-    ? uniqueFacilities
-    : uniqueFacilities.slice(0, 8);
 
   if (uniqueFacilities.length === 0) {
     return (
@@ -56,7 +49,7 @@ export default function AmenitiesGrid({ facilities }: { facilities: string[] }) 
   return (
     <div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {visibleFacilities.map((facility) => {
+        {uniqueFacilities.map((facility) => {
           const Icon = getAmenityIcon(facility);
 
           return (
@@ -67,16 +60,6 @@ export default function AmenitiesGrid({ facilities }: { facilities: string[] }) 
           );
         })}
       </div>
-
-      {uniqueFacilities.length > 8 ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((current) => !current)}
-          className="mt-6 inline-flex h-11 items-center rounded-xl border border-slate-950 px-5 text-sm font-semibold text-slate-950"
-        >
-          {expanded ? "Sembunyikan fasilitas" : "Tampilkan semua fasilitas"}
-        </button>
-      ) : null}
     </div>
   );
 }

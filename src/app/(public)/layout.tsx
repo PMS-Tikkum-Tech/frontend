@@ -6,7 +6,7 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="font-plus-jakarta overflow-x-hidden">
+    <div className="font-plus-jakarta overflow-x-clip">
       <PublicHeader />
       <main className="bg-slate-50 min-h-screen">{children}</main>
     </div>

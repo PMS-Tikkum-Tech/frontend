@@ -24,7 +24,6 @@ export default function ExpandedSearchBar({
   initialLocation,
   initialStartDate,
   initialDuration,
-  initialOccupants,
   onClose,
   onSubmit,
 }: {
@@ -32,19 +31,16 @@ export default function ExpandedSearchBar({
   initialLocation: string;
   initialStartDate: string;
   initialDuration: BookingV2DurationPreset;
-  initialOccupants: number;
   onClose: () => void;
   onSubmit: (value: {
     location: string;
     startDate: string;
     duration: BookingV2DurationPreset;
-    occupants: number;
   }) => void;
 }) {
   const [location, setLocation] = useState(initialLocation);
   const [startDate, setStartDate] = useState(initialStartDate);
   const [duration, setDuration] = useState<BookingV2DurationPreset>(initialDuration);
-  const [occupants, setOccupants] = useState(initialOccupants);
 
   useEffect(() => {
     if (!open) {
@@ -70,7 +66,7 @@ export default function ExpandedSearchBar({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit({ location, startDate, duration, occupants });
+          onSubmit({ location, startDate, duration });
         }}
         className="mx-auto max-w-5xl rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.2)] md:p-5"
       >
@@ -88,7 +84,7 @@ export default function ExpandedSearchBar({
           </button>
         </div>
 
-        <div className="grid overflow-hidden rounded-[24px] border border-slate-200 md:grid-cols-[minmax(0,1.2fr)_180px_170px_160px_76px]">
+        <div className="grid overflow-hidden rounded-[24px] border border-slate-200 md:grid-cols-[minmax(0,1.2fr)_180px_170px_76px]">
           <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
             <span className="block text-xs font-semibold text-slate-950">Lokasi</span>
             <input
@@ -128,34 +124,6 @@ export default function ExpandedSearchBar({
               ))}
             </select>
           </label>
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
-            <div>
-              <span className="block text-xs font-semibold text-slate-950">
-                Penghuni
-              </span>
-              <span className="mt-1 block text-sm text-slate-500">
-                {occupants} penghuni
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setOccupants((value) => Math.max(1, value - 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold"
-                aria-label="Kurangi penghuni"
-              >
-                -
-              </button>
-              <button
-                type="button"
-                onClick={() => setOccupants((value) => Math.min(2, value + 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold"
-                aria-label="Tambah penghuni"
-              >
-                +
-              </button>
-            </div>
-          </div>
           <button
             type="submit"
             className="m-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-5 text-sm font-semibold text-white"

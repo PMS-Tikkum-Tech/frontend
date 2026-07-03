@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CreditCard } from "lucide-react";
 import { BOOKING_V2_ENABLED } from "@/features/booking/shared/config/bookingFeatureFlags";
 import { buildExistingPaymentHref } from "@/features/booking/shared/adapters/paymentAdapter";
@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function BookingV2PaymentPage() {
   const params = useParams<{ propertySlug: string }>();
   const propertySlug = params.propertySlug;
+  const router = useRouter();
   const { user } = useAuth();
   const [draft] = useState<BookingV2Draft | null>(() => loadBookingV2Draft());
 
@@ -25,6 +26,15 @@ export default function BookingV2PaymentPage() {
       bookingVersion: "v2",
     });
   }, [draft?.propertyId, draft?.unitId]);
+
+  const canOpenPaymentForm =
+    Boolean(draft?.propertyId) && Boolean(draft?.unitId) && user?.role === "tenant";
+
+  useEffect(() => {
+    if (canOpenPaymentForm) {
+      router.replace(existingPaymentHref);
+    }
+  }, [canOpenPaymentForm, existingPaymentHref, router]);
 
   if (!BOOKING_V2_ENABLED) {
     return <BookingV2Unavailable />;
@@ -74,6 +84,10 @@ export default function BookingV2PaymentPage() {
             >
               Masuk untuk payment
             </Link>
+          ) : user.role !== "tenant" ? (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Payment booking hanya dapat dilakukan menggunakan akun tenant.
+            </div>
           ) : (
             <Link
               href={existingPaymentHref}

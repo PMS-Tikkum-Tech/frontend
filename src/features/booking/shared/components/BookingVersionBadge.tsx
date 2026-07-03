@@ -13,6 +13,10 @@ export default function BookingVersionBadge({
     return null;
   }
 
+  if (version === "Versi 2") {
+    return null;
+  }
+
   const className =
     tone === "dark"
       ? "border-white/40 bg-black/35 text-white"

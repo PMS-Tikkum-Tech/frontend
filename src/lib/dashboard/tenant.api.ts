@@ -2049,7 +2049,7 @@ export const getTenantMaintenanceRequests = async (
       params
     );
   } catch (error) {
-    if (isStatusError(error, [403, 404])) {
+    if (isStatusError(error, [404])) {
       const page = getNumberParam(params?.page, 1);
       const perPage = getNumberParam(params?.per_page, 20);
       const paginated = paginateArray<TenantMaintenanceRequest>([], page, perPage);

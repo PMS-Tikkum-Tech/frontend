@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
+  CalendarDays,
   ChevronRight,
   LoaderCircle,
   MapPin,
@@ -40,6 +41,8 @@ import RoomSelectionGrid from "@/features/booking/v2/components/RoomSelectionGri
 import RoomTypeCard, {
   type BookingV2RoomTypeOption,
 } from "@/features/booking/v2/components/RoomTypeCard";
+import VisitRequestModal from "@/components/sewa/VisitRequestModal";
+import { useAuth } from "@/context/AuthContext";
 import type { BookingV2MapLocation } from "@/features/booking/v2/components/BookingV2PropertyMap";
 import {
   isBookingV2DurationPreset,
@@ -49,7 +52,11 @@ import {
   saveBookingV2FavoriteIds,
   type BookingV2DurationPreset,
 } from "@/features/booking/v2/store/bookingV2Store";
-import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
+import {
+  createTenantVisitRequest,
+  getApiErrorMessage,
+  getTenantProfile,
+} from "@/lib/dashboard/tenant.api";
 import { resolveBackendCoordinate } from "@/lib/maps/property-coordinate";
 
 const BookingV2PropertyMap = dynamic(
@@ -131,6 +138,7 @@ const buildRoomTypeOptions = (
 export default function BookingV2PropertyDetailPage() {
   const params = useParams<{ propertySlug: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const propertySlug = params.propertySlug;
   const propertyId = useMemo(
     () => parseBookingPropertyId(propertySlug),
@@ -149,6 +157,14 @@ export default function BookingV2PropertyDetailPage() {
   const [occupants, setOccupants] = useState(1);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => new Set());
   const [mobileBookingOpen, setMobileBookingOpen] = useState(false);
+  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+  const [isSubmittingVisit, setIsSubmittingVisit] = useState(false);
+  const [visitNotice, setVisitNotice] = useState<{
+    variant: "success" | "error";
+    message: string;
+    actionHref?: string;
+    actionLabel?: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -349,6 +365,68 @@ export default function BookingV2PropertyDetailPage() {
     router.push(`/booking/v2/property/${propertySlug}/checkout`);
   };
 
+  const handleOpenVisitRequest = async () => {
+    setVisitNotice(null);
+
+    try {
+      const profileResponse = await getTenantProfile();
+      const profile = profileResponse.data;
+      if (!profile.email?.trim() || !profile.phone_number?.toString().trim()) {
+        setVisitNotice({
+          variant: "error",
+          message:
+            "Lengkapi email dan nomor HP di profil sebelum mengajukan jadwal survei.",
+          actionHref: "/tenant/akun",
+          actionLabel: "Lengkapi Profil",
+        });
+        return;
+      }
+    } catch {
+      // Validasi yang sama tetap dijalankan ketika permintaan dikirim.
+    }
+
+    setIsVisitModalOpen(true);
+  };
+
+  const handleSubmitVisitRequest = async (payload: {
+    preferredDate: string;
+    preferredTime: string;
+    note: string;
+  }) => {
+    if (!property) {
+      throw new Error("Kost belum tersedia.");
+    }
+
+    setIsSubmittingVisit(true);
+    setVisitNotice(null);
+
+    try {
+      await createTenantVisitRequest({
+        property_id: property.id,
+        preferred_date: payload.preferredDate,
+        preferred_time: payload.preferredTime,
+        note: payload.note,
+      });
+      setVisitNotice({
+        variant: "success",
+        message:
+          "Permintaan jadwal survei berhasil dikirim dan dapat dipantau di Jadwal Kunjungan.",
+        actionHref: "/tenant/jadwal-visit",
+        actionLabel: "Lihat Jadwal Kunjungan",
+      });
+      setIsVisitModalOpen(false);
+    } catch (submitError) {
+      const message = getApiErrorMessage(
+        submitError,
+        "Gagal mengirim permintaan survei. Silakan coba lagi."
+      );
+      setVisitNotice({ variant: "error", message });
+      throw new Error(message);
+    } finally {
+      setIsSubmittingVisit(false);
+    }
+  };
+
   if (!BOOKING_V2_ENABLED) {
     return <BookingV2Unavailable />;
   }
@@ -410,6 +488,24 @@ export default function BookingV2PropertyDetailPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {user?.role === "tenant" ? (
+              <button
+                type="button"
+                onClick={() => void handleOpenVisitRequest()}
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+              >
+                <CalendarDays size={15} />
+                Ajukan Survei
+              </button>
+            ) : !user ? (
+              <Link
+                href={`/auth?next=${encodeURIComponent(`/booking/v2/property/${propertySlug}`)}`}
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+              >
+                <CalendarDays size={15} />
+                Masuk untuk Survei
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -435,6 +531,26 @@ export default function BookingV2PropertyDetailPage() {
             />
           </div>
         </div>
+
+        {visitNotice ? (
+          <div
+            className={`mb-5 rounded-xl border px-4 py-3 text-sm ${
+              visitNotice.variant === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            <p>{visitNotice.message}</p>
+            {visitNotice.actionHref ? (
+              <Link
+                href={visitNotice.actionHref}
+                className="mt-1 inline-flex font-semibold underline underline-offset-2"
+              >
+                {visitNotice.actionLabel || "Buka"}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
 
         <PropertyGallery images={property.images} propertyName={property.name} />
 
@@ -541,9 +657,8 @@ export default function BookingV2PropertyDetailPage() {
             </section>
           </div>
 
-          <div className="hidden lg:block">
-            <div className="sticky top-36">
-              <BookingCard
+          <div className="hidden lg:sticky lg:top-32 lg:block lg:self-start">
+            <BookingCard
                 property={property}
                 rooms={filteredRooms}
                 roomTypes={roomTypeOptions}
@@ -562,8 +677,7 @@ export default function BookingV2PropertyDetailPage() {
                 }}
                 onRoomSelect={handleSelectRoom}
                 onContinue={handleContinue}
-              />
-            </div>
+            />
           </div>
         </div>
       </main>
@@ -615,6 +729,18 @@ export default function BookingV2PropertyDetailPage() {
           </div>
         </div>
       ) : null}
+
+      <VisitRequestModal
+        isOpen={isVisitModalOpen}
+        propertyName={property.name}
+        isSubmitting={isSubmittingVisit}
+        onClose={() => {
+          if (!isSubmittingVisit) {
+            setIsVisitModalOpen(false);
+          }
+        }}
+        onSubmit={handleSubmitVisitRequest}
+      />
     </div>
   );
 }

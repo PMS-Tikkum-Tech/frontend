@@ -6,13 +6,11 @@ export default function CompactSearchBar({
   location,
   startDate,
   durationLabel,
-  occupants,
   onOpen,
 }: {
   location: string;
   startDate: string;
   durationLabel: string;
-  occupants: number;
   onOpen: () => void;
 }) {
   return (
@@ -43,19 +41,8 @@ export default function CompactSearchBar({
           {durationLabel}
         </span>
       </span>
-      <span className="h-6 w-px bg-slate-200" />
-      <span className="flex min-w-[120px] items-center justify-between gap-2 pl-5 pr-2">
-        <span>
-          <span className="block text-[11px] font-semibold text-slate-900">
-            Penghuni
-          </span>
-          <span className="block text-xs text-[var(--color-text-secondary)]">
-            {occupants} orang
-          </span>
-        </span>
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
-          <Search size={16} />
-        </span>
+      <span className="mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+        <Search size={16} />
       </span>
     </button>
   );

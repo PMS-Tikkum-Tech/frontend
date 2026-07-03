@@ -2,28 +2,23 @@
 
 import type { ReactNode } from "react";
 import {
-  Armchair,
-  Bath,
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
   Building2,
-  Camera,
-  Car,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
-  Snowflake,
+  Mars,
   Sparkles,
-  Wifi,
+  Venus,
 } from "lucide-react";
 
 export type BookingV2FilterValue =
   | "all"
+  | "male"
+  | "female"
   | "available"
-  | "wifi"
-  | "furnished"
-  | "ac"
-  | "parking_area"
-  | "cctv"
-  | "lowest_price";
+  | "lowest_price"
+  | "highest_price";
 
 const FILTERS: Array<{
   label: string;
@@ -31,23 +26,27 @@ const FILTERS: Array<{
   icon: ReactNode;
 }> = [
   { label: "Semua kost", value: "all", icon: <Building2 size={18} /> },
+  { label: "Kost laki-laki", value: "male", icon: <Mars size={18} /> },
+  { label: "Kost perempuan", value: "female", icon: <Venus size={18} /> },
+  {
+    label: "Harga terendah",
+    value: "lowest_price",
+    icon: <ArrowDownNarrowWide size={18} />,
+  },
+  {
+    label: "Harga tertinggi",
+    value: "highest_price",
+    icon: <ArrowUpNarrowWide size={18} />,
+  },
   { label: "Tersedia sekarang", value: "available", icon: <Sparkles size={18} /> },
-  { label: "WiFi", value: "wifi", icon: <Wifi size={18} /> },
-  { label: "Fully furnished", value: "furnished", icon: <Armchair size={18} /> },
-  { label: "AC", value: "ac", icon: <Snowflake size={18} /> },
-  { label: "Parkir", value: "parking_area", icon: <Car size={18} /> },
-  { label: "CCTV", value: "cctv", icon: <Camera size={18} /> },
-  { label: "Harga terendah", value: "lowest_price", icon: <Bath size={18} /> },
 ];
 
 export default function FilterBar({
   activeFilter,
   onChange,
-  onOpenFilter,
 }: {
   activeFilter: BookingV2FilterValue;
   onChange: (filter: BookingV2FilterValue) => void;
-  onOpenFilter?: () => void;
 }) {
   return (
     <div className="sticky top-20 z-40 border-b border-slate-200 bg-white md:top-28">
@@ -90,14 +89,6 @@ export default function FilterBar({
           className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 md:inline-flex"
         >
           <ChevronRight size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={onOpenFilter}
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-slate-300 px-4 text-xs font-semibold text-slate-900"
-        >
-          <SlidersHorizontal size={15} />
-          Filter
         </button>
       </div>
     </div>

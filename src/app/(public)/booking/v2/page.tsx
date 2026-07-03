@@ -90,15 +90,9 @@ const AREA_COORDINATES: Array<{
   { keywords: ["bandung"], lat: -6.9175, lng: 107.6191 },
 ];
 
-const filterKeywords: Record<BookingV2FilterValue, string[]> = {
-  all: [],
-  available: [],
-  wifi: ["wifi", "internet"],
-  furnished: ["furnished", "furniture", "kasur", "lemari", "meja"],
-  ac: ["ac", "air conditioner"],
-  parking_area: ["parkir", "parking"],
-  cctv: ["cctv", "security", "keamanan"],
-  lowest_price: [],
+const genderFilterKeywords: Record<"male" | "female", string[]> = {
+  male: ["laki-laki", "laki laki", "putra", "pria", "male"],
+  female: ["perempuan", "putri", "wanita", "female"],
 };
 
 const formatMarkerPrice = (value?: number | null) => {
@@ -161,7 +155,11 @@ const propertyMatchesFilter = (
   property: BookingV2Property,
   activeFilter: BookingV2FilterValue
 ) => {
-  if (activeFilter === "all" || activeFilter === "lowest_price") {
+  if (
+    activeFilter === "all" ||
+    activeFilter === "lowest_price" ||
+    activeFilter === "highest_price"
+  ) {
     return true;
   }
 
@@ -169,13 +167,20 @@ const propertyMatchesFilter = (
     return property.availableUnits > 0;
   }
 
-  const keywords = filterKeywords[activeFilter];
-  const facilityText = property.facilities.join(" ").toLowerCase();
-  const propertyText = `${property.name} ${property.address} ${property.propertyTypeLabel}`.toLowerCase();
+  const keywords = genderFilterKeywords[activeFilter];
+  const propertyText = [
+    property.name,
+    property.propertyType,
+    property.propertyTypeLabel,
+    property.raw.description,
+    property.raw.rules,
+    ...property.facilities,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-  return keywords.some(
-    (keyword) => facilityText.includes(keyword) || propertyText.includes(keyword)
-  );
+  return keywords.some((keyword) => propertyText.includes(keyword));
 };
 
 export default function BookingV2PropertyPage() {
@@ -187,12 +192,10 @@ export default function BookingV2PropertyPage() {
   const [startDate, setStartDate] = useState("");
   const [durationPreset, setDurationPreset] =
     useState<BookingV2DurationPreset>("6m");
-  const [occupants, setOccupants] = useState(1);
   const [activeFilter, setActiveFilter] =
     useState<BookingV2FilterValue>("all");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => new Set());
   const [searchOpen, setSearchOpen] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [geocodedCoordinates, setGeocodedCoordinates] = useState<
@@ -341,6 +344,14 @@ export default function BookingV2PropertyPage() {
       });
     }
 
+    if (activeFilter === "highest_price") {
+      return [...base].sort((first, second) => {
+        const firstPrice = first.priceMax || first.priceMin || 0;
+        const secondPrice = second.priceMax || second.priceMin || 0;
+        return secondPrice - firstPrice;
+      });
+    }
+
     return base;
   }, [activeFilter, properties, search]);
 
@@ -396,12 +407,10 @@ export default function BookingV2PropertyPage() {
     location: string;
     startDate: string;
     duration: BookingV2DurationPreset;
-    occupants: number;
   }) => {
     setSearch(value.location);
     setStartDate(value.startDate);
     setDurationPreset(value.duration);
-    setOccupants(value.occupants);
     mergeBookingV2Draft({
       propertyName: value.location,
       checkInDate: value.startDate,
@@ -421,7 +430,6 @@ export default function BookingV2PropertyPage() {
         initialLocation={search}
         initialStartDate={startDate}
         initialDuration={durationPreset}
-        initialOccupants={occupants}
         onClose={() => setSearchOpen(false)}
         onSubmit={handleSearchSubmit}
       />
@@ -431,7 +439,6 @@ export default function BookingV2PropertyPage() {
             location={search}
             startDate={startDate}
             durationLabel={getBookingV2DurationLabel(durationPreset)}
-            occupants={occupants}
             onOpen={() => setSearchOpen(true)}
           />
           <button
@@ -443,11 +450,7 @@ export default function BookingV2PropertyPage() {
           </button>
         </div>
       </section>
-      <FilterBar
-        activeFilter={activeFilter}
-        onChange={setActiveFilter}
-        onOpenFilter={() => setFilterOpen(true)}
-      />
+      <FilterBar activeFilter={activeFilter} onChange={setActiveFilter} />
 
       <main className="mx-auto max-w-[1760px] px-5 py-7 md:px-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -557,60 +560,6 @@ export default function BookingV2PropertyPage() {
         )}
       </main>
 
-      {filterOpen ? (
-        <div className="fixed inset-0 z-[95] flex items-end bg-black/30 p-4 md:items-center md:justify-center">
-          <div className="w-full rounded-3xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-medium)] md:max-w-lg">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">
-                  Filter lainnya
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Filter mengikuti field katalog existing: fasilitas, harga, dan
-                  ketersediaan.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFilterOpen(false)}
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold"
-              >
-                Tutup
-              </button>
-            </div>
-            <div className="mt-5 grid gap-2">
-              {(["available", "wifi", "furnished", "ac", "parking_area", "cctv", "lowest_price"] as BookingV2FilterValue[]).map(
-                (filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => {
-                      setActiveFilter(filter);
-                      setFilterOpen(false);
-                    }}
-                    className="flex h-11 items-center justify-between rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-800 transition hover:border-slate-950"
-                  >
-                    <span>
-                      {
-                        {
-                          available: "Tersedia sekarang",
-                          wifi: "WiFi",
-                          furnished: "Fully furnished",
-                          ac: "AC",
-                          parking_area: "Parkir",
-                          cctv: "CCTV",
-                          lowest_price: "Harga terendah",
-                        }[filter]
-                      }
-                    </span>
-                    <span className="text-xs text-slate-400">Pilih</span>
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -18,8 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   createTenantMaintenanceRequest,
   getApiErrorMessage,
-  getTenantPayments,
-  type TenantPayment,
+  getTenantCurrentStay,
 } from "@/lib/dashboard/tenant.api";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
@@ -77,23 +76,22 @@ export default function ComplaintPage() {
     setError(null);
 
     try {
-      const response = await getTenantPayments({ page: 1, per_page: 100 });
+      const response = await getTenantCurrentStay();
+      const stay = response.data;
 
-      const uniqueOptions = new Map<number, UnitOption>();
-      response.data.forEach((payment: TenantPayment) => {
-        if (!payment.property.id || !payment.unit.id) {
-          return;
-        }
+      if (!stay.is_currently_renting || !stay.property || !stay.unit) {
+        setUnitOptions([]);
+        return;
+      }
 
-        uniqueOptions.set(payment.unit.id, {
-          propertyId: payment.property.id,
-          propertyName: payment.property.name || "-",
-          unitId: payment.unit.id,
-          unitName: getTenantUnitDisplayName(payment.unit),
-        });
-      });
-
-      setUnitOptions(Array.from(uniqueOptions.values()));
+      setUnitOptions([
+        {
+          propertyId: stay.property.id,
+          propertyName: stay.property.name || "-",
+          unitId: stay.unit.id,
+          unitName: getTenantUnitDisplayName(stay.unit),
+        },
+      ]);
     } catch (loadError) {
       setError(
         getApiErrorMessage(

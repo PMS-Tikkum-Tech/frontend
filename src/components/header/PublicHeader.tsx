@@ -29,8 +29,7 @@ export default function PublicHeader() {
   const nav = [
     { label: "Beranda", href: "/" },
     { label: "Tentang", href: "/tentang", disabled: true },
-    { label: "Sewa", href: "/sewa" },
-    { label: "Booking", href: "/booking" },
+    { label: "Sewa", href: "/booking" },
     { label: "Kerjasama", href: "/kerjasama", disabled: true },
   ];
 
@@ -306,7 +305,13 @@ export default function PublicHeader() {
       </header>
 
       {/* PANEL PROFIL */}
-      {user && <ProfilePanel open={open} onClose={() => setOpen(false)} />}
+      {user && (
+        <ProfilePanel
+          open={open}
+          onClose={() => setOpen(false)}
+          hasUnreadNotifications={showUnreadNotificationDot}
+        />
+      )}
     </>
   );
 }

@@ -1,5 +1,7 @@
 export const BOOKING_V2_STORAGE_KEY = "kikost_booking_v2_draft";
-export const BOOKING_V2_FAVORITES_STORAGE_KEY = "kikost_booking_v2_favorites";
+export const BOOKING_V2_FAVORITES_STORAGE_KEY =
+  "kyra.tenant.favorite.property.ids";
+const LEGACY_BOOKING_V2_FAVORITES_STORAGE_KEY = "kikost_booking_v2_favorites";
 
 export type BookingV2DurationPreset =
   | "7d"
@@ -79,9 +81,31 @@ export const loadBookingV2FavoriteIds = () => {
   }
 
   try {
-    const raw = window.localStorage.getItem(BOOKING_V2_FAVORITES_STORAGE_KEY);
-    const ids = raw ? (JSON.parse(raw) as number[]) : [];
-    return new Set(ids.filter((id) => Number.isFinite(id)));
+    const currentRaw = window.localStorage.getItem(
+      BOOKING_V2_FAVORITES_STORAGE_KEY
+    );
+    const legacyRaw = window.localStorage.getItem(
+      LEGACY_BOOKING_V2_FAVORITES_STORAGE_KEY
+    );
+    const current = currentRaw ? (JSON.parse(currentRaw) as unknown) : [];
+    const legacy = legacyRaw ? (JSON.parse(legacyRaw) as unknown) : [];
+    const values = [
+      ...(Array.isArray(current) ? current : []),
+      ...(Array.isArray(legacy) ? legacy : []),
+    ];
+    const ids = new Set(
+      values.map(Number).filter((id) => Number.isFinite(id) && id > 0)
+    );
+
+    if (legacyRaw) {
+      window.localStorage.setItem(
+        BOOKING_V2_FAVORITES_STORAGE_KEY,
+        JSON.stringify(Array.from(ids))
+      );
+      window.localStorage.removeItem(LEGACY_BOOKING_V2_FAVORITES_STORAGE_KEY);
+    }
+
+    return ids;
   } catch {
     return new Set<number>();
   }
@@ -98,6 +122,7 @@ export const saveBookingV2FavoriteIds = (ids: Set<number>) => {
     BOOKING_V2_FAVORITES_STORAGE_KEY,
     JSON.stringify(Array.from(ids))
   );
+  window.localStorage.removeItem(LEGACY_BOOKING_V2_FAVORITES_STORAGE_KEY);
 };
 
 export const isBookingV2DurationPreset = (

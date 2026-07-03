@@ -126,6 +126,8 @@ export default function ProfilePanel({
       : user?.role === "owner"
         ? "Pemilik Properti"
         : "Penyewa";
+  const isTenant = user?.role === "tenant";
+  const dashboardHref = user?.role === "admin" ? "/admin" : "/owner";
   const avatarUrl = (() => {
     if (!user?.avatar || failedAvatarKey === user.avatar) {
       return null;
@@ -209,6 +211,8 @@ export default function ProfilePanel({
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              {isTenant ? (
+                <>
               {/* ================= AKTIVITAS SAYA ================= */}
               <Section title="Aktivitas Saya">
                 <MenuItem
@@ -319,6 +323,41 @@ export default function ProfilePanel({
                   variant="danger"
                 />
               </Section>
+                </>
+              ) : (
+                <>
+                  <Section title="Akses Utama">
+                    <MenuItem
+                      icon={<Home size={20} />}
+                      title="Masuk Dasbor"
+                      subtitle={`Kelola aktivitas sebagai ${displayRole.toLowerCase()}`}
+                      href={dashboardHref}
+                      onClose={onClose}
+                    />
+
+                    {user?.role === "admin" ? (
+                      <MenuItem
+                        icon={<User size={20} />}
+                        title="Pengaturan Akun"
+                        subtitle="Perbarui profil administrator"
+                        href="/admin/account"
+                        onClose={onClose}
+                      />
+                    ) : null}
+                  </Section>
+
+                  <Section title="Sesi Akun">
+                    <MenuItem
+                      icon={<LogOut size={20} />}
+                      title="Keluar"
+                      subtitle="Akhiri sesi dan keluar dari akun"
+                      onClick={logout}
+                      onClose={onClose}
+                      variant="danger"
+                    />
+                  </Section>
+                </>
+              )}
             </div>
           </motion.div>
         </>
