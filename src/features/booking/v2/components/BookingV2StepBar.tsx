@@ -5,7 +5,7 @@ const STEPS = [
   "Kamar",
   "Ringkasan",
   "Data",
-  "Payment",
+  "Pembayaran",
 ] as const;
 
 type BookingV2Step = (typeof STEPS)[number];

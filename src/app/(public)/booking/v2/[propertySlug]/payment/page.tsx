@@ -42,7 +42,7 @@ export default function BookingV2PaymentPage() {
 
   return (
     <div className="pb-14">
-      <BookingV2StepBar current="Payment" />
+      <BookingV2StepBar current="Pembayaran" />
 
       <section className="mx-auto max-w-4xl px-6 py-8">
         <Link
@@ -56,17 +56,16 @@ export default function BookingV2PaymentPage() {
         <div className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <BookingVersionBadge version="Versi 2" tone="blue" />
           <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-            Payment
+            Pembayaran
           </h1>
 
           <div className="mt-5 rounded-lg border border-sky-100 bg-sky-50 p-4">
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-sky-900">
               <CreditCard size={16} />
-              Flow payment existing
+              Lanjut ke Pembayaran
             </p>
             <p className="mt-2 text-sm text-sky-800">
-              Booking akan dilanjutkan ke form pembayaran tenant yang sudah
-              terhubung ke endpoint manual rental existing.
+              Pemesanan akan diteruskan ke formulir pembayaran penghuni.
             </p>
           </div>
 
@@ -82,18 +81,18 @@ export default function BookingV2PaymentPage() {
               href={`/auth?next=${encodeURIComponent(`/booking/v2/${propertySlug}/payment`)}`}
               className="mt-5 inline-flex h-10 items-center rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white"
             >
-              Masuk untuk payment
+              Masuk untuk melanjutkan
             </Link>
           ) : user.role !== "tenant" ? (
             <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Payment booking hanya dapat dilakukan menggunakan akun tenant.
+              Pembayaran hanya dapat dilakukan menggunakan akun penghuni.
             </div>
           ) : (
             <Link
               href={existingPaymentHref}
               className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-sky-600 px-5 text-sm font-semibold text-white transition hover:bg-sky-700"
             >
-              Buka Form Pembayaran
+              Buka Formulir Pembayaran
               <ArrowRight size={15} />
             </Link>
           )}

@@ -53,10 +53,10 @@ export default function BookingV2CustomerPage() {
           <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
               <UserRound size={16} className="text-sky-700" />
-              {user ? user.name : "Akun tenant diperlukan"}
+              {user ? user.name : "Masuk sebagai penghuni"}
             </p>
             <p className="mt-2 text-sm text-slate-600">
-              Data penyewa tetap diproses melalui form tenant existing.
+              Data penghuni akan diisi di formulir berikutnya.
             </p>
           </div>
 
@@ -72,18 +72,18 @@ export default function BookingV2CustomerPage() {
               href={`/auth?next=${encodeURIComponent(currentHref)}`}
               className="mt-5 inline-flex h-10 items-center rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white"
             >
-              Masuk sebagai tenant
+              Masuk untuk melanjutkan
             </Link>
           ) : user.role !== "tenant" ? (
             <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Booking hanya dapat dilanjutkan menggunakan akun tenant.
+              Pemesanan ini hanya dapat dilanjutkan dengan akun penghuni.
             </div>
           ) : (
             <Link
               href={existingPaymentHref}
               className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-sky-600 px-5 text-sm font-semibold text-white transition hover:bg-sky-700"
             >
-              Lanjut Payment
+              Lanjut ke Pembayaran
               <ArrowRight size={15} />
             </Link>
           )}

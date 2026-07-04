@@ -127,7 +127,7 @@ export default function OwnerDashboardLayout({
 
   return (
     <RoleGuard allowedRoles={["owner"]}>
-      <div className="min-h-screen bg-slate-50 lg:flex">
+      <div className="min-h-screen overflow-x-hidden bg-[#f8f8ff] lg:flex">
         {isSidebarOpen ? (
           <button
             type="button"
@@ -138,7 +138,7 @@ export default function OwnerDashboardLayout({
         ) : null}
         {/* ================= SIDEBAR ================= */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white shadow-xl transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1d1269] text-white shadow-[8px_0_30px_rgba(29,18,105,0.18)] transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -149,17 +149,18 @@ export default function OwnerDashboardLayout({
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-200 lg:hidden"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 text-white/80 lg:hidden"
                 aria-label="Tutup menu"
               >
                 <X size={18} />
               </button>
               <Image
-                src="/logo-white-400.webp"
-                alt="Logo Kyra Stay"
+                src="/logo-header-400.webp"
+                alt="Logo KIKOST"
                 width={140}
                 height={40}
                 priority
+                className="h-auto w-auto max-w-[150px] object-contain"
               />
               <span className="w-9 lg:hidden" />
             </div>
@@ -178,8 +179,8 @@ export default function OwnerDashboardLayout({
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
                   ${
                     isActive
-                      ? "bg-[#8BC34A] text-black font-semibold shadow-md"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                      ? "bg-[#d8ff3e] text-[#24147d] font-semibold shadow-md"
+                      : "text-blue-100/75 hover:bg-white/10 hover:text-white"
                   }`}
                   >
                     <Icon size={18} />
@@ -207,12 +208,12 @@ export default function OwnerDashboardLayout({
         </aside>
 
         {/* ================= MAIN AREA ================= */}
-        <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           {/* HEADER */}
-          <header className="min-h-[72px] border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
-            <div className="flex min-h-[72px] items-center justify-between gap-3">
+          <header className="min-h-[72px] border-b border-[#e4e1ff] border-t-[3px] border-t-[#3423b8] bg-white px-4 shadow-sm sm:px-6 lg:px-8">
+            <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 py-3 sm:flex-nowrap sm:py-0">
             {/* Search */}
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(true)}
@@ -222,7 +223,7 @@ export default function OwnerDashboardLayout({
                   <Menu size={18} />
                 </button>
 
-                <div className="relative hidden w-full max-w-md md:block">
+                <div className="relative hidden w-full max-w-md min-w-0 md:block">
                   <Search
                     size={18}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -230,21 +231,21 @@ export default function OwnerDashboardLayout({
                   <input
                     type="text"
                     placeholder="Cari..."
-                    className="w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-12 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#8BC34A]"
+                    className="w-full rounded-full border border-[#dedaff] bg-[#f8f8ff] py-2 pl-12 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#3423b8]"
                   />
                 </div>
               </div>
 
               {/* Profile */}
-              <div className="flex items-center gap-2 sm:gap-3 md:gap-6">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-6">
                 <Link
                   href="/"
                   className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 md:inline-flex"
                 >
-                  Beranda Kyra Stay
+                  Beranda KIKOST
                 </Link>
 
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -263,9 +264,12 @@ export default function OwnerDashboardLayout({
                     title="Klik untuk ubah foto profil"
                   >
                     {avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt="Avatar pemilik"
+                        width={40}
+                        height={40}
+                        unoptimized
                         className="h-full w-full object-cover"
                         onError={() => setFailedAvatarKey(user?.avatar ?? null)}
                       />
@@ -276,7 +280,7 @@ export default function OwnerDashboardLayout({
                     )}
                   </button>
 
-                  <div className="hidden text-sm sm:block">
+                  <div className="hidden min-w-0 text-sm sm:block">
                     <p className="font-semibold text-slate-800">
                       {user?.name || "Pemilik"}
                     </p>

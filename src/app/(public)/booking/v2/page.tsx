@@ -8,7 +8,7 @@ import {
   adaptPublicPropertiesToBookingV2,
   type BookingV2Property,
 } from "@/features/booking/shared/adapters/propertyAdapter";
-import { fetchBookingProperties } from "@/features/booking/shared/api/bookingApi";
+import { fetchAllBookingProperties } from "@/features/booking/shared/api/bookingApi";
 import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
 import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
 import {
@@ -223,8 +223,7 @@ export default function BookingV2PropertyPage() {
       setError(null);
 
       try {
-        const response = await fetchBookingProperties({
-          page: 1,
+        const allProperties = await fetchAllBookingProperties({
           per_page: 100,
           sort: "newest",
         });
@@ -233,7 +232,7 @@ export default function BookingV2PropertyPage() {
           return;
         }
 
-        setProperties(adaptPublicPropertiesToBookingV2(response.data));
+        setProperties(adaptPublicPropertiesToBookingV2(allProperties));
       } catch (caughtError) {
         if (!active) {
           return;
@@ -243,7 +242,7 @@ export default function BookingV2PropertyPage() {
         setError(
           getApiErrorMessage(
             caughtError,
-            "Kami belum bisa memuat data kamar. Silakan coba lagi."
+            "Kami belum bisa memuat data properti. Silakan coba lagi."
           )
         );
       } finally {
@@ -424,7 +423,7 @@ export default function BookingV2PropertyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-12 text-[var(--color-text-primary)]">
+    <div className="min-h-screen bg-[#f8f8ff] pb-12 text-[var(--color-text-primary)]">
       <ExpandedSearchBar
         open={searchOpen}
         initialLocation={search}
@@ -433,7 +432,7 @@ export default function BookingV2PropertyPage() {
         onClose={() => setSearchOpen(false)}
         onSubmit={handleSearchSubmit}
       />
-      <section className="border-b border-slate-200 bg-white">
+      <section className="border-b border-[#e2dfff] bg-[linear-gradient(90deg,#f7f6ff_0%,#ffffff_50%,#f2f7ff_100%)]">
         <div className="mx-auto flex max-w-[1760px] items-center justify-center px-5 py-4 md:px-8">
           <CompactSearchBar
             location={search}
@@ -444,7 +443,7 @@ export default function BookingV2PropertyPage() {
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="inline-flex h-12 w-full items-center justify-center rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-900 shadow-[var(--shadow-small)] transition hover:border-slate-950 md:hidden"
+            className="inline-flex h-12 w-full items-center justify-center rounded-full border border-[#c8c2ff] bg-white px-5 text-sm font-semibold text-[#3423b8] shadow-[var(--shadow-small)] transition hover:border-[#6f63d7] md:hidden"
           >
             Cari kost di dekat IPB
           </button>
@@ -456,7 +455,11 @@ export default function BookingV2PropertyPage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <BookingVersionBadge version="Versi 2" tone="blue" />
-            <h1 className="mt-3 text-2xl font-semibold tracking-normal text-slate-950 md:text-3xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#ddd9ff] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#3423b8] shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-[#d8ff3e] ring-1 ring-[#3423b8]/15" />
+              Pemesanan KIKOST
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-normal text-[#24147d] md:text-3xl">
               Kost yang cocok untukmu
             </h1>
             <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
@@ -471,7 +474,7 @@ export default function BookingV2PropertyPage() {
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
             <p className="inline-flex items-center gap-2 font-semibold">
               <AlertCircle size={16} />
-              Data properti belum siap
+              Data properti belum bisa dimuat
             </p>
             <p className="mt-2">{error}</p>
           </div>
@@ -498,15 +501,15 @@ export default function BookingV2PropertyPage() {
                   setSearch("");
                   setActiveFilter("all");
                 }}
-                className="inline-flex h-10 items-center rounded-full bg-slate-950 px-4 text-xs font-semibold text-white"
+                className="inline-flex h-10 items-center rounded-full bg-[#3423b8] px-4 text-xs font-semibold text-white"
               >
                 Hapus filter
               </button>
             </div>
           </div>
         ) : (
-          <section className="grid gap-8 xl:h-[calc(100vh_-_188px)] xl:grid-cols-[minmax(620px,760px)_minmax(0,1fr)] xl:overflow-hidden">
-            <div className="xl:flex xl:min-h-0 xl:flex-col">
+          <section className="grid items-start gap-8 xl:grid-cols-[minmax(620px,780px)_minmax(0,1fr)]">
+            <div>
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-base font-semibold text-slate-950">
@@ -520,14 +523,14 @@ export default function BookingV2PropertyPage() {
                   <button
                     type="button"
                     onClick={() => setActiveFilter("all")}
-                    className="text-xs font-semibold text-slate-700 underline underline-offset-4"
+                    className="text-xs font-semibold text-[#3423b8] underline underline-offset-4"
                   >
                     Hapus filter
                   </button>
                 ) : null}
               </div>
 
-              <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-2 xl:pb-6">
+              <div>
                 <PropertyGrid
                   properties={filteredProperties}
                   favoriteIds={favoriteIds}
@@ -538,13 +541,13 @@ export default function BookingV2PropertyPage() {
               </div>
             </div>
 
-            <aside className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[var(--shadow-small)] xl:block xl:h-full">
+            <aside className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[var(--shadow-small)] xl:sticky xl:top-[13rem] xl:block xl:h-[calc(100vh_-_15rem)]">
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <MapPin size={15} className="text-[var(--color-primary)]" />
+                  <MapPin size={15} className="text-[#3423b8]" />
                   Peta area kost
                 </p>
-                <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                <span className="rounded-full border border-[#dcd8ff] bg-[#f0eeff] px-3 py-1 text-xs font-semibold text-[#3423b8]">
                   {mapLocations.length} titik
                 </span>
               </div>

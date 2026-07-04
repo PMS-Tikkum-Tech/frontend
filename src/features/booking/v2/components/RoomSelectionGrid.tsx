@@ -10,6 +10,7 @@ import {
   groupBookingV2Rooms,
   type BookingV2Room,
 } from "@/features/booking/shared/adapters/roomAdapter";
+import { formatFilterLabel } from "@/lib/filter-options";
 
 const LEGEND: Array<{ status: BookingV2RoomStatus; label: string; className: string }> = [
   {
@@ -29,7 +30,7 @@ const LEGEND: Array<{ status: BookingV2RoomStatus; label: string; className: str
   },
   {
     status: "maintenance",
-    label: "Maintenance",
+    label: "Perawatan",
     className: "border-amber-200 bg-amber-50 text-amber-700",
   },
   {
@@ -78,7 +79,7 @@ export default function RoomSelectionGrid({
           Kamar belum tersedia
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          Data kamar akan muncul ketika katalog backend mengembalikan unit.
+          Data kamar akan muncul setelah daftar kamar tersedia.
         </p>
       </div>
     );
@@ -131,7 +132,7 @@ export default function RoomSelectionGrid({
                   <span className="flex items-start justify-between gap-2">
                     <span>
                       <span className="block text-[11px] font-medium opacity-75">
-                        {room.roomType}
+                        {formatFilterLabel(room.roomType)}
                       </span>
                       <span className="mt-1 block text-lg font-semibold leading-tight">
                         {room.roomNumber}

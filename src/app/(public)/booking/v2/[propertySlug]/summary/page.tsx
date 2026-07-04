@@ -23,6 +23,7 @@ import {
   loadBookingV2Draft,
   type BookingV2Draft,
 } from "@/features/booking/v2/store/bookingV2Store";
+import { formatFilterLabel } from "@/lib/filter-options";
 
 export default function BookingV2SummaryPage() {
   const params = useParams<{ propertySlug: string }>();
@@ -124,19 +125,19 @@ export default function BookingV2SummaryPage() {
         <div className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <BookingVersionBadge version="Versi 2" tone="blue" />
           <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-            Ringkasan booking
+            Ringkasan pemesanan
           </h1>
 
           {isLoading ? (
             <p className="mt-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-600">
               <LoaderCircle size={16} className="animate-spin" />
-              Memvalidasi pilihan...
+              Memuat ringkasan...
             </p>
           ) : !existingDraftMatchesRoute ? (
             <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
               <DoorOpen size={22} className="mx-auto text-slate-400" />
               <p className="mt-3 text-sm font-semibold text-slate-800">
-                Pilihan kamar belum ada
+                Pilihan kamar belum disimpan
               </p>
               <Link
                 href={`/booking/v2/${propertySlug}/rooms`}
@@ -150,7 +151,10 @@ export default function BookingV2SummaryPage() {
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 <SummaryBox label="Properti" value={propertyName || draft?.propertyName || "-"} />
                 <SummaryBox label="Kamar" value={roomNumber || draft?.roomNumber || "-"} />
-                <SummaryBox label="Tipe kamar" value={roomType || draft?.roomType || "-"} />
+                <SummaryBox
+                  label="Tipe kamar"
+                  value={formatFilterLabel(roomType || draft?.roomType)}
+                />
                 <SummaryBox
                   label="Tanggal mulai"
                   value={formatBookingDate(draft?.checkInDate)}

@@ -7,6 +7,7 @@ import {
 import type { BookingV2Property } from "@/features/booking/shared/adapters/propertyAdapter";
 import type { BookingV2Room } from "@/features/booking/shared/adapters/roomAdapter";
 import { formatBookingCurrency } from "@/features/booking/shared/utils/bookingFormatters";
+import { formatFilterLabel } from "@/lib/filter-options";
 import {
   getBookingV2DurationLabel,
   getBookingV2DurationMonths,
@@ -147,7 +148,7 @@ export default function BookingCard({
           >
             {roomTypes.map((roomType) => (
               <option key={roomType.name} value={roomType.name}>
-                {roomType.name}
+                {formatFilterLabel(roomType.name)}
               </option>
             ))}
           </select>
@@ -193,12 +194,12 @@ export default function BookingCard({
         onClick={onContinue}
         className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
-        Pilih kamar
+        Lanjut ke kamar
         <ArrowRight size={16} />
       </button>
 
       <p className="mt-3 text-center text-xs text-slate-500">
-        Validasi akhir dilakukan ulang ketika booking dikirim ke flow payment existing.
+        Data pilihan akan dicek ulang saat kamu lanjut ke pembayaran.
       </p>
 
       <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm">
@@ -206,8 +207,8 @@ export default function BookingCard({
           label={`Harga sewa (${getBookingV2DurationLabel(durationPreset)})`}
           value={formatBookingCurrency(estimatedTotal)}
         />
-        <PriceRow label="Deposit" value="Mengikuti backend" />
-        <PriceRow label="Biaya admin" value="Mengikuti backend" />
+        <PriceRow label="Deposit" value="Mengikuti pengaturan hunian" />
+        <PriceRow label="Biaya admin" value="Mengikuti pengaturan hunian" />
         <div className="flex items-center justify-between pt-2 text-base font-semibold text-slate-950">
           <span>Total awal</span>
           <span>{selectedRoom ? formatBookingCurrency(estimatedTotal) : "-"}</span>
@@ -216,7 +217,7 @@ export default function BookingCard({
 
       <p className="mt-4 inline-flex items-start gap-2 rounded-2xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
         <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
-        Status pembayaran tetap dibaca dari backend, bukan dari state frontend.
+        Status pembayaran akan mengikuti data terbaru yang tersimpan.
       </p>
     </aside>
   );

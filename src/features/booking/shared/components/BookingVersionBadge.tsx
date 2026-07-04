@@ -1,7 +1,7 @@
 import { SHOW_BOOKING_VERSION_BADGE } from "../config/bookingFeatureFlags";
 
 type BookingVersionBadgeProps = {
-  version: "Versi 1" | "Versi 2";
+  version: string;
   tone?: "light" | "dark" | "blue";
 };
 

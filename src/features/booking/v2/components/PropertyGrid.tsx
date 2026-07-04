@@ -17,7 +17,7 @@ export default function PropertyGrid({
   onFavoriteChange?: (propertyId: number, isFavorite: boolean) => void;
 }) {
   return (
-    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2">
+    <div className="grid items-stretch gap-5 sm:grid-cols-2">
       {properties.map((property) => (
         <PropertyCard
           key={property.id}

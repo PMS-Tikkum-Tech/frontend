@@ -13,6 +13,7 @@ import {
   WashingMachine,
   Wifi,
 } from "lucide-react";
+import { formatFacilityLabel } from "@/lib/facility-labels";
 
 const getAmenityIcon = (amenity: string) => {
   const normalized = amenity.toLowerCase();
@@ -41,7 +42,7 @@ export default function AmenitiesGrid({ facilities }: { facilities: string[] }) 
   if (uniqueFacilities.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-        Fasilitas belum tersedia di response katalog existing.
+        Fasilitas belum tersedia.
       </div>
     );
   }
@@ -51,11 +52,12 @@ export default function AmenitiesGrid({ facilities }: { facilities: string[] }) 
       <div className="grid gap-4 sm:grid-cols-2">
         {uniqueFacilities.map((facility) => {
           const Icon = getAmenityIcon(facility);
+          const label = formatFacilityLabel(facility);
 
           return (
             <div key={facility} className="flex items-center gap-3 text-sm text-slate-800">
               <Icon size={19} className="shrink-0 text-slate-700" />
-              <span className="line-clamp-1">{facility}</span>
+              <span className="line-clamp-1">{label}</span>
             </div>
           );
         })}

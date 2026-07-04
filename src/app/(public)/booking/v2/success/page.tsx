@@ -11,7 +11,7 @@ export default function BookingV2SuccessPage() {
           <BookingVersionBadge version="Versi 2" tone="blue" />
         </div>
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">
-          Booking berhasil diproses
+          Pemesanan berhasil diproses
         </h1>
         <Link
           href="/tenant/pembayaran"

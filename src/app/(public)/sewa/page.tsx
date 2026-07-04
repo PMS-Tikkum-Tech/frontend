@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
+import { formatFacilityLabel } from "@/lib/facility-labels";
 import {
   addTenantFavorite,
   getApiErrorMessage,
@@ -926,7 +927,7 @@ export default function SewaPage() {
 
         <div className="mx-auto max-w-7xl px-6 pb-14 pt-10">
           <div className="flex flex-wrap items-center gap-2">
-            <BookingVersionBadge version="Versi 1" tone="dark" />
+            <BookingVersionBadge version="Sewa KIKOST" tone="dark" />
             <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-xs font-medium">
               <Sparkles size={14} />
               Rekomendasi Hunian Mahasiswa IPB
@@ -1765,7 +1766,7 @@ function PropertyCard({
                 key={`${item.property.id}-${facility}`}
                 className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
               >
-                {formatLabel(facility)}
+                {formatFacilityLabel(facility)}
               </span>
             ))
           ) : (

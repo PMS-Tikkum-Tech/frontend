@@ -126,7 +126,7 @@ export default function ExpandedSearchBar({
           </label>
           <button
             type="submit"
-            className="m-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-5 text-sm font-semibold text-white"
+            className="m-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#3423b8] px-5 text-sm font-semibold text-white transition hover:bg-[#24147d]"
           >
             <Search size={16} />
             Cari
@@ -139,7 +139,7 @@ export default function ExpandedSearchBar({
               key={item}
               type="button"
               onClick={() => setLocation(item)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400"
+              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[#8176df] hover:bg-[#f4f2ff] hover:text-[#3423b8]"
             >
               {item}
             </button>

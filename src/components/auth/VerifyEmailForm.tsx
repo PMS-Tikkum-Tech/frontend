@@ -3,10 +3,12 @@
 import Link from "next/link";
 
 export default function VerifyEmailForm({
-  initialEmail: _initialEmail,
+  initialEmail,
 }: {
   initialEmail?: string;
 }) {
+  void initialEmail;
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">

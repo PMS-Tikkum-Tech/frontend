@@ -28,6 +28,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  QrCode,
   ReceiptText,
   Save,
   ShieldCheck,
@@ -78,6 +79,8 @@ const ACCEPTED_FILE_TYPES = [
   "image/png",
 ];
 const DAYS_IN_MONTH_FOR_DAILY_RATE = 30;
+const BSI_QRIS_IMAGE_URL =
+  process.env.NEXT_PUBLIC_BSI_QRIS_IMAGE_URL?.trim() || "";
 
 const RENT_DURATION_OPTIONS = [
   { value: "7d", label: "7 Hari" },
@@ -110,6 +113,13 @@ const PAYMENT_METHODS = [
     description: "BSI : 7283652283",
     owner: "An Astri Kartika",
     icon: <Landmark size={16} />,
+  },
+  {
+    value: "qris_bsi",
+    label: "QRIS BSI",
+    description: "Scan QRIS untuk melakukan pembayaran",
+    owner: "Bank Syariah Indonesia (BSI)",
+    icon: <QrCode size={16} />,
   },
 ] as const;
 
@@ -463,6 +473,7 @@ function TenantCreatePaymentPageContent() {
   const selectedPaymentMethod = useMemo(() => {
     return PAYMENT_METHODS.find((item) => item.value === paymentMethod) || null;
   }, [paymentMethod]);
+  const isQrisPayment = paymentMethod === "qris_bsi";
 
   const monthlyPrice = useMemo(() => {
     return resolveMonthlyPrice(property, unit);
@@ -543,7 +554,7 @@ function TenantCreatePaymentPageContent() {
     }
 
     return monthlyPrice * durationMonths;
-  }, [checkInDate, customDurationDays, dailyPrice, durationDays, durationMonths, isCustomDuration, isDailyRent, monthlyPrice]);
+  }, [customDurationDays, dailyPrice, durationDays, durationMonths, isCustomDuration, isDailyRent, monthlyPrice]);
 
   const estimatedEndDate = useMemo(() => {
     return calculatedEndDateInput ? formatDate(calculatedEndDateInput) : "-";
@@ -783,7 +794,7 @@ function TenantCreatePaymentPageContent() {
     if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
       setTransferProof(null);
       event.target.value = "";
-      setSubmitError("Format bukti transfer harus PDF, JPG, JPEG, atau PNG.");
+      setSubmitError("Format bukti pembayaran harus PDF, JPG, JPEG, atau PNG.");
       return;
     }
 
@@ -839,8 +850,15 @@ function TenantCreatePaymentPageContent() {
       return;
     }
 
+    if (isQrisPayment && !BSI_QRIS_IMAGE_URL) {
+      setSubmitError(
+        "QRIS BSI belum tersedia. Silakan gunakan Transfer Bank BSI."
+      );
+      return;
+    }
+
     if (!transferProof) {
-      setSubmitError("Unggah bukti transfer terlebih dahulu.");
+      setSubmitError("Unggah bukti pembayaran terlebih dahulu.");
       return;
     }
 
@@ -968,7 +986,7 @@ function TenantCreatePaymentPageContent() {
               label="1. Detail Informasi Sewa"
             />
             <StepBadge icon={<CreditCard size={15} />} label="2. Pilih Metode Bayar" />
-            <StepBadge icon={<FileUp size={15} />} label="3. Unggah Bukti Transfer" />
+            <StepBadge icon={<FileUp size={15} />} label="3. Unggah Bukti Pembayaran" />
           </div>
         </div>
       </section>
@@ -1254,12 +1272,23 @@ function TenantCreatePaymentPageContent() {
               )}
             </div>
 
-            <LabelField label="Asal Transfer (Opsional)" className="mt-4">
+            <LabelField
+              label={
+                isQrisPayment
+                  ? "Sumber Pembayaran (Opsional)"
+                  : "Asal Transfer (Opsional)"
+              }
+              className="mt-4"
+            >
               <input
                 type="text"
                 value={senderSource}
                 onChange={(event) => setSenderSource(event.target.value)}
-                placeholder="Contoh: BCA a.n. Budi Santoso"
+                placeholder={
+                  isQrisPayment
+                    ? "Contoh: BSI Mobile / GoPay"
+                    : "Contoh: BCA a.n. Budi Santoso"
+                }
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400"
               />
             </LabelField>
@@ -1274,7 +1303,7 @@ function TenantCreatePaymentPageContent() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Metode Pembayaran</h2>
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {PAYMENT_METHODS.map((method) => {
                 const isSelected = paymentMethod === method.value;
                 return (
@@ -1309,18 +1338,51 @@ function TenantCreatePaymentPageContent() {
                 </p>
                 <p className="text-sm text-blue-900">{selectedPaymentMethod.description}</p>
                 <p className="text-sm text-blue-900">{selectedPaymentMethod.owner}</p>
+
+                {isQrisPayment ? (
+                  <div className="mt-4 rounded-xl border border-blue-100 bg-white p-3">
+                    {BSI_QRIS_IMAGE_URL ? (
+                      <>
+                        <div className="relative mx-auto aspect-square w-full max-w-72 overflow-hidden rounded-xl bg-white">
+                          <Image
+                            src={BSI_QRIS_IMAGE_URL}
+                            alt="QRIS BSI KIKOST"
+                            fill
+                            unoptimized
+                            sizes="288px"
+                            className="object-contain"
+                          />
+                        </div>
+                        <p className="mt-3 text-center text-xs leading-5 text-slate-600">
+                          Scan menggunakan aplikasi mobile banking atau dompet
+                          digital yang mendukung QRIS.
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/60 px-5 text-center">
+                        <QrCode size={42} className="text-blue-300" />
+                        <p className="mt-3 text-sm font-semibold text-blue-900">
+                          Gambar QRIS BSI belum tersedia
+                        </p>
+                        <p className="mt-1 max-w-xs text-xs leading-5 text-blue-700">
+                          Gunakan Transfer Bank BSI sementara waktu.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">
-              Unggah Bukti Transfer
+              Unggah Bukti Pembayaran
             </h2>
             <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-blue-300 hover:bg-blue-50">
               <FileUp size={20} className="text-blue-700" />
               <span className="text-sm font-medium text-slate-700">
-                Klik untuk memilih file bukti transfer
+                Klik untuk memilih file bukti pembayaran
               </span>
               <span className="text-xs text-slate-500">
                 Format: PDF / JPG / JPEG / PNG (maksimal 5 MB)

@@ -57,6 +57,7 @@ import {
   getApiErrorMessage,
   getTenantProfile,
 } from "@/lib/dashboard/tenant.api";
+import { formatFilterLabel } from "@/lib/filter-options";
 import { resolveBackendCoordinate } from "@/lib/maps/property-coordinate";
 
 const BookingV2PropertyMap = dynamic(
@@ -180,8 +181,8 @@ export default function BookingV2PropertyDetailPage() {
 
     let active = true;
 
-    if (!propertyId) {
-      setError("Properti booking tidak valid.");
+      if (!propertyId) {
+      setError("Data properti tidak valid.");
       setIsLoading(false);
       return () => {
         active = false;
@@ -209,7 +210,7 @@ export default function BookingV2PropertyDetailPage() {
         if (!loadedProperty) {
           setProperty(null);
           setRooms([]);
-          setError("Properti tidak ditemukan di katalog existing.");
+          setError("Data hunian tidak ditemukan.");
           return;
         }
 
@@ -456,7 +457,7 @@ export default function BookingV2PropertyDetailPage() {
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
             <p className="inline-flex items-center gap-2 font-semibold">
               <AlertCircle size={16} />
-              Detail properti belum siap
+              Data properti belum bisa dimuat
             </p>
             <p className="mt-2">{error || "Properti tidak ditemukan."}</p>
           </div>
@@ -470,7 +471,7 @@ export default function BookingV2PropertyDetailPage() {
       <main className="mx-auto max-w-6xl px-5 py-6 md:px-8">
         <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-2 text-sm">
           <Link href="/booking/v2" className="font-semibold text-slate-600">
-            Booking V2
+            Pemesanan KIKOST
           </Link>
           <ChevronRight size={14} className="text-slate-400" />
           <span className="line-clamp-1 text-slate-500">{property.name}</span>
@@ -570,7 +571,7 @@ export default function BookingV2PropertyDetailPage() {
               </div>
               <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-700">
                 {property.raw.description?.trim() ||
-                  "Deskripsi properti belum tersedia di response katalog existing. Gunakan informasi fasilitas, alamat, dan kamar untuk memvalidasi pilihan."}
+                  "Deskripsi properti belum tersedia. Gunakan informasi fasilitas, alamat, dan kamar untuk membantu memilih."}
               </p>
             </section>
 
@@ -590,7 +591,7 @@ export default function BookingV2PropertyDetailPage() {
                     Pilih tipe kamar
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Tipe kamar diambil dari unit katalog existing.
+                    Tipe kamar mengikuti data kamar yang diisi admin.
                   </p>
                 </div>
               </div>
@@ -606,7 +607,7 @@ export default function BookingV2PropertyDetailPage() {
                   ))
                 ) : (
                   <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-                    Tipe kamar belum tersedia dari backend.
+                    Tipe kamar belum tersedia.
                   </p>
                 )}
               </div>
@@ -618,7 +619,7 @@ export default function BookingV2PropertyDetailPage() {
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Grid dibuat dari urutan kamar, lantai, dan blok yang tersedia di
-                response backend.
+                sistem.
               </p>
               <div className="mt-5">
                 <RoomSelectionGrid
@@ -642,8 +643,7 @@ export default function BookingV2PropertyDetailPage() {
                 </div>
               ) : (
                 <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-                  Koordinat belum tersedia dari backend, jadi peta detail tidak
-                  ditampilkan agar tidak menampilkan lokasi palsu.
+                  Koordinat belum tersedia, jadi peta detail belum ditampilkan.
                 </div>
               )}
             </section>
@@ -652,7 +652,7 @@ export default function BookingV2PropertyDetailPage() {
               <h2 className="text-xl font-semibold text-slate-950">Aturan kost</h2>
               <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-7 text-slate-700">
                 {property.raw.rules?.trim() ||
-                  "Aturan kost belum tersedia di response katalog existing."}
+                  "Aturan kost belum tersedia."}
               </p>
             </section>
           </div>
@@ -682,10 +682,12 @@ export default function BookingV2PropertyDetailPage() {
         </div>
       </main>
 
-      <MobileBookingBar
+        <MobileBookingBar
         priceLabel={selectedRoom?.monthlyPriceLabel || property.priceLabel}
         selectedRoomLabel={
-          selectedRoom ? `${selectedRoom.roomNumber} - ${selectedRoom.roomType}` : null
+          selectedRoom
+            ? `${selectedRoom.roomNumber} - ${formatFilterLabel(selectedRoom.roomType)}`
+            : null
         }
         onOpen={() => setMobileBookingOpen(true)}
       />

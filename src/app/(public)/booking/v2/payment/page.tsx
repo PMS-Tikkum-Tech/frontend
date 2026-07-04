@@ -21,7 +21,7 @@ export default function BookingV2PaymentAliasPage() {
   return (
     <section className="mx-auto flex max-w-3xl items-center gap-2 px-6 py-14 text-sm text-slate-600">
       <LoaderCircle size={16} className="animate-spin" />
-      Mengarahkan ke pembayaran existing...
+      Mengarahkan ke halaman pembayaran...
     </section>
   );
 }

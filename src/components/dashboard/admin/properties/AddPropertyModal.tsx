@@ -41,9 +41,42 @@ interface PropertyFormState {
   longitude: string;
   propertyType: string;
   condition: string;
+  targetAudience: AudienceTarget;
   description: string;
   rules: string;
 }
+
+type AudienceTarget = "all" | "male" | "female";
+
+const TARGET_AUDIENCE_OPTIONS: Array<{
+  value: AudienceTarget;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "all",
+    label: "Campur",
+    description: "Tidak menambahkan label gender khusus pada properti.",
+  },
+  {
+    value: "male",
+    label: "Putra",
+    description: "Properti diposisikan untuk kost laki-laki.",
+  },
+  {
+    value: "female",
+    label: "Putri",
+    description: "Properti diposisikan untuk kost perempuan.",
+  },
+];
+
+const TARGET_AUDIENCE_RULE_LABEL: Record<Exclude<AudienceTarget, "all">, string> =
+  {
+    male: "Kost Putra",
+    female: "Kost Putri",
+  };
+
+const TARGET_AUDIENCE_RULE_REGEX = /^target penghuni:\s*(kost putra|kost putri|campur)\s*$/gim;
 
 const FACILITY_OPTIONS = [
   { value: "wifi", label: "WiFi" },
@@ -195,6 +228,7 @@ const getInitialFormState = (
       : "",
   propertyType: normalizePropertyTypeValue(initialValue?.property_type) || "kost",
   condition: normalizeConditionValue(initialValue?.condition) || "good",
+  targetAudience: "all",
   description: initialValue?.description || "",
   rules: initialValue?.rules || "",
 });
@@ -233,6 +267,37 @@ const formatCoordinateInputValue = (value: number) =>
     .toFixed(7)
     .replace(/0+$/, "")
     .replace(/\.$/, "");
+
+const stripTargetAudienceRule = (value: string) =>
+  value.replace(TARGET_AUDIENCE_RULE_REGEX, "").replace(/\n{3,}/g, "\n\n").trim();
+
+const extractTargetAudience = (rules?: string | null): AudienceTarget => {
+  if (!rules) {
+    return "all";
+  }
+
+  const normalized = rules.toLowerCase();
+  if (normalized.includes("target penghuni: kost putra")) {
+    return "male";
+  }
+
+  if (normalized.includes("target penghuni: kost putri")) {
+    return "female";
+  }
+
+  return "all";
+};
+
+const appendTargetAudienceRule = (rules: string, targetAudience: AudienceTarget) => {
+  const baseRules = stripTargetAudienceRule(rules);
+
+  if (targetAudience === "all") {
+    return baseRules;
+  }
+
+  const targetLine = `Target penghuni: ${TARGET_AUDIENCE_RULE_LABEL[targetAudience]}`;
+  return [baseRules, targetLine].filter(Boolean).join("\n\n").trim();
+};
 
 const normalizeFacilityInput = (value: string) =>
   value.replace(/\s+/g, " ").trim();
@@ -343,6 +408,18 @@ export default function AddPropertyModal({
     setErrorMessage(null);
   }, [open, owners, initialValue]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      targetAudience: extractTargetAudience(initialValue?.rules || null),
+      rules: stripTargetAudienceRule(initialValue?.rules || ""),
+    }));
+  }, [open, initialValue?.rules]);
+
   if (!open) {
     return null;
   }
@@ -391,6 +468,24 @@ export default function AddPropertyModal({
       };
     } catch {
       return null;
+    }
+  };
+
+  const handleSyncCoordinatesClick = async () => {
+    const addressInput = form.address.trim();
+
+    if (!addressInput) {
+      setErrorMessage("Isi alamat terlebih dahulu untuk mengambil koordinat.");
+      return;
+    }
+
+    setErrorMessage(null);
+    const geocoded = await syncCoordinatesFromGoogle(addressInput);
+
+    if (!geocoded) {
+      setErrorMessage(
+        "Koordinat otomatis belum ditemukan. Silakan isi latitude dan longitude secara manual."
+      );
     }
   };
 
@@ -463,26 +558,41 @@ export default function AddPropertyModal({
     let resolvedLatitudeValue: number | undefined;
     let resolvedLongitudeValue: number | undefined;
 
-    const geocoded = await syncCoordinatesFromGoogle(form.address);
+    const latitudeInput = form.latitude.trim();
+    const longitudeInput = form.longitude.trim();
 
-    if (geocoded) {
-      resolvedLatitudeValue = geocoded.coordinate.lat;
-      resolvedLongitudeValue = geocoded.coordinate.lng;
-    } else {
+    if (latitudeInput || longitudeInput) {
+      if (!latitudeInput || !longitudeInput) {
+        setErrorMessage(
+          "Isi latitude dan longitude sekaligus, atau kosongkan keduanya untuk pakai koordinat otomatis."
+        );
+        return;
+      }
+
       const latitudeParsed = parseOptionalCoordinate(
-        form.latitude,
+        latitudeInput,
         { min: -90, max: 90 },
         "Latitude"
       );
       const longitudeParsed = parseOptionalCoordinate(
-        form.longitude,
+        longitudeInput,
         { min: -180, max: 180 },
         "Longitude"
       );
 
-      if (latitudeParsed.value !== undefined && longitudeParsed.value !== undefined) {
-        resolvedLatitudeValue = latitudeParsed.value;
-        resolvedLongitudeValue = longitudeParsed.value;
+      if (latitudeParsed.error || longitudeParsed.error) {
+        setErrorMessage(latitudeParsed.error || longitudeParsed.error);
+        return;
+      }
+
+      resolvedLatitudeValue = latitudeParsed.value;
+      resolvedLongitudeValue = longitudeParsed.value;
+    } else {
+      const geocoded = await syncCoordinatesFromGoogle(form.address);
+
+      if (geocoded) {
+        resolvedLatitudeValue = geocoded.coordinate.lat;
+        resolvedLongitudeValue = geocoded.coordinate.lng;
       }
     }
 
@@ -502,7 +612,7 @@ export default function AddPropertyModal({
         property_type: form.propertyType,
         condition: form.condition,
         description: form.description,
-        rules: form.rules,
+        rules: appendTargetAudienceRule(form.rules, form.targetAudience),
         facilities: facilitiesForSubmit,
         photos,
         video: videoFile,
@@ -536,20 +646,16 @@ export default function AddPropertyModal({
           </button>
         </div>
 
-        <div className="space-y-5 p-6">
+        <div className="space-y-6 p-6">
+          <SectionHeader
+            title="1. Identitas Properti"
+            description="Isi nama, tipe, dan kondisi properti terlebih dahulu."
+          />
           <FormInput
             label="Nama Properti"
             value={form.name}
             onChange={(value) => updateFormField("name", value)}
           />
-
-          <FormInput
-            label="Alamat"
-            value={form.address}
-            onChange={(value) => updateFormField("address", value)}
-            placeholder="Masukkan alamat lengkap properti"
-          />
-
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -590,21 +696,99 @@ export default function AddPropertyModal({
             </div>
           </div>
 
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Target Penghuni
+            </label>
+            <select
+              value={form.targetAudience}
+              onChange={(event) =>
+                updateFormField(
+                  "targetAudience",
+                  event.target.value as AudienceTarget
+                )
+              }
+              className="h-11 w-full rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+            >
+              {TARGET_AUDIENCE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {TARGET_AUDIENCE_OPTIONS.find(
+                (option) => option.value === form.targetAudience
+              )?.description || ""}
+            </p>
+          </div>
+
+          <SectionHeader
+            title="2. Lokasi"
+            description="Alamat dipakai untuk tampilan tenant dan sinkronisasi koordinat otomatis."
+          />
+          <FormInput
+            label="Alamat"
+            value={form.address}
+            onChange={(value) => updateFormField("address", value)}
+            placeholder="Masukkan alamat lengkap properti"
+          />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-medium text-slate-700">
+              Koordinat otomatis akan diisi dari alamat, dan tetap bisa diubah manual.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void handleSyncCoordinatesClick();
+              }}
+              className="mt-3 inline-flex h-10 items-center rounded-lg border border-[#1E2746] px-4 text-sm font-medium text-[#1E2746] transition hover:bg-[#1E2746] hover:text-white"
+              disabled={isSaving}
+            >
+              Ambil Koordinat dari Alamat
+            </button>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormInput
+                label="Latitude"
+                value={form.latitude}
+                onChange={(value) => updateFormField("latitude", value)}
+                type="number"
+                step="any"
+                placeholder="-6.555555"
+              />
+              <FormInput
+                label="Longitude"
+                value={form.longitude}
+                onChange={(value) => updateFormField("longitude", value)}
+                type="number"
+                step="any"
+                placeholder="106.666666"
+              />
+            </div>
+          </div>
+
+          <SectionHeader
+            title="3. Konten Tenant"
+            description="Deskripsi dan aturan ini akan tampil di halaman detail tenant."
+          />
           <FormTextarea
             label="Deskripsi"
             value={form.description}
             onChange={(value) => updateFormField("description", value)}
           />
-
           <FormTextarea
             label="Aturan Properti"
             value={form.rules}
             onChange={(value) => updateFormField("rules", value)}
           />
 
+          <SectionHeader
+            title="4. Fasilitas"
+            description="Pilih fasilitas utama, lalu tambahkan fasilitas custom bila perlu."
+          />
           <div>
             <p className="mb-2 block text-sm font-medium text-slate-700">
-              Fasilitas
+              Fasilitas Utama
             </p>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
               {FACILITY_OPTIONS.map((facility) => (
@@ -677,6 +861,10 @@ export default function AddPropertyModal({
             </div>
           </div>
 
+          <SectionHeader
+            title="5. Media"
+            description="Unggah foto dan video setelah data utama selesai."
+          />
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
               Foto Properti
@@ -760,6 +948,19 @@ export default function AddPropertyModal({
                 </div>
               </div>
             )}
+          </div>
+
+          <SectionHeader
+            title="6. Ringkasan Koordinat"
+            description="Pastikan titik lokasi sudah sesuai sebelum menyimpan."
+          />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <p>
+              Latitude: <span className="font-semibold">{form.latitude || "-"}</span>
+            </p>
+            <p className="mt-1">
+              Longitude: <span className="font-semibold">{form.longitude || "-"}</span>
+            </p>
           </div>
 
           {errorMessage && (
@@ -847,6 +1048,21 @@ function FormTextarea({ label, value, onChange }: FormTextareaProps) {
         rows={4}
         className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
       />
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
     </div>
   );
 }

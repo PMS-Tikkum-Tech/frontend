@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -30,6 +29,7 @@ import BookingVersionBadge from "@/features/booking/shared/components/BookingVer
 import BookingV2RoomMap from "@/features/booking/v2/components/BookingV2RoomMap";
 import BookingV2StepBar from "@/features/booking/v2/components/BookingV2StepBar";
 import BookingV2Unavailable from "@/features/booking/v2/components/BookingV2Unavailable";
+import SafeBookingImage from "@/features/booking/v2/components/SafeBookingImage";
 import {
   getBookingV2DurationLabel,
   isBookingV2DurationPreset,
@@ -37,6 +37,7 @@ import {
   mergeBookingV2Draft,
   type BookingV2DurationPreset,
 } from "@/features/booking/v2/store/bookingV2Store";
+import { formatFilterLabel } from "@/lib/filter-options";
 import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
 
 const DURATION_OPTIONS: Array<{
@@ -103,7 +104,7 @@ export default function BookingV2RoomsPage() {
     let active = true;
 
     if (!propertyId) {
-      setError("Properti booking tidak valid.");
+      setError("Data properti tidak valid.");
       setIsLoading(false);
       return () => {
         active = false;
@@ -131,7 +132,7 @@ export default function BookingV2RoomsPage() {
         if (!loadedProperty) {
           setProperty(null);
           setRooms([]);
-          setError("Properti tidak ditemukan di katalog existing.");
+          setError("Data hunian tidak ditemukan.");
           return;
         }
 
@@ -253,11 +254,9 @@ export default function BookingV2RoomsPage() {
             {property ? (
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 <div className="relative h-32">
-                  <Image
+                  <SafeBookingImage
                     src={property.imageUrl}
                     alt={property.name}
-                    fill
-                    unoptimized
                     className="object-cover"
                   />
                 </div>
@@ -377,7 +376,7 @@ export default function BookingV2RoomsPage() {
             <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">
               <p className="inline-flex items-center gap-2 font-semibold">
                 <AlertCircle size={16} />
-                Data kamar belum siap
+                Daftar kamar belum bisa dimuat
               </p>
               <p className="mt-2">{error}</p>
             </div>
@@ -394,13 +393,13 @@ export default function BookingV2RoomsPage() {
           <section className="sticky top-24 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Ticket size={16} className="text-sky-700" />
-              Ringkasan kursi
+              Ringkasan pilihan
             </p>
 
             {selectedRoom ? (
               <div className="mt-4 space-y-3 text-sm">
                 <SummaryLine label="Kamar" value={selectedRoom.roomNumber} />
-                <SummaryLine label="Tipe" value={selectedRoom.roomType} />
+                <SummaryLine label="Tipe" value={formatFilterLabel(selectedRoom.roomType)} />
                 <SummaryLine label="Durasi" value={getBookingV2DurationLabel(durationPreset)} />
                 <SummaryLine label="Mulai" value={checkInDate} />
                 <SummaryLine
@@ -418,7 +417,7 @@ export default function BookingV2RoomsPage() {
               </div>
             ) : (
               <p className="mt-3 text-sm text-slate-500">
-                Pilih kamar tersedia untuk melanjutkan.
+                Pilih kamar terlebih dahulu untuk melanjutkan.
               </p>
             )}
           </section>

@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Grid2X2, X } from "lucide-react";
 import ImageCarousel from "./ImageCarousel";
+import SafeBookingImage from "./SafeBookingImage";
 
 export default function PropertyGallery({
   images,
@@ -55,11 +55,9 @@ export default function PropertyGallery({
                   isPrimary ? "col-span-2 row-span-2" : ""
                 }`}
               >
-                <Image
+                <SafeBookingImage
                   src={image}
                   alt={`${propertyName} ${index + 1}`}
-                  fill
-                  unoptimized
                   sizes={isPrimary ? "50vw" : "25vw"}
                   className="object-cover transition duration-500 group-hover:scale-[1.03]"
                 />
@@ -111,11 +109,9 @@ export default function PropertyGallery({
                 key={`${image}-modal-${index}`}
                 className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100"
               >
-                <Image
+                <SafeBookingImage
                   src={image}
                   alt={`${propertyName} ${index + 1}`}
-                  fill
-                  unoptimized
                   sizes="(min-width: 768px) 50vw, 100vw"
                   className="object-cover"
                 />

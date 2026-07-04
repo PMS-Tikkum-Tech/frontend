@@ -16,6 +16,40 @@ export const fetchBookingProperties = (params?: BookingApiQueryParams) => {
   return getPublicProperties(params);
 };
 
+export const fetchAllBookingProperties = async (
+  params?: BookingApiQueryParams
+) => {
+  const perPage =
+    typeof params?.per_page === "number" && params.per_page > 0
+      ? params.per_page
+      : 100;
+  const query = {
+    ...params,
+    page: 1,
+    per_page: perPage,
+  };
+  const firstPage = await getPublicProperties(query);
+  const totalPages = Math.max(1, firstPage.meta?.total_pages || 1);
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      getPublicProperties({
+        ...query,
+        page: index + 2,
+      })
+    )
+  );
+
+  const propertiesById = new Map<number, PublicPropertySummary>();
+  [firstPage, ...remainingPages].forEach((response) => {
+    response.data.forEach((property) => {
+      propertiesById.set(property.id, property);
+    });
+  });
+
+  return Array.from(propertiesById.values());
+};
+
 export const fetchBookingPropertyRooms = (
   propertyId: number | string,
   params?: BookingApiQueryParams

@@ -29,6 +29,7 @@ import {
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
+import { formatFilterLabel } from "@/lib/filter-options";
 import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import { formatDueDate, isDueDateReached } from "@/lib/due-date";
@@ -624,7 +625,7 @@ function TenantKostDetailContent() {
                     key={facility}
                     className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700"
                   >
-                    {facility}
+                    {formatFilterLabel(facility)}
                   </span>
                 ))
               ) : (

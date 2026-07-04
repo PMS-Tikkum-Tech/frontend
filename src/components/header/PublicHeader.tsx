@@ -142,8 +142,8 @@ export default function PublicHeader() {
                   href={item.href}
                   className={`transition ${
                     isNavActive(item.href)
-                      ? "text-green-600 border-b-2 border-green-600 pb-1"
-                      : "text-slate-700 hover:text-green-600"
+                      ? "border-b-2 border-[#3423b8] pb-1 text-[#3423b8]"
+                      : "text-slate-700 hover:text-[#3423b8]"
                   }`}
                 >
                   {item.label}
@@ -158,7 +158,7 @@ export default function PublicHeader() {
               {dashboardHref ? (
                 <Link
                   href={dashboardHref}
-                  className="hidden sm:inline-flex rounded-full bg-sky-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-sky-700 md:px-4 md:text-sm"
+                  className="hidden rounded-full bg-[#3423b8] px-3 py-2 text-xs font-medium text-white transition hover:bg-[#261786] sm:inline-flex md:px-4 md:text-sm"
                 >
                   Masuk Dasbor
                 </Link>
@@ -167,7 +167,7 @@ export default function PublicHeader() {
                 <Link
                   href="/tenant/notifikasi"
                   aria-label="Buka notifikasi"
-                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
+                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-[#6f63d7] hover:text-[#3423b8]"
                 >
                   <Bell size={19} />
                   {showUnreadNotificationDot ? (
@@ -203,7 +203,7 @@ export default function PublicHeader() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-sky-300 hover:text-sky-700 md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] md:hidden"
                 aria-label="Buka menu navigasi"
                 aria-controls="public-mobile-menu"
                 aria-expanded={mobileMenuOpen}
@@ -215,21 +215,21 @@ export default function PublicHeader() {
             <div className="flex items-center gap-2">
               <Link
                 href="/auth?mode=login"
-                className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-700 sm:inline-flex"
+                className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] sm:inline-flex"
               >
                 Masuk
               </Link>
 
               <Link
                 href="/auth?mode=register"
-                className="hidden rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 sm:inline-flex"
+                className="hidden rounded-full bg-[#3423b8] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#261786] sm:inline-flex"
               >
                 Daftar
               </Link>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-sky-300 hover:text-sky-700 md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] md:hidden"
                 aria-label="Buka menu navigasi"
                 aria-controls="public-mobile-menu"
                 aria-expanded={mobileMenuOpen}
@@ -264,7 +264,7 @@ export default function PublicHeader() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                       isNavActive(item.href)
-                        ? "bg-sky-50 text-sky-700"
+                        ? "bg-[#eeecff] text-[#3423b8]"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
                   >
@@ -286,7 +286,7 @@ export default function PublicHeader() {
                 <Link
                   href="/auth?mode=register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="inline-flex justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white"
+                  className="inline-flex justify-center rounded-xl bg-[#3423b8] px-4 py-2 text-sm font-medium text-white"
                 >
                   Daftar
                 </Link>
@@ -295,7 +295,7 @@ export default function PublicHeader() {
               <Link
                 href={dashboardHref}
                 onClick={() => setMobileMenuOpen(false)}
-                className="inline-flex w-full justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white"
+                className="inline-flex w-full justify-center rounded-xl bg-[#3423b8] px-4 py-2 text-sm font-medium text-white"
               >
                 Masuk Dasbor
               </Link>

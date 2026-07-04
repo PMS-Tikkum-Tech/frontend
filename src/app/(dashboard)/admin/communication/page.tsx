@@ -454,7 +454,7 @@ export default function AdminCommunicationPage() {
       const dateB = new Date(b.created_at || 0).getTime();
       return sortBy === "oldest" ? dateA - dateB : dateB - dateA;
     });
-  }, [messages, search, status, propertyFilter, sortBy]);
+  }, [messages, search, status, propertyFilter, sortBy, visitOnly]);
 
   const stats = useMemo(() => {
     const sent = messages.filter((item) => item.status === "sent").length;

@@ -1181,10 +1181,14 @@ export default function SewaPropertyDetailPage() {
                 className="max-h-[84vh] w-auto max-w-full rounded-xl bg-black"
               />
             ) : (
-              <img
+              <Image
                 src={activeHeroMedia.src}
                 alt={property.name}
+                width={1600}
+                height={1200}
+                unoptimized
                 className="max-h-[84vh] w-auto max-w-full rounded-xl object-contain"
+                sizes="100vw"
               />
             )}
 
@@ -1309,7 +1313,7 @@ export default function SewaPropertyDetailPage() {
                 <ArrowLeft size={13} />
                 Kembali
               </Link>
-              <BookingVersionBadge version="Versi 1" tone="dark" />
+              <BookingVersionBadge version="Sewa KIKOST" tone="dark" />
               <span className="rounded-full border border-white/40 bg-black/35 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
                 {formatLabel(property.property_type)}
               </span>

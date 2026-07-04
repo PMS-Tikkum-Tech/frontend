@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Building2, MapPin } from "lucide-react";
 import type { BookingV2Property } from "@/features/booking/shared/adapters/propertyAdapter";
+import SafeBookingImage from "./SafeBookingImage";
 
 export default function BookingV2PropertyCard({
   property,
@@ -11,11 +11,9 @@ export default function BookingV2PropertyCard({
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="relative aspect-[16/10]">
-        <Image
+        <SafeBookingImage
           src={property.imageUrl}
           alt={property.name}
-          fill
-          unoptimized
           className="object-cover"
         />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">

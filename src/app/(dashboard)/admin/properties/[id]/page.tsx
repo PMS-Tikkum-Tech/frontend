@@ -55,6 +55,8 @@ import {
   updateAdminPropertyBlockMedia,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
+import SafeBookingImage from "@/features/booking/v2/components/SafeBookingImage";
+import SafeBookingVideo from "@/features/booking/v2/components/SafeBookingVideo";
 import {
   buildPersistedUnitName,
   buildPropertyStructure,
@@ -1634,15 +1636,14 @@ export default function DetailPropertiPage() {
                 </div>
 
                 <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-                  <img
-                    src={selectedImage}
-                    alt={propertyDetail.property.name}
-                    loading="lazy"
-                    onError={(event) => {
-                      event.currentTarget.src = "/bg-1200.webp";
-                    }}
-                    className="aspect-[16/9] w-full object-cover"
-                  />
+                  <div className="relative aspect-[16/9] w-full">
+                    <SafeBookingImage
+                      src={selectedImage || "/bg-1200.webp"}
+                      alt={propertyDetail.property.name}
+                      className="object-cover"
+                      sizes="(max-width: 1280px) 100vw, 66vw"
+                    />
+                  </div>
                 </div>
 
                 {propertyPhotoUrls.length > 0 && (
@@ -1683,15 +1684,14 @@ export default function DetailPropertiPage() {
                             className="relative block h-20 w-full overflow-hidden rounded-lg bg-slate-100 disabled:opacity-70"
                             title={`Pilih media ${index + 1}`}
                           >
-                            <img
-                              src={image}
-                              alt={`${propertyDetail.property.name} ${index + 1}`}
-                              loading="lazy"
-                              onError={(event) => {
-                                event.currentTarget.src = "/bg-1200.webp";
-                              }}
-                              className="h-full w-full object-cover"
-                            />
+                            <div className="relative h-full w-full">
+                              <SafeBookingImage
+                                src={image || "/bg-1200.webp"}
+                                alt={`${propertyDetail.property.name} ${index + 1}`}
+                                className="object-cover"
+                                sizes="(max-width: 1024px) 50vw, 20vw"
+                              />
+                            </div>
                             <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                               {index + 1}
                             </span>
@@ -1765,14 +1765,10 @@ export default function DetailPropertiPage() {
                             key={`${video}-${index}`}
                             className="relative overflow-hidden rounded-xl border border-slate-200 bg-black"
                           >
-                            <video
+                            <SafeBookingVideo
                               src={video}
-                              controls
-                              preload="metadata"
                               className="h-52 w-full"
-                            >
-                              Browser Anda tidak mendukung pemutar video.
-                            </video>
+                            />
                             <button
                               type="button"
                               onClick={() => void handleDeletePropertyVideo("video")}
@@ -1792,12 +1788,7 @@ export default function DetailPropertiPage() {
                     <p className="text-sm font-medium text-slate-700">Media 360</p>
                     {video360Url ? (
                       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
-                        <video
-                          src={video360Url}
-                          controls
-                          preload="metadata"
-                          className="h-52 w-full"
-                        />
+                        <SafeBookingVideo src={video360Url} className="h-52 w-full" />
                         <button
                           type="button"
                           onClick={() => void handleDeletePropertyVideo("video_360")}
@@ -1810,15 +1801,14 @@ export default function DetailPropertiPage() {
                       </div>
                     ) : photo360Url ? (
                       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                        <img
-                          src={photo360Url}
-                          alt={`Foto 360 ${propertyDetail.property.name}`}
-                          loading="lazy"
-                          onError={(event) => {
-                            event.currentTarget.src = "/bg-1200.webp";
-                          }}
-                          className="h-52 w-full object-cover"
-                        />
+                        <div className="relative h-52 w-full">
+                          <SafeBookingImage
+                            src={photo360Url || "/bg-1200.webp"}
+                            alt={`Foto 360 ${propertyDetail.property.name}`}
+                            className="object-cover"
+                            sizes="100vw"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => void handleDeletePropertyVideo("video_360")}
@@ -2307,11 +2297,7 @@ export default function DetailPropertiPage() {
                   className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 >
                   <option value="standard">Standard</option>
-                  <option value="deluxe">Deluxe</option>
-                  <option value="exclusive">Exclusive</option>
                   <option value="premium">Premium</option>
-                  <option value="studio">Studio</option>
-                  <option value="suite">Suite</option>
                 </select>
 
                 <input
@@ -3168,12 +3154,14 @@ function PropertyMappingSection({
                         key={`${block.key}-${photoUrl}-${photoIndex}`}
                         className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                       >
-                        <img
-                          src={resolveMediaImageUrl(photoUrl)}
-                          alt={`${block.name} ${photoIndex + 1}`}
-                          className="h-28 w-full object-cover"
-                          loading="lazy"
-                        />
+                        <div className="relative h-28 w-full">
+                          <SafeBookingImage
+                            src={resolveMediaImageUrl(photoUrl) || "/bg-1200.webp"}
+                            alt={`${block.name} ${photoIndex + 1}`}
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 33vw, 25vw"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => onDeleteBlockMedia(block, "photo", photoIndex)}
@@ -3188,10 +3176,8 @@ function PropertyMappingSection({
 
                     {block.videoUrl ? (
                       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
-                        <video
+                        <SafeBookingVideo
                           src={toAbsoluteAssetUrl(block.videoUrl) || block.videoUrl}
-                          controls
-                          preload="metadata"
                           className="h-28 w-full"
                         />
                         <button
@@ -3208,10 +3194,8 @@ function PropertyMappingSection({
 
                     {block.video360Url ? (
                       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-black">
-                        <video
+                        <SafeBookingVideo
                           src={toAbsoluteAssetUrl(block.video360Url) || block.video360Url}
-                          controls
-                          preload="metadata"
                           className="h-28 w-full"
                         />
                         <button

@@ -9,16 +9,16 @@ export default function BookingV2Unavailable() {
           <Lock size={18} />
         </p>
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">
-          Booking belum aktif
+          Pemesanan belum aktif
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Gunakan flow booking yang sudah tersedia.
+          Gunakan alur pemesanan yang tersedia saat ini.
         </p>
         <Link
           href="/booking/v1"
           className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
         >
-          Buka booking lama
+          Buka versi sebelumnya
         </Link>
       </div>
     </section>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -42,15 +43,16 @@ export default function PropertyCard({ data }: { data: Property }) {
     <Link href={`/admin/properties/${data.id}`} className="group block h-full">
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
         <div className="relative">
-          <img
-            src={data.image}
-            alt={data.name}
-            loading="lazy"
-            onError={(event) => {
-              event.currentTarget.src = "/bg-1200.webp";
-            }}
-            className="h-52 w-full object-cover"
-          />
+          <div className="relative h-52 w-full overflow-hidden">
+            <Image
+              src={data.image || "/bg-1200.webp"}
+              alt={data.name}
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent" />
 
           <span

@@ -3,5 +3,5 @@ export default function DashboardGroupLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <div className="kikost-dashboard-theme min-h-screen">{children}</div>;
 }

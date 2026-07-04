@@ -12,6 +12,7 @@ import {
   type TenantFavoriteProperty,
 } from "@/lib/dashboard/tenant.api";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
+import { formatFilterLabel } from "@/lib/filter-options";
 import {
   getTenantFavoritesCache,
   patchFavoriteState,
@@ -28,17 +29,6 @@ const formatCurrency = (value?: number) => {
   }
 
   return `Rp ${CURRENCY_FORMATTER.format(value)}`;
-};
-
-const formatLabel = (value?: string | null) => {
-  if (!value) {
-    return "-";
-  }
-
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 };
 
 const formatPriceRange = (min?: number, max?: number) => {
@@ -404,7 +394,7 @@ function PropertyCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
 
         <span className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
-          {formatLabel(property.property_type)}
+          {formatFilterLabel(property.property_type)}
         </span>
 
         <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
@@ -431,7 +421,7 @@ function PropertyCard({
                 key={facility}
                 className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600"
               >
-                {formatLabel(facility)}
+                {formatFilterLabel(facility)}
               </span>
             ))
           )}

@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, type TouchEvent } from "react";
+import SafeBookingImage from "./SafeBookingImage";
 
 export default function ImageCarousel({
   images,
@@ -51,11 +51,9 @@ export default function ImageCarousel({
       onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
       onTouchEnd={handleTouchEnd}
     >
-      <Image
+      <SafeBookingImage
         src={activeImage}
         alt={alt}
-        fill
-        unoptimized
         className="object-cover transition duration-300 group-hover:scale-[1.025]"
       />
 

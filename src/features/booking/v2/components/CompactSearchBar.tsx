@@ -17,7 +17,7 @@ export default function CompactSearchBar({
     <button
       type="button"
       onClick={onOpen}
-      className="mx-auto hidden h-12 min-w-[420px] max-w-2xl items-center overflow-hidden rounded-full border border-[var(--color-border)] bg-white text-left shadow-[var(--shadow-small)] transition hover:shadow-[var(--shadow-medium)] md:flex"
+      className="mx-auto hidden h-12 min-w-[420px] max-w-2xl items-center overflow-hidden rounded-full border border-[#d4d0ff] bg-white text-left shadow-[0_6px_22px_rgba(52,35,184,0.1)] transition hover:border-[#958bea] hover:shadow-[0_10px_28px_rgba(52,35,184,0.16)] md:flex"
     >
       <span className="min-w-0 flex-1 px-5">
         <span className="block text-[11px] font-semibold text-slate-900">Lokasi</span>
@@ -41,7 +41,7 @@ export default function CompactSearchBar({
           {durationLabel}
         </span>
       </span>
-      <span className="mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+      <span className="mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3423b8] text-white">
         <Search size={16} />
       </span>
     </button>

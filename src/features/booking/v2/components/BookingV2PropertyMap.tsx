@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect } from "react";
 import { divIcon } from "leaflet";
 import {
@@ -11,6 +10,7 @@ import {
   ZoomControl,
   useMap,
 } from "react-leaflet";
+import SafeBookingImage from "./SafeBookingImage";
 
 export type BookingV2MapLocation = {
   id: number;
@@ -184,11 +184,9 @@ export default function BookingV2PropertyMap({
             <Popup className="kikost-booking-v2-popup" closeButton={false}>
               <div className="space-y-3">
                 <div className="relative h-28 overflow-hidden rounded-xl bg-slate-100">
-                  <Image
+                  <SafeBookingImage
                     src={location.imageUrl}
                     alt={location.name}
-                    fill
-                    unoptimized
                     className="object-cover"
                   />
                 </div>

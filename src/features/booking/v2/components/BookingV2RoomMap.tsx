@@ -9,6 +9,7 @@ import {
   groupBookingV2Rooms,
   type BookingV2Room,
 } from "@/features/booking/shared/adapters/roomAdapter";
+import { formatFilterLabel } from "@/lib/filter-options";
 
 type BookingV2RoomMapProps = {
   rooms: BookingV2Room[];
@@ -17,11 +18,11 @@ type BookingV2RoomMapProps = {
 };
 
 const LEGEND: Array<{ status: BookingV2RoomStatus; label: string }> = [
-  { status: "available", label: "Available" },
-  { status: "selected", label: "Selected" },
-  { status: "unavailable", label: "Unavailable" },
-  { status: "occupied", label: "Occupied" },
-  { status: "maintenance", label: "Maintenance" },
+  { status: "available", label: "Tersedia" },
+  { status: "selected", label: "Dipilih" },
+  { status: "unavailable", label: "Tidak tersedia" },
+  { status: "occupied", label: "Terisi" },
+  { status: "maintenance", label: "Perawatan" },
 ];
 
 export default function BookingV2RoomMap({
@@ -39,7 +40,7 @@ export default function BookingV2RoomMap({
           Kamar belum tersedia
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          Data kamar akan muncul ketika katalog backend mengembalikan unit.
+          Data kamar akan muncul setelah daftar kamar tersedia.
         </p>
       </div>
     );
@@ -90,7 +91,7 @@ export default function BookingV2RoomMap({
                   className={`min-h-[92px] rounded-lg border p-3 text-left transition disabled:cursor-not-allowed ${getBookingV2RoomStatusClass(visualStatus)}`}
                 >
                   <span className="block text-[11px] font-medium opacity-80">
-                    {room.roomType}
+                    {formatFilterLabel(room.roomType)}
                   </span>
                   <span className="mt-1 block text-lg font-semibold leading-tight">
                     {room.roomNumber}

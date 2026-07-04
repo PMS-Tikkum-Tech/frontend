@@ -11,13 +11,13 @@ export default function BookingV2FailedPage() {
           <BookingVersionBadge version="Versi 2" tone="blue" />
         </div>
         <h1 className="mt-4 text-2xl font-semibold text-slate-900">
-          Booking belum berhasil
+          Pemesanan belum berhasil
         </h1>
         <Link
           href="/booking/v2"
           className="mt-5 inline-flex h-10 items-center rounded-lg bg-red-600 px-4 text-sm font-semibold text-white"
         >
-          Ulangi Booking
+          Coba lagi
         </Link>
       </div>
     </section>

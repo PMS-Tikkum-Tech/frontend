@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Building2, MapPin } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import type { BookingV2Property } from "@/features/booking/shared/adapters/propertyAdapter";
+import { formatFacilityLabel } from "@/lib/facility-labels";
 import ImageCarousel from "./ImageCarousel";
 import FavoriteButton from "./FavoriteButton";
 
@@ -41,15 +42,17 @@ export default function PropertyCard({
       onClick={openDetail}
       onKeyDown={handleKeyDown}
       onMouseEnter={() => onSelect?.(property.id)}
-      className={`group cursor-pointer rounded-[18px] p-1 outline-none transition focus-visible:ring-2 focus-visible:ring-sky-500 ${
-        isSelected ? "bg-slate-950/5 ring-2 ring-slate-950" : "hover:bg-slate-50"
+      className={`group flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-[#e2dfff] bg-white p-1 shadow-[0_8px_24px_rgba(52,35,184,0.07)] outline-none transition hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(52,35,184,0.13)] focus-visible:ring-2 focus-visible:ring-[#3423b8] ${
+        isSelected
+          ? "bg-[#f0eeff] ring-2 ring-[#3423b8]"
+          : "hover:border-[#c8c2ff]"
       }`}
     >
       <div className="relative">
         <ImageCarousel
           images={property.images}
           alt={property.name}
-          className="aspect-square rounded-2xl"
+          className="aspect-[4/3] rounded-[16px]"
         />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {property.availableUnits > 0 ? (
@@ -71,32 +74,68 @@ export default function PropertyCard({
         />
       </div>
 
-      <div className="px-0.5 pb-2 pt-3">
+      <div className="flex flex-1 flex-col px-3 pb-3 pt-4">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="line-clamp-1 text-sm font-semibold text-[var(--color-text-primary)]">
+          <h2 className="line-clamp-2 text-base font-semibold leading-snug text-[var(--color-text-primary)]">
             {property.name}
           </h2>
           <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">
             {property.propertyTypeLabel}
           </span>
         </div>
-        <p className="mt-1 line-clamp-1 text-sm text-[var(--color-text-secondary)]">
-          {property.location}
+        <p className="mt-2 flex min-h-10 items-start gap-1.5 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+          <MapPin size={14} className="mt-0.5 shrink-0 text-[#6f63d7]" />
+          <span className="line-clamp-2">{property.address}</span>
         </p>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          {property.distanceText}
-        </p>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          {property.availableUnits} kamar tersedia
-        </p>
-        <p className="mt-2 text-sm text-slate-900">
-          <span className="font-semibold">{property.priceLabel}</span>{" "}
-          <span className="text-[var(--color-text-secondary)]">per bulan</span>
-        </p>
-        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-slate-900 opacity-0 transition group-hover:opacity-100">
-          Lihat detail
-          <ArrowRight size={13} />
-        </span>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl bg-[#f5f3ff] px-3 py-2.5">
+            <p className="text-slate-500">Unit tersedia</p>
+            <p className="mt-1 inline-flex items-center gap-1.5 font-semibold text-[#3423b8]">
+              <Building2 size={13} />
+              {property.availableUnits} dari {property.totalUnits}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+            <p className="text-slate-500">Kondisi</p>
+            <p className="mt-1 line-clamp-1 font-semibold text-slate-800">
+              {property.conditionLabel}
+            </p>
+          </div>
+        </div>
+
+        {property.facilities.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {property.facilities.slice(0, 3).map((facility) => (
+              <span
+                key={facility}
+                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-600"
+              >
+                {formatFacilityLabel(facility)}
+              </span>
+            ))}
+            {property.facilities.length > 3 ? (
+              <span className="rounded-full bg-[#eeecff] px-2.5 py-1 text-[10px] font-semibold text-[#3423b8]">
+                +{property.facilities.length - 3}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              Mulai dari
+            </p>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {property.priceLabel}
+              <span className="ml-1 font-normal text-slate-400">/bulan</span>
+            </p>
+          </div>
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3423b8] text-white transition group-hover:bg-[#24147d]">
+            <ArrowRight size={15} />
+          </span>
+        </div>
       </div>
     </article>
   );
