@@ -398,8 +398,8 @@ export default function AdminLogActivityPage() {
           Filter Log Aktivitas
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="relative min-w-[260px] flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <label className="relative w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -419,7 +419,7 @@ export default function AdminLogActivityPage() {
             onChange={(event) =>
               handleFilterChange(() => setAction(event.target.value))
             }
-            className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
           >
             <option value="">Semua Aksi</option>
             {actionFilterOptions.map((option) => (
@@ -434,7 +434,7 @@ export default function AdminLogActivityPage() {
             onChange={(event) =>
               handleFilterChange(() => setModuleName(event.target.value))
             }
-            className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
           >
             <option value="">Semua Modul</option>
             {moduleFilterOptions.map((option) => (
@@ -451,14 +451,14 @@ export default function AdminLogActivityPage() {
                 setSort(event.target.value as "newest" | "oldest")
               )
             }
-            className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
           >
             <option value="newest">Urutkan: Terbaru</option>
             <option value="oldest">Urutkan: Terlama</option>
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600">Dari</label>
             <input
@@ -467,7 +467,7 @@ export default function AdminLogActivityPage() {
               onChange={(event) =>
                 handleFilterChange(() => setDateFrom(event.target.value))
               }
-              className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
             />
           </div>
 
@@ -479,14 +479,14 @@ export default function AdminLogActivityPage() {
               onChange={(event) =>
                 handleFilterChange(() => setDateTo(event.target.value))
               }
-              className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
             />
           </div>
 
           <button
             type="button"
             onClick={clearFilters}
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
           >
             Atur Ulang
           </button>

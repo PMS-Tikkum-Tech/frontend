@@ -18,8 +18,7 @@ import BookingV2StepBar from "@/features/booking/v2/components/BookingV2StepBar"
 import BookingV2Unavailable from "@/features/booking/v2/components/BookingV2Unavailable";
 import {
   getBookingV2DurationLabel,
-  getBookingV2DurationMonths,
-  isBookingV2DailyDuration,
+  getBookingV2DurationPrice,
   loadBookingV2Draft,
   type BookingV2Draft,
 } from "@/features/booking/v2/store/bookingV2Store";
@@ -99,11 +98,10 @@ export default function BookingV2SummaryPage() {
 
   const existingDraftMatchesRoute =
     draft?.propertyId && propertyId && draft.propertyId === propertyId && draft.unitId;
-  const estimatedTotal =
-    monthlyPrice *
-    (isBookingV2DailyDuration(draft?.durationPreset)
-      ? 1
-      : getBookingV2DurationMonths(draft?.durationPreset));
+  const estimatedTotal = getBookingV2DurationPrice(
+    monthlyPrice || draft?.monthlyPrice || 0,
+    draft?.durationPreset
+  );
 
   if (!BOOKING_V2_ENABLED) {
     return <BookingV2Unavailable />;
@@ -164,7 +162,7 @@ export default function BookingV2SummaryPage() {
                   value={getBookingV2DurationLabel(draft?.durationPreset)}
                 />
                 <SummaryBox
-                  label="Harga kamar"
+                  label="Harga dasar per bulan"
                   value={formatBookingCurrency(monthlyPrice || draft?.monthlyPrice)}
                 />
               </div>
@@ -172,7 +170,7 @@ export default function BookingV2SummaryPage() {
               <div className="mt-5 rounded-lg border border-sky-100 bg-sky-50 p-4">
                 <p className="inline-flex items-center gap-2 text-xs font-semibold text-sky-700">
                   <CalendarDays size={14} />
-                  Estimasi total
+                  Estimasi total paket
                 </p>
                 <p className="mt-1 text-xl font-semibold text-sky-950">
                   {formatBookingCurrency(estimatedTotal || draft?.monthlyPrice)}

@@ -9,17 +9,12 @@ import type { BookingV2Room } from "@/features/booking/shared/adapters/roomAdapt
 import { formatBookingCurrency } from "@/features/booking/shared/utils/bookingFormatters";
 import { formatFilterLabel } from "@/lib/filter-options";
 import {
+  BOOKING_V2_DURATION_OPTIONS,
   getBookingV2DurationLabel,
-  getBookingV2DurationMonths,
+  getBookingV2DurationPrice,
   type BookingV2DurationPreset,
 } from "@/features/booking/v2/store/bookingV2Store";
 import type { BookingV2RoomTypeOption } from "./RoomTypeCard";
-
-const DURATION_OPTIONS: Array<{ value: BookingV2DurationPreset; label: string }> = [
-  { value: "1m", label: "1 bulan" },
-  { value: "6m", label: "1 semester / 6 bulan" },
-  { value: "12m", label: "12 bulan" },
-];
 
 export default function BookingCard({
   property,
@@ -59,21 +54,47 @@ export default function BookingCard({
   );
   const monthlyPrice =
     selectedRoom?.monthlyPrice || property.priceMin || property.priceMax || 0;
-  const estimatedTotal = monthlyPrice * getBookingV2DurationMonths(durationPreset);
+  const baseMonthlyPrice =
+    selectedRoom?.baseMonthlyPrice || monthlyPrice;
+  const estimatedTotal = getBookingV2DurationPrice(monthlyPrice, durationPreset);
+  const hasPromo = Boolean(
+    selectedRoom &&
+      selectedRoom.hasPromo &&
+      baseMonthlyPrice > monthlyPrice
+  );
 
   return (
     <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-medium)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">Mulai dari</p>
-          <p className="mt-1 text-xl font-semibold text-slate-950">
-            {property.priceLabel}
-            <span className="text-sm font-normal text-slate-500"> / bulan</span>
-          </p>
+          {hasPromo ? (
+            <div className="mt-1 flex flex-col">
+              <span className="text-sm text-slate-500 line-through">
+                {formatBookingCurrency(baseMonthlyPrice)} / bulan
+              </span>
+              <p className="text-xl font-semibold text-emerald-700">
+                {formatBookingCurrency(monthlyPrice)}
+                <span className="text-sm font-normal text-slate-500"> / bulan</span>
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xl font-semibold text-slate-950">
+              {property.priceLabel}
+              <span className="text-sm font-normal text-slate-500"> / bulan</span>
+            </p>
+          )}
         </div>
-        <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-          {property.availableUnits} tersedia
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          {property.hasPromo ? (
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              Promo aktif
+            </span>
+          ) : null}
+          <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+            {property.availableUnits} tersedia
+          </span>
+        </div>
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
@@ -101,7 +122,7 @@ export default function BookingCard({
             }
             className="mt-1 w-full bg-transparent text-sm outline-none"
           >
-            {DURATION_OPTIONS.map((option) => (
+            {BOOKING_V2_DURATION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -204,13 +225,24 @@ export default function BookingCard({
 
       <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm">
         <PriceRow
-          label={`Harga sewa (${getBookingV2DurationLabel(durationPreset)})`}
+          label={`Harga paket (${getBookingV2DurationLabel(durationPreset)})`}
           value={formatBookingCurrency(estimatedTotal)}
         />
+        {hasPromo ? (
+          <PriceRow
+            label="Harga dasar per bulan"
+            value={formatBookingCurrency(baseMonthlyPrice)}
+          />
+        ) : (
+          <PriceRow
+            label="Harga dasar per bulan"
+            value={formatBookingCurrency(monthlyPrice)}
+          />
+        )}
         <PriceRow label="Deposit" value="Mengikuti pengaturan hunian" />
         <PriceRow label="Biaya admin" value="Mengikuti pengaturan hunian" />
         <div className="flex items-center justify-between pt-2 text-base font-semibold text-slate-950">
-          <span>Total awal</span>
+          <span>Total paket</span>
           <span>{selectedRoom ? formatBookingCurrency(estimatedTotal) : "-"}</span>
         </div>
       </div>

@@ -65,6 +65,7 @@ import {
 import type { BackendUser, SessionUser } from "@/types/auth";
 import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
 import {
+  BOOKING_V2_DURATION_OPTIONS,
   BOOKING_V2_STORAGE_KEY,
   isBookingV2DurationPreset,
   type BookingV2Draft,
@@ -82,19 +83,12 @@ const DAYS_IN_MONTH_FOR_DAILY_RATE = 30;
 const BSI_QRIS_IMAGE_URL =
   process.env.NEXT_PUBLIC_BSI_QRIS_IMAGE_URL?.trim() || "";
 
-const RENT_DURATION_OPTIONS = [
-  { value: "7d", label: "7 Hari" },
-  { value: "14d", label: "14 Hari" },
-  { value: "21d", label: "21 Hari" },
-  { value: "1m", label: "1 Bulan" },
-  { value: "6m", label: "6 Bulan" },
-  { value: "12m", label: "1 Tahun" },
-  { value: "custom", label: "Custom" },
-] as const;
+const RENT_DURATION_OPTIONS = BOOKING_V2_DURATION_OPTIONS;
 
-type RentDurationValue = (typeof RENT_DURATION_OPTIONS)[number]["value"];
+type RentDurationValue = BookingV2Draft["durationPreset"];
 
 const DAILY_DURATION_DAYS: Record<Extract<RentDurationValue, `${number}d`>, number> = {
+  "1d": 1,
   "7d": 7,
   "14d": 14,
   "21d": 21,
@@ -413,7 +407,7 @@ function TenantCreatePaymentPageContent() {
 
   const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
   const [checkOutDate, setCheckOutDate] = useState("");
-  const [rentDuration, setRentDuration] = useState<RentDurationValue>("6m");
+  const [rentDuration, setRentDuration] = useState<RentDurationValue>("1m");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>(
     PAYMENT_METHODS[0].value
   );
@@ -534,6 +528,13 @@ function TenantCreatePaymentPageContent() {
 
     return Math.ceil(monthlyPrice / DAYS_IN_MONTH_FOR_DAILY_RATE);
   }, [monthlyPrice]);
+  const bookingDurationValue = useMemo(() => {
+    if (isDailyRent) {
+      return Math.max(1, isCustomDuration ? customDurationDays : durationDays);
+    }
+
+    return Math.max(1, durationMonths);
+  }, [customDurationDays, durationDays, durationMonths, isCustomDuration, isDailyRent]);
   const displayedBasePrice = isDailyRent ? dailyPrice : monthlyPrice;
   const displayedUnitName = useMemo(() => {
     return getTenantUnitDisplayName(unit);
@@ -546,15 +547,15 @@ function TenantCreatePaymentPageContent() {
 
   const estimatedTotal = useMemo(() => {
     if (isDailyRent) {
-      return dailyPrice * Math.max(1, isCustomDuration ? customDurationDays : durationDays);
+      return dailyPrice * bookingDurationValue;
     }
 
-    if (!monthlyPrice || durationMonths <= 0) {
+    if (!monthlyPrice || bookingDurationValue <= 0) {
       return 0;
     }
 
-    return monthlyPrice * durationMonths;
-  }, [customDurationDays, dailyPrice, durationDays, durationMonths, isCustomDuration, isDailyRent, monthlyPrice]);
+    return monthlyPrice * bookingDurationValue;
+  }, [bookingDurationValue, dailyPrice, isDailyRent, monthlyPrice]);
 
   const estimatedEndDate = useMemo(() => {
     return calculatedEndDateInput ? formatDate(calculatedEndDateInput) : "-";
@@ -832,7 +833,7 @@ function TenantCreatePaymentPageContent() {
       return;
     }
 
-    if (durationMonths <= 0) {
+    if (bookingDurationValue <= 0) {
       setSubmitError("Durasi sewa tidak valid.");
       return;
     }
@@ -876,7 +877,7 @@ function TenantCreatePaymentPageContent() {
         unit_id: unit.id,
         check_in_date: checkInDate,
         end_date: isDailyRent ? calculatedEndDateInput : undefined,
-        duration_months: durationMonths,
+        duration_months: bookingDurationValue,
         duration_type: isDailyRent ? "daily" : "monthly",
         payment_method: paymentMethod,
         note: senderSource.trim(),
@@ -1455,7 +1456,7 @@ function TenantCreatePaymentPageContent() {
                   isCustomDuration
                     ? "Custom"
                     : isDailyRent
-                      ? `${isCustomDuration ? customDurationDays : durationDays} Hari`
+                      ? `${bookingDurationValue} Hari`
                       : `${durationMonths} Bulan`
                 }
               />

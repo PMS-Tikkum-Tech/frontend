@@ -46,6 +46,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { BookingV2MapLocation } from "@/features/booking/v2/components/BookingV2PropertyMap";
 import {
   isBookingV2DurationPreset,
+  getBookingV2DurationPrice,
   loadBookingV2Draft,
   loadBookingV2FavoriteIds,
   mergeBookingV2Draft,
@@ -154,7 +155,7 @@ export default function BookingV2PropertyDetailPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
   const [durationPreset, setDurationPreset] =
-    useState<BookingV2DurationPreset>("6m");
+    useState<BookingV2DurationPreset>("1m");
   const [occupants, setOccupants] = useState(1);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => new Set());
   const [mobileBookingOpen, setMobileBookingOpen] = useState(false);
@@ -659,9 +660,9 @@ export default function BookingV2PropertyDetailPage() {
 
           <div className="hidden lg:sticky lg:top-32 lg:block lg:self-start">
             <BookingCard
-                property={property}
-                rooms={filteredRooms}
-                roomTypes={roomTypeOptions}
+        property={property}
+        rooms={filteredRooms}
+        roomTypes={roomTypeOptions}
                 selectedRoomType={selectedRoomType}
                 selectedRoom={selectedRoom}
                 checkInDate={checkInDate}
@@ -683,7 +684,12 @@ export default function BookingV2PropertyDetailPage() {
       </main>
 
         <MobileBookingBar
-        priceLabel={selectedRoom?.monthlyPriceLabel || property.priceLabel}
+        priceLabel={formatBookingCurrency(
+          getBookingV2DurationPrice(
+            selectedRoom?.monthlyPrice || property.priceMin || property.priceMax || 0,
+            durationPreset
+          )
+        )}
         selectedRoomLabel={
           selectedRoom
             ? `${selectedRoom.roomNumber} - ${formatFilterLabel(selectedRoom.roomType)}`

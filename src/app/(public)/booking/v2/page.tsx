@@ -191,7 +191,7 @@ export default function BookingV2PropertyPage() {
   const [search, setSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [durationPreset, setDurationPreset] =
-    useState<BookingV2DurationPreset>("6m");
+    useState<BookingV2DurationPreset>("1m");
   const [activeFilter, setActiveFilter] =
     useState<BookingV2FilterValue>("all");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => new Set());
@@ -207,7 +207,7 @@ export default function BookingV2PropertyPage() {
     setFavoriteIds(loadBookingV2FavoriteIds());
     setSearch(draft?.propertyName || "");
     setStartDate(draft?.checkInDate || "");
-    setDurationPreset(draft?.durationPreset || "6m");
+    setDurationPreset(draft?.durationPreset || "1m");
   }, []);
 
   useEffect(() => {

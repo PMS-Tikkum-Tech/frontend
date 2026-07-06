@@ -630,8 +630,8 @@ export default function AdminAccountPage() {
           Filter Akun
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="relative min-w-[240px] flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <label className="relative w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -647,7 +647,7 @@ export default function AdminAccountPage() {
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value)}
-            className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
           >
             <option value="">Semua Status</option>
             {statusFilterOptions.map((option) => (
@@ -660,7 +660,7 @@ export default function AdminAccountPage() {
           <select
             value={role}
             onChange={(event) => setRole(event.target.value)}
-            className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
           >
             <option value="">Semua Peran</option>
             {roleFilterOptions.map((option) => (
@@ -673,7 +673,7 @@ export default function AdminAccountPage() {
           <select
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value as SortValue)}
-            className="h-11 rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
           >
             <option value="newest">Urutkan: Terbaru</option>
             <option value="oldest">Urutkan: Terlama</option>
@@ -684,7 +684,7 @@ export default function AdminAccountPage() {
           <button
             type="button"
             onClick={resetFilters}
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
           >
             Atur Ulang
           </button>

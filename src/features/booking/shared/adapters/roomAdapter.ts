@@ -3,7 +3,12 @@ import {
   getTenantUnitDisplayName,
   getTenantUnitNumber,
 } from "@/lib/dashboard/tenant-unit-display";
-import type { PublicPropertySummary, PublicPropertyUnitSummary } from "@/lib/dashboard/tenant.api";
+import {
+  getCatalogUnitBasePrice,
+  getCatalogUnitDisplayPrice,
+  type PublicPropertySummary,
+  type PublicPropertyUnitSummary,
+} from "@/lib/dashboard/tenant.api";
 import { formatBookingCurrency, formatBookingLabel } from "../utils/bookingFormatters";
 import { firstBookingMediaUrl } from "../utils/bookingMedia";
 import {
@@ -24,6 +29,9 @@ export type BookingV2Room = {
   statusLabel: string;
   monthlyPrice: number;
   monthlyPriceLabel: string;
+  baseMonthlyPrice: number;
+  baseMonthlyPriceLabel: string;
+  hasPromo: boolean;
   capacityLabel: string;
   facilities: string[];
   imageUrl: string;
@@ -47,7 +55,8 @@ export const adaptPublicUnitToBookingV2Room = (
   const roomNumber =
     getTenantUnitNumber(unit, buildingName) || unit.name || `Unit ${unit.id}`;
   const status = mapBackendRoomStatusToBookingV2(unit.status);
-  const monthlyPrice = unit.price || property?.price_min || property?.price_max || 0;
+  const baseMonthlyPrice = getCatalogUnitBasePrice(unit);
+  const monthlyPrice = getCatalogUnitDisplayPrice(unit) || property?.price_min || property?.price_max || 0;
   const capacityLabel =
     typeof unit.people_allowed === "number" && unit.people_allowed > 0
       ? `${unit.people_allowed} orang`
@@ -65,6 +74,13 @@ export const adaptPublicUnitToBookingV2Room = (
     statusLabel: getBookingV2RoomStatusLabel(status),
     monthlyPrice,
     monthlyPriceLabel: formatBookingCurrency(monthlyPrice),
+    baseMonthlyPrice: baseMonthlyPrice || monthlyPrice,
+    baseMonthlyPriceLabel: formatBookingCurrency(baseMonthlyPrice || monthlyPrice),
+    hasPromo: Boolean(
+      baseMonthlyPrice &&
+        monthlyPrice &&
+        baseMonthlyPrice > monthlyPrice
+    ),
     capacityLabel,
     facilities: unit.facilities?.length ? unit.facilities : property?.facilities || [],
     imageUrl: firstBookingMediaUrl(

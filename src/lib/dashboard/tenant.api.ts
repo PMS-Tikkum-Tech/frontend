@@ -165,6 +165,9 @@ export interface TenantPropertySummary {
   availability_status?: PublicPropertyAvailabilityStatus | string | null;
   price_min?: number;
   price_max?: number;
+  promo_price_min?: number | null;
+  promo_price_max?: number | null;
+  has_promo?: boolean | null;
   photo_url?: string | null;
   photo_urls?: string[];
   video_urls?: string[];
@@ -316,6 +319,8 @@ export interface PublicPropertyUnitSummary {
   status?: "vacant" | "occupied" | "maintenance" | string;
   people_allowed?: number | null;
   price?: number | null;
+  promo_price?: number | null;
+  discount_percent?: number | null;
   facilities?: string[];
   photo_url?: string | null;
   photo_urls?: string[];
@@ -370,6 +375,8 @@ type ManualRentalCatalogUnit = {
   people_allowed?: number | null;
   monthly_rent_amount?: number | null;
   price?: number | string | null;
+  promo_price?: number | string | null;
+  discount_percent?: number | string | null;
   facilities?: string[];
   roomphoto_urls?: string[];
   photo_urls?: string[];
@@ -404,14 +411,49 @@ type ManualRentalCatalogUnit = {
   updated_at?: string | null;
 };
 
+type CatalogUnitPriceSource = {
+  monthly_rent_amount?: number | string | null;
+  price?: number | string | null;
+  promo_price?: number | string | null;
+  discount_percent?: number | string | null;
+};
+
 const getPositivePriceValue = (value: unknown) => {
   const numericValue = getNumberValue(value);
   return numericValue != null && numericValue > 0 ? numericValue : null;
 };
 
-const getCatalogUnitPrice = (
-  unit: Pick<ManualRentalCatalogUnit, "monthly_rent_amount" | "price">
+export const getCatalogUnitBasePrice = (
+  unit: Pick<CatalogUnitPriceSource, "monthly_rent_amount" | "price">
 ) => getPositivePriceValue(unit.monthly_rent_amount ?? unit.price);
+
+export const getCatalogUnitPromoPrice = (
+  unit: CatalogUnitPriceSource
+) => {
+  const explicitPromoPrice = getPositivePriceValue(unit.promo_price);
+  if (explicitPromoPrice != null) {
+    return explicitPromoPrice;
+  }
+
+  const basePrice = getCatalogUnitBasePrice(unit);
+  const discountPercent = getNumberValue(unit.discount_percent);
+
+  if (
+    basePrice == null ||
+    discountPercent == null ||
+    !Number.isFinite(discountPercent) ||
+    discountPercent <= 0 ||
+    discountPercent >= 100
+  ) {
+    return null;
+  }
+
+  return Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
+};
+
+export const getCatalogUnitDisplayPrice = (
+  unit: CatalogUnitPriceSource
+) => getCatalogUnitPromoPrice(unit) ?? getCatalogUnitBasePrice(unit);
 
 const getPriceRangeFromValues = (values: unknown[]) => {
   const prices = values
@@ -496,6 +538,8 @@ type PublicPropertyApiItem = {
     name?: string | null;
     unit_type?: string | null;
     monthly_rent_amount?: number | string | null;
+    promo_price?: number | string | null;
+    discount_percent?: number | string | null;
     roomphoto_urls?: string[];
     photo_urls?: string[];
   }>;
@@ -504,6 +548,8 @@ type PublicPropertyApiItem = {
     name?: string | null;
     unit_type?: string | null;
     monthly_rent_amount?: number | string | null;
+    promo_price?: number | string | null;
+    discount_percent?: number | string | null;
     roomphoto_urls?: string[];
     photo_urls?: string[];
   }>;
@@ -889,7 +935,7 @@ const normalizePublicProperty = (
     ...(property.units_preview || []),
   ];
   const previewPriceRange = getPriceRangeFromValues(
-    unitPreviewItems.map((unit) => unit.monthly_rent_amount)
+    unitPreviewItems.map((unit) => getCatalogUnitDisplayPrice(unit))
   );
   const photoUrls = dedupeMediaPaths(
     property.roomphoto_property_urls,
@@ -902,13 +948,16 @@ const normalizePublicProperty = (
     ])
   );
   const videoUrls = dedupeMediaPaths(property.video_urls, property.video_url);
+  const hasPromo = unitPreviewItems.some(
+    (unit) => getCatalogUnitPromoPrice(unit) != null
+  );
   const priceMin =
-    getPositivePriceValue(availablePriceRange?.min) ??
     previewPriceRange.min ??
+    getPositivePriceValue(availablePriceRange?.min) ??
     getPositivePriceValue(priceRange?.min ?? property.price_min);
   const priceMax =
-    getPositivePriceValue(availablePriceRange?.max) ??
     previewPriceRange.max ??
+    getPositivePriceValue(availablePriceRange?.max) ??
     getPositivePriceValue(priceRange?.max ?? property.price_max);
   const totalUnits = getNumberValue(stats.total_units ?? property.total_units);
   const occupiedUnits = getNumberValue(
@@ -962,6 +1011,7 @@ const normalizePublicProperty = (
     availability_status: availabilityStatus,
     price_min: priceMin == null ? undefined : Math.max(0, priceMin),
     price_max: priceMax == null ? undefined : Math.max(0, priceMax),
+    has_promo: hasPromo,
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,
     roomphoto_urls: photoUrls,
@@ -1013,12 +1063,13 @@ const fetchAllCatalogProperties = async (params?: QueryParams) => {
   const totalPages = firstResponse.data.meta?.total_pages || 0;
   const unitPriceRangeByProperty = new Map<
     number,
-    { price_min: number; price_max: number }
+    { price_min: number; price_max: number; has_promo: boolean }
   >();
 
   unitsResponse?.data.forEach((unit) => {
     const propertyId = unit.property?.id;
-    const unitPrice = getCatalogUnitPrice(unit);
+    const unitPrice = getCatalogUnitDisplayPrice(unit);
+    const hasPromo = getCatalogUnitPromoPrice(unit) != null;
     if (!propertyId || unitPrice == null) {
       return;
     }
@@ -1033,6 +1084,7 @@ const fetchAllCatalogProperties = async (params?: QueryParams) => {
         existing?.price_max == null
           ? unitPrice
           : Math.max(existing.price_max, unitPrice),
+      has_promo: existing?.has_promo || hasPromo,
     });
   });
 
@@ -1057,6 +1109,7 @@ const fetchAllCatalogProperties = async (params?: QueryParams) => {
         ...normalizedProperty,
         price_min: unitPriceRange.price_min,
         price_max: unitPriceRange.price_max,
+        has_promo: unitPriceRange.has_promo || normalizedProperty.has_promo || false,
       };
     }),
     message: firstResponse.data.message,
@@ -1076,7 +1129,8 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
     }
 
     const existing = propertyMap.get(property.id);
-    const unitPrice = getCatalogUnitPrice(unit);
+    const unitPrice = getCatalogUnitDisplayPrice(unit);
+    const hasPromo = getCatalogUnitPromoPrice(unit) != null;
     const propertyPhotoUrls = dedupeMediaPaths(
       property.roomphoto_urls,
       property.photo_urls,
@@ -1111,6 +1165,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
         availability_status: "available",
         price_min: unitPrice == null ? undefined : Math.max(0, unitPrice),
         price_max: unitPrice == null ? undefined : Math.max(0, unitPrice),
+        has_promo: hasPromo,
         photo_url: propertyPhotoUrls[0] || null,
         photo_urls: propertyPhotoUrls,
         roomphoto_urls: propertyPhotoUrls,
@@ -1133,6 +1188,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
     if (existing.price_max == null || (unitPrice != null && unitPrice > existing.price_max)) {
       existing.price_max = unitPrice == null ? existing.price_max : Math.max(0, unitPrice);
     }
+    existing.has_promo = existing.has_promo || hasPromo;
     existing.photo_urls = dedupeMediaPaths(
       existing.photo_urls,
       propertyPhotoUrls,
@@ -1212,7 +1268,9 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
     unit_type: getStringValue(unit.unit_type),
     status: getStringValue(unit.status) || "vacant",
     people_allowed: unit.people_allowed || null,
-    price: getCatalogUnitPrice(unit),
+    price: getCatalogUnitBasePrice(unit),
+    promo_price: getCatalogUnitPromoPrice(unit),
+    discount_percent: getNumberValue(unit.discount_percent),
     facilities: unit.facilities || unit.property?.facilities || [],
     photo_url: photoUrls[0] || null,
     photo_urls: photoUrls,

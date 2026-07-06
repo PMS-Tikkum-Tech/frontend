@@ -15,7 +15,7 @@ export default function MobileBookingBar({
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-950">
             {priceLabel}
-            <span className="font-normal text-slate-500"> / bulan</span>
+            <span className="font-normal text-slate-500"> / paket</span>
           </p>
           <p className="mt-0.5 truncate text-xs text-slate-500">
             {selectedRoomLabel || "Pilih kamar untuk lanjut"}

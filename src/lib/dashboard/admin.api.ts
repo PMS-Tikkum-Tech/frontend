@@ -208,6 +208,8 @@ export interface AdminPropertyUnitRow {
   tenant_phone?: string | null;
   mobile_phone?: string | null;
   price: number;
+  promo_price?: number | null;
+  discount_percent?: number | null;
   lease_end?: string | null;
   lease_start?: string | null;
   check_in_date?: string | null;
@@ -247,6 +249,8 @@ export interface AdminUnitCreatePayload {
   status: "vacant" | "occupied" | "booking" | "maintenance";
   people_allowed: number;
   price: number;
+  promo_price?: number | null;
+  discount_percent?: number | null;
   notes?: string;
   photos?: File[];
   video?: File | null;
@@ -265,6 +269,8 @@ export interface AdminUnitUpdatePayload {
   status?: "vacant" | "occupied" | "booking" | "maintenance";
   people_allowed?: number;
   price?: number;
+  promo_price?: number | null;
+  discount_percent?: number | null;
   notes?: string;
   photos?: File[];
   video?: File | null;
@@ -976,6 +982,12 @@ const toUnitFormData = async (
   appendUnitFormDataValue(formData, "status", payload.status);
   appendUnitFormDataValue(formData, "people_allowed", payload.people_allowed);
   appendUnitFormDataValue(formData, "price", payload.price);
+  appendUnitFormDataValue(formData, "promo_price", payload.promo_price);
+  appendUnitFormDataValue(
+    formData,
+    "discount_percent",
+    payload.discount_percent,
+  );
   appendUnitFormDataValue(formData, "notes", payload.notes);
 
   await appendOptimizedPhotos(formData, "unit[photos][]", payload.photos);

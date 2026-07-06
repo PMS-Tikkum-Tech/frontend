@@ -37,6 +37,8 @@ import VisitRequestModal from "@/components/sewa/VisitRequestModal";
 import {
   createTenantVisitRequest,
   getApiErrorMessage,
+  getCatalogUnitBasePrice,
+  getCatalogUnitDisplayPrice,
   getPublicProperties,
   getPublicPropertyUnits,
   getTenantProfile,
@@ -328,6 +330,9 @@ type AvailableUnitCard = {
   priceMax: number;
   priceValue: number;
   priceLabel: string;
+  basePriceValue: number;
+  basePriceLabel: string;
+  hasPromo: boolean;
   facilities: string[];
   media: PropertyMedia[];
 };
@@ -553,7 +558,8 @@ const mapPublicUnitToCard = (
   unit: PublicPropertyUnitSummary,
   property: PublicPropertySummary
 ): AvailableUnitCard => {
-  const monthlyPrice = unit.price || property.price_min || property.price_max || 0;
+  const basePrice = getCatalogUnitBasePrice(unit) || property.price_min || property.price_max || 0;
+  const monthlyPrice = getCatalogUnitDisplayPrice(unit) || basePrice || 0;
   const capacityLabel =
     typeof unit.people_allowed === "number" && unit.people_allowed > 0
       ? `${unit.people_allowed} orang`
@@ -578,6 +584,9 @@ const mapPublicUnitToCard = (
     priceMax: monthlyPrice,
     priceValue: monthlyPrice,
     priceLabel: formatCurrency(monthlyPrice),
+    basePriceValue: basePrice,
+    basePriceLabel: formatCurrency(basePrice),
+    hasPromo: Boolean(basePrice > monthlyPrice),
     facilities: resolveUnitFacilities(unit, property),
     media: buildUnitMedias(unit),
   };
@@ -1634,7 +1643,18 @@ export default function SewaPropertyDetailPage() {
                         ) : null}
                         <p className="inline-flex items-center gap-1.5">
                           <Tag size={13} className="text-blue-700" />
-                          {unit.priceLabel}/bulan
+                          {unit.hasPromo ? (
+                            <span className="flex flex-col">
+                              <span className="text-[10px] font-medium text-slate-400 line-through">
+                                {unit.basePriceLabel}/bulan
+                              </span>
+                              <span className="text-[12px] font-semibold text-emerald-700">
+                                {unit.priceLabel}/bulan
+                              </span>
+                            </span>
+                          ) : (
+                            `${unit.priceLabel}/bulan`
+                          )}
                         </p>
                       </div>
 
@@ -1656,6 +1676,11 @@ export default function SewaPropertyDetailPage() {
                       </div>
 
                       <div className="mt-4 flex justify-end">
+                        {unit.hasPromo ? (
+                          <span className="mb-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                            Promo aktif
+                          </span>
+                        ) : null}
                         <Link
                           href={
                             isTenant

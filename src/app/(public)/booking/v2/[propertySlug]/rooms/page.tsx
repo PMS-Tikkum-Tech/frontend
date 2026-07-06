@@ -31,7 +31,9 @@ import BookingV2StepBar from "@/features/booking/v2/components/BookingV2StepBar"
 import BookingV2Unavailable from "@/features/booking/v2/components/BookingV2Unavailable";
 import SafeBookingImage from "@/features/booking/v2/components/SafeBookingImage";
 import {
+  BOOKING_V2_DURATION_OPTIONS,
   getBookingV2DurationLabel,
+  getBookingV2DurationPrice,
   isBookingV2DurationPreset,
   loadBookingV2Draft,
   mergeBookingV2Draft,
@@ -39,19 +41,6 @@ import {
 } from "@/features/booking/v2/store/bookingV2Store";
 import { formatFilterLabel } from "@/lib/filter-options";
 import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
-
-const DURATION_OPTIONS: Array<{
-  value: BookingV2DurationPreset;
-  label: string;
-}> = [
-  { value: "7d", label: "7 Hari" },
-  { value: "14d", label: "14 Hari" },
-  { value: "21d", label: "21 Hari" },
-  { value: "1m", label: "1 Bulan" },
-  { value: "6m", label: "6 Bulan" },
-  { value: "12m", label: "1 Tahun" },
-  { value: "custom", label: "Custom" },
-];
 
 const getTomorrowInput = () => {
   const tomorrow = new Date();
@@ -77,7 +66,7 @@ export default function BookingV2RoomsPage() {
   const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
   const [checkOutDate, setCheckOutDate] = useState("");
   const [durationPreset, setDurationPreset] =
-    useState<BookingV2DurationPreset>("6m");
+    useState<BookingV2DurationPreset>("1m");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -309,7 +298,7 @@ export default function BookingV2RoomsPage() {
                     }}
                     className="h-10 w-full appearance-none rounded-lg border border-slate-200 px-3 pr-9 text-sm outline-none focus:border-sky-400"
                   >
-                    {DURATION_OPTIONS.map((option) => (
+                    {BOOKING_V2_DURATION_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -403,8 +392,10 @@ export default function BookingV2RoomsPage() {
                 <SummaryLine label="Durasi" value={getBookingV2DurationLabel(durationPreset)} />
                 <SummaryLine label="Mulai" value={checkInDate} />
                 <SummaryLine
-                  label="Harga"
-                  value={formatBookingCurrency(selectedRoom.monthlyPrice)}
+                  label="Harga paket"
+                  value={formatBookingCurrency(
+                    getBookingV2DurationPrice(selectedRoom.monthlyPrice, durationPreset)
+                  )}
                 />
                 <button
                   type="button"

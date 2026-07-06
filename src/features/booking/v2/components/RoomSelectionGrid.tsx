@@ -150,7 +150,18 @@ export default function RoomSelectionGrid({
                       : room.statusLabel}
                   </span>
                   <span className="mt-1 block text-[11px] font-semibold opacity-90">
-                    {room.monthlyPriceLabel}
+                    {room.hasPromo ? (
+                      <span className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-medium line-through opacity-70">
+                          {room.baseMonthlyPriceLabel}
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-300">
+                          {room.monthlyPriceLabel}
+                        </span>
+                      </span>
+                    ) : (
+                      room.monthlyPriceLabel
+                    )}
                   </span>
                 </button>
               );

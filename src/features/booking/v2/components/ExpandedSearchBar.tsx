@@ -2,7 +2,10 @@
 
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { BookingV2DurationPreset } from "../store/bookingV2Store";
+import {
+  BOOKING_V2_DURATION_OPTIONS,
+  type BookingV2DurationPreset,
+} from "../store/bookingV2Store";
 
 const LOCATION_SUGGESTIONS = [
   "Kinara Signature Kost",
@@ -11,12 +14,6 @@ const LOCATION_SUGGESTIONS = [
   "KIKOST Manunggal",
   "KIKOST Cimanggu",
   "KIKOST Cifor",
-];
-
-const DURATION_OPTIONS: Array<{ value: BookingV2DurationPreset; label: string }> = [
-  { value: "1m", label: "1 bulan" },
-  { value: "6m", label: "6 bulan" },
-  { value: "12m", label: "12 bulan" },
 ];
 
 export default function ExpandedSearchBar({
@@ -117,7 +114,7 @@ export default function ExpandedSearchBar({
               }
               className="mt-1 w-full bg-transparent text-sm outline-none"
             >
-              {DURATION_OPTIONS.map((option) => (
+              {BOOKING_V2_DURATION_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

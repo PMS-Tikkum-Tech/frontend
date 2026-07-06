@@ -516,8 +516,8 @@ export default function AdminTenantsPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <div className="relative w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -530,7 +530,7 @@ export default function AdminTenantsPage() {
             />
           </div>
 
-          <div className="relative min-w-[220px]">
+          <div className="relative w-full md:min-w-[220px]">
             <Filter
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -556,7 +556,7 @@ export default function AdminTenantsPage() {
               setStatus("");
               setCurrentPage(1);
             }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
           >
             <RotateCcw size={14} />
             Atur Ulang

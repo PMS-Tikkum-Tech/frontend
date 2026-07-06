@@ -1735,11 +1735,18 @@ function PropertyCard({
           <h3 className="line-clamp-2 text-base font-semibold text-slate-900">
             {getPropertyDisplayName(item.property)}
           </h3>
-          <span
-            className={`inline-flex flex-shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${getAvailabilityBadgeClass(availabilityStatus)}`}
-          >
-            {availabilityLabel}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            {item.property.has_promo ? (
+              <span className="inline-flex flex-shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                Promo aktif
+              </span>
+            ) : null}
+            <span
+              className={`inline-flex flex-shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${getAvailabilityBadgeClass(availabilityStatus)}`}
+            >
+              {availabilityLabel}
+            </span>
+          </div>
         </div>
 
         <p className="flex min-h-10 items-start gap-1.5 text-sm text-slate-700">

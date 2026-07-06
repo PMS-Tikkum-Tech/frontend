@@ -24,6 +24,7 @@ export type BookingV2Property = {
   priceMin: number;
   priceMax: number;
   priceLabel: string;
+  hasPromo: boolean;
   imageUrl: string;
   images: string[];
   facilities: string[];
@@ -84,6 +85,7 @@ export const adaptPublicPropertyToBookingV2Property = (
       priceMax > priceMin && priceMin > 0
         ? `${formatBookingCurrency(priceMin)} - ${formatBookingCurrency(priceMax)}`
         : formatBookingCurrency(priceMin || priceMax),
+    hasPromo: Boolean(property.has_promo),
     imageUrl: images[0],
     images,
     facilities: property.facilities || [],

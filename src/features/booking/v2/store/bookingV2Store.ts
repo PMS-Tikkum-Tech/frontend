@@ -4,6 +4,7 @@ export const BOOKING_V2_FAVORITES_STORAGE_KEY =
 const LEGACY_BOOKING_V2_FAVORITES_STORAGE_KEY = "kikost_booking_v2_favorites";
 
 export type BookingV2DurationPreset =
+  | "1d"
   | "7d"
   | "14d"
   | "21d"
@@ -11,6 +12,26 @@ export type BookingV2DurationPreset =
   | "6m"
   | "12m"
   | "custom";
+
+export type BookingV2DurationMode = "daily" | "monthly";
+
+export type BookingV2DurationOption = {
+  value: BookingV2DurationPreset;
+  label: string;
+  mode: BookingV2DurationMode;
+  days?: number;
+  months?: number;
+};
+
+export const BOOKING_V2_DURATION_OPTIONS: BookingV2DurationOption[] = [
+  { value: "1d", label: "1 Hari", mode: "daily", days: 1 },
+  { value: "7d", label: "1 Minggu", mode: "daily", days: 7 },
+  { value: "1m", label: "1 Bulan", mode: "monthly", months: 1 },
+  { value: "6m", label: "6 Bulan", mode: "monthly", months: 6 },
+  { value: "12m", label: "1 Tahun", mode: "monthly", months: 12 },
+];
+
+const LEGACY_DAILY_PRESETS = new Set<BookingV2DurationPreset>(["14d", "21d"]);
 
 export type BookingV2Draft = {
   propertyId?: number;
@@ -129,6 +150,7 @@ export const isBookingV2DurationPreset = (
   value?: string | null
 ): value is BookingV2DurationPreset => {
   return (
+    value === "1d" ||
     value === "7d" ||
     value === "14d" ||
     value === "21d" ||
@@ -142,16 +164,20 @@ export const isBookingV2DurationPreset = (
 export const getBookingV2DurationLabel = (
   preset?: BookingV2DurationPreset | null
 ) => {
+  if (preset === "1d") {
+    return "1 Hari";
+  }
+
   if (preset === "7d") {
-    return "7 Hari";
+    return "1 Minggu";
   }
 
   if (preset === "14d") {
-    return "14 Hari";
+    return "2 Minggu";
   }
 
   if (preset === "21d") {
-    return "21 Hari";
+    return "3 Minggu";
   }
 
   if (preset === "1m") {
@@ -172,6 +198,14 @@ export const getBookingV2DurationLabel = (
 export const getBookingV2DurationMonths = (
   preset?: BookingV2DurationPreset | null
 ) => {
+  if (preset === "1d" || preset === "7d") {
+    return 0;
+  }
+
+  if (preset === "14d" || preset === "21d") {
+    return 0;
+  }
+
   if (preset === "12m") {
     return 12;
   }
@@ -183,8 +217,75 @@ export const getBookingV2DurationMonths = (
   return 6;
 };
 
+export const getBookingV2DurationDays = (
+  preset?: BookingV2DurationPreset | null
+) => {
+  if (preset === "1d") {
+    return 1;
+  }
+
+  if (preset === "7d") {
+    return 7;
+  }
+
+  if (preset === "14d") {
+    return 14;
+  }
+
+  if (preset === "21d") {
+    return 21;
+  }
+
+  return 0;
+};
+
 export const isBookingV2DailyDuration = (
   preset?: BookingV2DurationPreset | null
 ) => {
-  return preset === "7d" || preset === "14d" || preset === "21d" || preset === "custom";
+  return (
+    preset === "1d" ||
+    preset === "7d" ||
+    preset === "14d" ||
+    preset === "21d" ||
+    preset === "custom"
+  );
+};
+
+export const getBookingV2DurationMode = (
+  preset?: BookingV2DurationPreset | null
+): BookingV2DurationMode => {
+  if (isBookingV2DailyDuration(preset)) {
+    return "daily";
+  }
+
+  return "monthly";
+};
+
+export const getBookingV2DurationPrice = (
+  basePrice: number,
+  preset?: BookingV2DurationPreset | null,
+  customDays = 0
+) => {
+  if (!basePrice || basePrice <= 0) {
+    return 0;
+  }
+
+  if (preset === "custom") {
+    const days = Math.max(1, customDays);
+    const dailyRate = Math.ceil(basePrice / 30);
+    return dailyRate * days;
+  }
+
+  if (preset === "1d" || preset === "7d" || LEGACY_DAILY_PRESETS.has(preset as BookingV2DurationPreset)) {
+    const days = getBookingV2DurationDays(preset);
+    const dailyRate = Math.ceil(basePrice / 30);
+    return dailyRate * Math.max(1, days);
+  }
+
+  const months = getBookingV2DurationMonths(preset);
+  if (months <= 0) {
+    return basePrice;
+  }
+
+  return basePrice * months;
 };

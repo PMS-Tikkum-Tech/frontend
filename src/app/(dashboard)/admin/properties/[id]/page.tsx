@@ -221,6 +221,28 @@ const formatPriceRange = (
   )}`;
 };
 
+const getUnitDisplayPrice = (unit: Pick<
+  AdminPropertyUnitRow,
+  "price" | "promo_price" | "discount_percent"
+>) => {
+  const basePrice = Number(unit.price || 0);
+  const promoPrice = Number(unit.promo_price || 0);
+  const discountPercent = Number(unit.discount_percent || 0);
+  const hasPromoPrice = Number.isFinite(promoPrice) && promoPrice > 0 && promoPrice < basePrice;
+  const hasDiscount = Number.isFinite(discountPercent) && discountPercent > 0 && discountPercent < 100 && basePrice > 0;
+  const effectivePromoPrice = hasPromoPrice
+    ? promoPrice
+    : hasDiscount
+      ? Math.round((basePrice * (100 - discountPercent)) / 100)
+      : null;
+
+  return {
+    basePrice,
+    effectivePromoPrice,
+    hasPromo: effectivePromoPrice != null && effectivePromoPrice > 0 && effectivePromoPrice < basePrice,
+  };
+};
+
 const resolveMediaImageUrl = (path?: string | null) => {
   if (!path) {
     return "/bg-1200.webp";
@@ -273,6 +295,8 @@ type UnitFormState = {
   status: "vacant" | "occupied" | "booking" | "maintenance";
   people_allowed: string;
   price: string;
+  promo_price: string;
+  discount_percent: string;
   notes: string;
 };
 
@@ -300,6 +324,8 @@ const getInitialUnitForm = (ownerId?: number | null): UnitFormState => ({
   status: "vacant",
   people_allowed: "1",
   price: "",
+  promo_price: "",
+  discount_percent: "",
   notes: "",
 });
 
@@ -1275,6 +1301,23 @@ export default function DetailPropertiPage() {
     const parsedPropertyId = Number(propertyId);
     const parsedPeopleAllowed = Number(unitForm.people_allowed);
     const parsedPrice = Number(unitForm.price);
+    const parsedPromoPrice = Number(unitForm.promo_price);
+    const parsedDiscountPercent = Number(unitForm.discount_percent);
+    const promoPriceValue =
+      Number.isFinite(parsedPromoPrice) && parsedPromoPrice > 0
+        ? parsedPromoPrice
+        : null;
+    const discountPercentValue =
+      Number.isFinite(parsedDiscountPercent) &&
+      parsedDiscountPercent > 0 &&
+      parsedDiscountPercent < 100
+        ? parsedDiscountPercent
+        : null;
+    const effectivePromoPrice =
+      promoPriceValue ??
+      (discountPercentValue != null
+        ? Math.round((parsedPrice * (100 - discountPercentValue)) / 100)
+        : null);
     const isEditing = Boolean(editingUnitId);
 
     if (
@@ -1285,10 +1328,12 @@ export default function DetailPropertiPage() {
       !Number.isFinite(parsedPeopleAllowed) ||
       parsedPeopleAllowed <= 0 ||
       !Number.isFinite(parsedPrice) ||
-      parsedPrice <= 0
+      parsedPrice <= 0 ||
+      (promoPriceValue != null && promoPriceValue >= parsedPrice) ||
+      (discountPercentValue != null && effectivePromoPrice != null && effectivePromoPrice >= parsedPrice)
     ) {
       setError(
-        "Data unit belum valid. Periksa blok, nama unit, kapasitas, dan harga."
+        "Data unit belum valid. Periksa blok, nama unit, kapasitas, dan harga promo."
       );
       return;
     }
@@ -1321,6 +1366,8 @@ export default function DetailPropertiPage() {
           status: unitForm.status,
           people_allowed: parsedPeopleAllowed,
           price: parsedPrice,
+          promo_price: effectivePromoPrice ?? undefined,
+          discount_percent: discountPercentValue ?? undefined,
           photos: unitPhotos,
           video: unitVideoFile,
           video_360: unitVideo360File,
@@ -1336,6 +1383,8 @@ export default function DetailPropertiPage() {
           status: unitForm.status,
           people_allowed: parsedPeopleAllowed,
           price: parsedPrice,
+          promo_price: effectivePromoPrice ?? undefined,
+          discount_percent: discountPercentValue ?? undefined,
           photos: unitPhotos,
           video: unitVideoFile,
           video_360: unitVideo360File,
@@ -1396,6 +1445,8 @@ export default function DetailPropertiPage() {
       status: unit.status as "vacant" | "occupied" | "booking" | "maintenance",
       people_allowed: String(unit.people_allowed || 1),
       price: String(unit.price || ""),
+      promo_price: String(unit.promo_price || ""),
+      discount_percent: String(unit.discount_percent || ""),
       notes: unit.notes || unit.description || "",
     });
     resetUnitMediaInputs();
@@ -2328,6 +2379,41 @@ export default function DetailPropertiPage() {
                   className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 />
 
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Harga promo"
+                    value={unitForm.promo_price}
+                    onChange={(event) =>
+                      setUnitForm((prev) => ({
+                        ...prev,
+                        promo_price: event.target.value,
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    placeholder="Diskon (%)"
+                    value={unitForm.discount_percent}
+                    onChange={(event) =>
+                      setUnitForm((prev) => ({
+                        ...prev,
+                        discount_percent: event.target.value,
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
+                  />
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  Isi salah satu: harga promo langsung atau diskon persentase.
+                  Jika keduanya diisi, harga promo akan diprioritaskan.
+                </p>
+
                 <select
                   value={unitForm.status}
                   onChange={(event) =>
@@ -2625,7 +2711,23 @@ export default function DetailPropertiPage() {
                             {Number(unit.people_allowed || 0)} orang
                           </td>
                           <td className="p-3 text-slate-700">
-                            Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+                            {(() => {
+                              const priceInfo = getUnitDisplayPrice(unit);
+                              return priceInfo.hasPromo ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-xs text-slate-400 line-through">
+                                    Rp {priceInfo.basePrice.toLocaleString("id-ID")}
+                                  </span>
+                                  <span className="font-medium text-emerald-700">
+                                    Rp {priceInfo.effectivePromoPrice?.toLocaleString("id-ID")}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="font-medium text-slate-800">
+                                  Rp {priceInfo.basePrice.toLocaleString("id-ID")}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="p-3 text-slate-700">
                             <div className="space-y-1 text-xs">
@@ -2908,8 +3010,24 @@ function DeleteUnitDialog({
             </div>
             <div className="mt-3 flex items-start justify-between gap-4">
               <span className="text-slate-500">Harga</span>
-              <span className="text-right font-medium text-slate-800">
-                Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+              <span className="text-right">
+                {(() => {
+                  const priceInfo = getUnitDisplayPrice(unit);
+                  return priceInfo.hasPromo ? (
+                    <span className="flex flex-col items-end gap-0.5">
+                      <span className="text-xs text-slate-400 line-through">
+                        Rp {priceInfo.basePrice.toLocaleString("id-ID")}
+                      </span>
+                      <span className="font-medium text-emerald-700">
+                        Rp {priceInfo.effectivePromoPrice?.toLocaleString("id-ID")}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="font-medium text-slate-800">
+                      Rp {priceInfo.basePrice.toLocaleString("id-ID")}
+                    </span>
+                  );
+                })()}
               </span>
             </div>
             <div className="mt-3 flex items-start justify-between gap-4">
@@ -3242,7 +3360,23 @@ function PropertyMappingSection({
                           {formatReadableText(unit.unitType)}
                         </td>
                         <td className="p-3 text-slate-700">
-                          Rp {Number(unit.price || 0).toLocaleString("id-ID")}
+                          {(() => {
+                            const priceInfo = getUnitDisplayPrice(unit);
+                            return priceInfo.hasPromo ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-xs text-slate-400 line-through">
+                                  Rp {priceInfo.basePrice.toLocaleString("id-ID")}
+                                </span>
+                                <span className="font-medium text-emerald-700">
+                                  Rp {priceInfo.effectivePromoPrice?.toLocaleString("id-ID")}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="font-medium text-slate-800">
+                                Rp {priceInfo.basePrice.toLocaleString("id-ID")}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="p-3">
                           <span

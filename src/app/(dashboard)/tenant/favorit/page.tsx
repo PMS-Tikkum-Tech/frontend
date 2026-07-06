@@ -254,8 +254,8 @@ export default function FavoritPage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[260px] flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="w-full min-w-0 flex-1">
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
               <Search size={18} className="text-slate-400" />
               <input
