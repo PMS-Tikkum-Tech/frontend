@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertTriangle,
   ArrowDown,
   CalendarClock,
   Home,
@@ -53,6 +54,17 @@ export default function OwnerProfitHunianPage() {
           {error}
         </div>
       )}
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <p>
+            Ringkasan laba dan hunian masih dalam tahap penyempurnaan data.
+            Gunakan angka ini sebagai gambaran sementara sampai proses validasi
+            selesai.
+          </p>
+        </div>
+      </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
         <SummaryCard

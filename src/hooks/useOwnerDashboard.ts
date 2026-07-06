@@ -208,6 +208,11 @@ const loadAllOwnerCashflows = async (dateFrom: string, dateTo: string) => {
   };
 };
 
+const getBookingOwnerRevenue = (booking: OwnerManualRentalBooking) => {
+  const amount = Number(booking.settlement?.owner_amount || 0);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+};
+
 export const useOwnerDashboard = (period: string) => {
   const [data, setData] = useState<OwnerDashboardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
@@ -244,6 +249,10 @@ export const useOwnerDashboard = (period: string) => {
         const postedCashflows = cashflowPayload.rows.filter((entry) => {
           return entry.status === "posted" || !entry.status;
         });
+        const ownerCashflows = postedCashflows.filter(
+          (entry) => entry.direction === "inflow" && entry.account_scope === "owner"
+        );
+        const shouldFallbackToSettlements = ownerCashflows.length === 0;
 
         const propertyNameById = new Map<number, string>();
         bookings.forEach((item) => {
@@ -278,9 +287,11 @@ export const useOwnerDashboard = (period: string) => {
             ? Math.round((activeBookings / totalBookings) * 1000) / 10
             : 0;
 
-        const computedRevenue = postedCashflows
-          .filter((entry) => entry.direction === "inflow")
-          .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+        const computedRevenue = shouldFallbackToSettlements
+          ? bookings
+              .filter((booking) => booking.status === "approved")
+              .reduce((sum, booking) => sum + getBookingOwnerRevenue(booking), 0)
+          : ownerCashflows.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
         const computedExpense = postedCashflows
           .filter((entry) => entry.direction === "outflow")
           .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
@@ -303,29 +314,51 @@ export const useOwnerDashboard = (period: string) => {
           { sortValue: number; month: string; pemasukan: number; pengeluaran: number }
         >();
 
-        postedCashflows.forEach((entry) => {
-          const date =
-            parseDate(entry.occurred_on) || parseDate(entry.created_at) || null;
-          if (!date) {
-            return;
-          }
+        if (shouldFallbackToSettlements) {
+          bookings.forEach((booking) => {
+            const date =
+              parseDate(booking.created_at) || parseDate(booking.start_date) || null;
+            if (!date) {
+              return;
+            }
 
-          const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
-          const key = `${sortValue}`;
-          const existing = monthlyCashflowMap.get(key) || {
-            sortValue,
-            month: formatMonth(date),
-            pemasukan: 0,
-            pengeluaran: 0,
-          };
+            const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
+            const key = `${sortValue}`;
+            const existing = monthlyCashflowMap.get(key) || {
+              sortValue,
+              month: formatMonth(date),
+              pemasukan: 0,
+              pengeluaran: 0,
+            };
 
-          if (entry.direction === "inflow") {
-            existing.pemasukan += Number(entry.amount || 0);
-          } else {
-            existing.pengeluaran += Number(entry.amount || 0);
-          }
-          monthlyCashflowMap.set(key, existing);
-        });
+            existing.pemasukan += getBookingOwnerRevenue(booking);
+            monthlyCashflowMap.set(key, existing);
+          });
+        } else {
+          ownerCashflows.forEach((entry) => {
+            const date =
+              parseDate(entry.occurred_on) || parseDate(entry.created_at) || null;
+            if (!date) {
+              return;
+            }
+
+            const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
+            const key = `${sortValue}`;
+            const existing = monthlyCashflowMap.get(key) || {
+              sortValue,
+              month: formatMonth(date),
+              pemasukan: 0,
+              pengeluaran: 0,
+            };
+
+            if (entry.direction === "inflow") {
+              existing.pemasukan += Number(entry.amount || 0);
+            } else {
+              existing.pengeluaran += Number(entry.amount || 0);
+            }
+            monthlyCashflowMap.set(key, existing);
+          });
+        }
 
         const revenueData: RevenueData[] = Array.from(monthlyCashflowMap.values())
           .sort((a, b) => a.sortValue - b.sortValue)
@@ -373,25 +406,42 @@ export const useOwnerDashboard = (period: string) => {
           number,
           { revenue: number; expense: number }
         >();
-        postedCashflows.forEach((entry) => {
-          const propertyId = Number(entry.property?.id || 0);
-          if (!propertyId) {
-            return;
-          }
+        if (shouldFallbackToSettlements) {
+          bookings.forEach((booking) => {
+            const propertyId = Number(booking.property?.id || 0);
+            if (!propertyId) {
+              return;
+            }
 
-          const existing = cashflowSummaryByProperty.get(propertyId) || {
-            revenue: 0,
-            expense: 0,
-          };
+            const existing = cashflowSummaryByProperty.get(propertyId) || {
+              revenue: 0,
+              expense: 0,
+            };
 
-          if (entry.direction === "inflow") {
-            existing.revenue += Number(entry.amount || 0);
-          } else {
-            existing.expense += Number(entry.amount || 0);
-          }
+            existing.revenue += getBookingOwnerRevenue(booking);
+            cashflowSummaryByProperty.set(propertyId, existing);
+          });
+        } else {
+          ownerCashflows.forEach((entry) => {
+            const propertyId = Number(entry.property?.id || 0);
+            if (!propertyId) {
+              return;
+            }
 
-          cashflowSummaryByProperty.set(propertyId, existing);
-        });
+            const existing = cashflowSummaryByProperty.get(propertyId) || {
+              revenue: 0,
+              expense: 0,
+            };
+
+            if (entry.direction === "inflow") {
+              existing.revenue += Number(entry.amount || 0);
+            } else {
+              existing.expense += Number(entry.amount || 0);
+            }
+
+            cashflowSummaryByProperty.set(propertyId, existing);
+          });
+        }
 
         const propertyIds = new Set<number>([
           ...Array.from(bookingSummaryByProperty.keys()),
@@ -470,39 +520,70 @@ export const useOwnerDashboard = (period: string) => {
           monthlyDetailMap.set(key, existing);
         });
 
-        postedCashflows.forEach((entry) => {
-          const propertyId = Number(entry.property?.id || 0);
-          const date =
-            parseDate(entry.occurred_on) || parseDate(entry.created_at) || null;
-          if (!propertyId || !date) {
-            return;
-          }
+        if (shouldFallbackToSettlements) {
+          bookings.forEach((booking) => {
+            const propertyId = Number(booking.property?.id || 0);
+            const date =
+              parseDate(booking.created_at) || parseDate(booking.start_date) || null;
+            if (!propertyId || !date) {
+              return;
+            }
 
-          const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
-          const key = `${sortValue}-${propertyId}`;
-          const existing = monthlyDetailMap.get(key) || {
-            period: formatMonth(date),
-            propertyName:
-              entry.property?.name ||
-              propertyNameById.get(propertyId) ||
-              `Properti #${propertyId}`,
-            totalBookings: 0,
-            activeBookings: 0,
-            occupancyRate: 0,
-            revenue: 0,
-            expense: 0,
-            profit: 0,
-            sortValue,
-          };
+            const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
+            const key = `${sortValue}-${propertyId}`;
+            const existing = monthlyDetailMap.get(key) || {
+              period: formatMonth(date),
+              propertyName:
+                booking.property?.name ||
+                propertyNameById.get(propertyId) ||
+                `Properti #${propertyId}`,
+              totalBookings: 0,
+              activeBookings: 0,
+              occupancyRate: 0,
+              revenue: 0,
+              expense: 0,
+              profit: 0,
+              sortValue,
+            };
 
-          if (entry.direction === "inflow") {
-            existing.revenue += Number(entry.amount || 0);
-          } else {
-            existing.expense += Number(entry.amount || 0);
-          }
+            existing.revenue += getBookingOwnerRevenue(booking);
+            monthlyDetailMap.set(key, existing);
+          });
+        } else {
+          ownerCashflows.forEach((entry) => {
+            const propertyId = Number(entry.property?.id || 0);
+            const date =
+              parseDate(entry.occurred_on) || parseDate(entry.created_at) || null;
+            if (!propertyId || !date) {
+              return;
+            }
 
-          monthlyDetailMap.set(key, existing);
-        });
+            const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
+            const key = `${sortValue}-${propertyId}`;
+            const existing = monthlyDetailMap.get(key) || {
+              period: formatMonth(date),
+              propertyName:
+                entry.property?.name ||
+                propertyNameById.get(propertyId) ||
+                `Properti #${propertyId}`,
+              totalBookings: 0,
+              activeBookings: 0,
+              occupancyRate: 0,
+              revenue: 0,
+              expense: 0,
+              profit: 0,
+              sortValue,
+            };
+
+            if (entry.direction === "inflow") {
+              existing.revenue += Number(entry.amount || 0);
+            } else {
+              existing.expense += Number(entry.amount || 0);
+            }
+
+            monthlyDetailMap.set(key, existing);
+          });
+        }
 
         const monthlyDetails: OwnerMonthlyDetailRow[] = Array.from(
           monthlyDetailMap.values()

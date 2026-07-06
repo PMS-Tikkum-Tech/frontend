@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertTriangle,
   Building2,
   CalendarClock,
   Home,
@@ -65,6 +66,17 @@ export default function OwnerDashboardPage() {
           {error}
         </div>
       )}
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <p>
+            Perhitungan keuntungan pemilik masih dalam proses penyempurnaan.
+            Angka yang tampil di bawah ini bersifat sementara dan dapat berubah
+            saat validasi data selesai.
+          </p>
+        </div>
+      </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
