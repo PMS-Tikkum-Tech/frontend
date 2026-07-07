@@ -4,6 +4,9 @@ const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
 const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "kikost.com": "https://api.kikost.com",
   "www.kikost.com": "https://api.kikost.com",
+  "booking.kikost.com": "https://api.kikost.com",
+  "app.kikost.com": "https://api.kikost.com",
+  "dashboard.kikost.com": "https://api.kikost.com",
 };
 
 const normalizeLocalhost = (hostname: string) => {

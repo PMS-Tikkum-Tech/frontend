@@ -35,7 +35,13 @@ const VALID_ROLES = new Set<SessionRole>(["admin", "owner", "tenant"]);
 const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "kikost.com": "https://api.kikost.com",
   "www.kikost.com": "https://api.kikost.com",
+  "booking.kikost.com": "https://api.kikost.com",
+  "app.kikost.com": "https://api.kikost.com",
+  "dashboard.kikost.com": "https://api.kikost.com",
 };
+const ROOT_HOSTNAMES = new Set(["kikost.com", "www.kikost.com"]);
+const BOOKING_HOSTNAMES = new Set(["booking.kikost.com"]);
+const APP_HOSTNAMES = new Set(["app.kikost.com", "dashboard.kikost.com"]);
 
 const isSafeNextPath = (nextPath: string) => {
   return nextPath.startsWith("/") && !nextPath.startsWith("//");
@@ -117,6 +123,12 @@ const getApiBaseUrl = (req: NextRequest) => {
   }
 
   return req.nextUrl.origin;
+};
+
+const buildHostRedirect = (req: NextRequest, hostname: string, pathname: string) => {
+  const redirectUrl = new URL(pathname, `${req.nextUrl.protocol}//${hostname}`);
+  redirectUrl.search = req.nextUrl.search;
+  return redirectUrl;
 };
 
 const clearSessionCookies = (response: NextResponse) => {
@@ -282,6 +294,51 @@ const getValidatedSession = async (
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const search = req.nextUrl.search;
+  const hostname = req.nextUrl.hostname;
+
+  if (ROOT_HOSTNAMES.has(hostname)) {
+    if (pathname.startsWith("/booking/v2")) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "booking.kikost.com", "/booking/v2")
+      );
+    }
+
+    if (
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/owner") ||
+      pathname.startsWith("/tenant")
+    ) {
+      return NextResponse.redirect(buildHostRedirect(req, "app.kikost.com", pathname));
+    }
+  }
+
+  if (BOOKING_HOSTNAMES.has(hostname)) {
+    if (pathname === "/") {
+      return NextResponse.redirect(
+        buildHostRedirect(req, hostname, "/booking/v2")
+      );
+    }
+
+    if (
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/owner") ||
+      pathname.startsWith("/tenant")
+    ) {
+      return NextResponse.redirect(buildHostRedirect(req, "app.kikost.com", pathname));
+    }
+  }
+
+  if (APP_HOSTNAMES.has(hostname)) {
+    if (pathname === "/") {
+      return NextResponse.redirect(buildHostRedirect(req, hostname, "/tenant"));
+    }
+
+    if (pathname.startsWith("/booking/v2")) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "booking.kikost.com", "/booking/v2")
+      );
+    }
+  }
 
   if (pathname === "/tenant") {
     return NextResponse.redirect(new URL("/", req.url));

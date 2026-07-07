@@ -88,13 +88,13 @@ export default function FilterBar({
           aria-label="Filter sebelumnya"
           onClick={() => moveFilter(-1)}
           disabled={activeIndex <= 0}
-          className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#d4d0ff] bg-white text-[#3423b8] transition hover:bg-[#f4f1ff] disabled:cursor-not-allowed disabled:opacity-40 md:inline-flex"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d4d0ff] bg-white text-[#3423b8] transition hover:bg-[#f4f1ff] disabled:cursor-not-allowed disabled:opacity-40 md:h-9 md:w-9"
         >
           <ChevronLeft size={16} />
         </button>
 
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex w-max gap-2 md:mx-auto md:gap-6">
+          <div className="flex w-max gap-2 px-1 md:mx-auto md:gap-6 md:px-0">
             {FILTERS.map((filter) => {
               const isActive = activeFilter === filter.value;
 
@@ -125,7 +125,7 @@ export default function FilterBar({
           aria-label="Filter berikutnya"
           onClick={() => moveFilter(1)}
           disabled={activeIndex >= FILTERS.length - 1}
-          className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#d4d0ff] bg-white text-[#3423b8] transition hover:bg-[#f4f1ff] disabled:cursor-not-allowed disabled:opacity-40 md:inline-flex"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d4d0ff] bg-white text-[#3423b8] transition hover:bg-[#f4f1ff] disabled:cursor-not-allowed disabled:opacity-40 md:h-9 md:w-9"
         >
           <ChevronRight size={16} />
         </button>

@@ -480,8 +480,8 @@ export default function BookingV2PropertyDetailPage() {
           <span className="line-clamp-1 text-slate-500">{property.name}</span>
         </nav>
 
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <BookingVersionBadge version="Versi 2" tone="blue" />
             <h1 className="mt-3 text-2xl font-semibold tracking-normal text-slate-950 md:text-3xl">
               {property.name}
@@ -491,12 +491,12 @@ export default function BookingV2PropertyDetailPage() {
               {property.address}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
             {user?.role === "tenant" ? (
               <button
                 type="button"
                 onClick={() => void handleOpenVisitRequest()}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 sm:w-auto"
               >
                 <CalendarDays size={15} />
                 Ajukan Survei
@@ -504,7 +504,7 @@ export default function BookingV2PropertyDetailPage() {
             ) : !user ? (
               <Link
                 href={`/auth?next=${encodeURIComponent(`/booking/v2/property/${propertySlug}`)}`}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 sm:w-auto"
               >
                 <CalendarDays size={15} />
                 Masuk untuk Survei
@@ -522,7 +522,7 @@ export default function BookingV2PropertyDetailPage() {
                   void navigator.clipboard?.writeText(window.location.href);
                 }
               }}
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-300 px-4 text-xs font-semibold text-slate-800"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-4 text-xs font-semibold text-slate-800 sm:w-auto"
             >
               <Share2 size={15} />
               Bagikan
@@ -531,7 +531,7 @@ export default function BookingV2PropertyDetailPage() {
               propertyId={property.id}
               isFavorite={favoriteIds.has(property.id)}
               onToggle={(nextValue) => handleFavoriteChange(property.id, nextValue)}
-              className="relative"
+              className="relative justify-self-start sm:justify-self-auto"
             />
           </div>
         </div>

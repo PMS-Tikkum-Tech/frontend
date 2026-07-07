@@ -3,7 +3,10 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import Providers from "./providers";
 
+const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://kikost.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_BASE_URL),
   icons: {
     icon: [
       { url: "/favicon.ico?v=20260424", type: "image/x-icon" },

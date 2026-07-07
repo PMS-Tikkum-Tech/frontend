@@ -155,7 +155,7 @@ export default function PublicHomePage() {
               </div>
             </div>
 
-            <div className="absolute -left-3 top-8 rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-left-8 sm:top-16 sm:p-4">
+            <div className="absolute -left-3 top-8 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-left-8 sm:top-16 sm:block sm:p-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#ebe9ff] text-[#3423b8]">
                   <Building2 size={19} aria-hidden="true" />
@@ -169,7 +169,7 @@ export default function PublicHomePage() {
               </div>
             </div>
 
-            <div className="absolute -bottom-5 right-3 rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-bottom-7 sm:right-8 sm:p-4">
+            <div className="absolute -bottom-5 right-3 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-bottom-7 sm:right-8 sm:block sm:p-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
                   <Wifi size={19} aria-hidden="true" />

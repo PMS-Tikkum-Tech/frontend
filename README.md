@@ -78,6 +78,14 @@ NEXT_PUBLIC_API_URL=https://api.kikost.com
 
 Setelah env diubah, lakukan rebuild dan redeploy frontend karena variabel `NEXT_PUBLIC_*` dibaca saat build Next.js.
 
+Struktur domain yang disarankan:
+
+- `https://kikost.com` untuk situs utama
+- `https://booking.kikost.com` untuk calon penghuni
+- `https://app.kikost.com` atau `https://dashboard.kikost.com` untuk tenant, admin, dan owner
+
+Jika memakai domain terpisah, set `NEXT_PUBLIC_SITE_URL` ke domain kanonis yang dipakai untuk metadata dan link berbagi.
+
 ## Geocoding alamat properti admin
 
 Form tambah/edit properti admin akan mencoba mengubah alamat menjadi latitude dan longitude otomatis memakai Google Maps Geocoding API dari browser.
