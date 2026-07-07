@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import {
@@ -11,6 +12,18 @@ import {
   geocodePropertyAddressWithGoogle,
   geocodePropertyAddress,
 } from "@/lib/maps/property-coordinate";
+
+const PropertyCoordinateMapPicker = dynamic(
+  () => import("./PropertyCoordinateMapPicker"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+        Memuat peta koordinat...
+      </div>
+    ),
+  }
+);
 
 interface AddPropertyModalProps {
   open: boolean;
@@ -489,6 +502,14 @@ export default function AddPropertyModal({
     }
   };
 
+  const handleCoordinateMapChange = (coordinate: { lat: number; lng: number }) => {
+    setForm((prev) => ({
+      ...prev,
+      latitude: formatCoordinateInputValue(coordinate.lat),
+      longitude: formatCoordinateInputValue(coordinate.lng),
+    }));
+  };
+
   const toggleFacility = (value: string) => {
     setSelectedFacilities((prev) =>
       prev.includes(value)
@@ -735,7 +756,7 @@ export default function AddPropertyModal({
           />
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-medium text-slate-700">
-              Koordinat otomatis akan diisi dari alamat, dan tetap bisa diubah manual.
+              Koordinat otomatis akan diisi dari alamat, dan tetap bisa dipilih langsung dari peta.
             </p>
             <button
               type="button"
@@ -747,6 +768,13 @@ export default function AddPropertyModal({
             >
               Ambil Koordinat dari Alamat
             </button>
+            <div className="mt-4">
+              <PropertyCoordinateMapPicker
+                latitude={form.latitude}
+                longitude={form.longitude}
+                onChange={handleCoordinateMapChange}
+              />
+            </div>
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormInput
                 label="Latitude"
