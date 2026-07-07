@@ -134,7 +134,7 @@ export default function PublicHomePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-900/5 to-white/5" />
 
                 <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                  <div className="flex items-end justify-between gap-4">
+                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:text-left">
                     <div className="max-w-sm text-white">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d8ff3e]">
                         Pilihan hunian
