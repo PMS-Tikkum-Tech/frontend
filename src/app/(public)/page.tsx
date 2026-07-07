@@ -68,7 +68,105 @@ export default function PublicHomePage() {
       <section className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_12%_12%,rgba(74,58,190,0.1),transparent_32%),radial-gradient(circle_at_86%_18%,rgba(58,180,255,0.12),transparent_28%),linear-gradient(180deg,#ffffff_0%,#fafaff_100%)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[42rem] bg-[radial-gradient(circle_at_18%_16%,rgba(52,35,184,0.08),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(87,199,255,0.1),transparent_28%)]" />
 
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:pb-24 lg:pt-16">
+        <div className="mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 lg:hidden">
+          <div className="mx-auto max-w-[20.5rem] overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)]">
+            <div className="relative aspect-[4/5]">
+              <picture>
+                <source media="(max-width: 639px)" srcSet="/bg-1200-mobile-center.jpg" />
+                <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
+                <img
+                  src="/bg-1200-mobile-center.jpg"
+                  alt="Hunian KIKOST dengan desain modern"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  className="block h-full w-full object-cover object-center"
+                />
+              </picture>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-white/5" />
+            </div>
+          </div>
+
+          <div className="mx-auto mt-8 max-w-2xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#dcd8ff] bg-[#f3f1ff] px-3 py-1.5 text-xs font-semibold text-[#3423b8] shadow-sm">
+              <Sparkles size={14} aria-hidden="true" />
+              Hunian nyaman, hidup lebih tenang
+            </div>
+
+            <h1 className="mx-auto mt-6 max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-slate-950">
+              Kost yang terasa seperti
+              <span className="font-playfair block font-normal italic text-[#3423b8]">
+                tempat pulang.
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-slate-600">
+              Temukan kost nyaman di lokasi pilihan, dengan informasi yang jelas
+              dan proses sewa yang tidak bikin ribet.
+            </p>
+
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <Link
+                href="/booking/v2"
+                className="group inline-flex min-h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-[#3423b8] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(52,35,184,0.24)] transition hover:-translate-y-0.5 hover:bg-[#24147d]"
+              >
+                Cari kost sekarang
+                <ArrowRight
+                  size={17}
+                  className="transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </Link>
+            </div>
+
+            <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-slate-600">
+              {[
+                "Pilihan fleksibel",
+                "Informasi transparan",
+                "Proses online",
+              ].map((item) => (
+                <span key={item} className="inline-flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#d8ff3e] text-[#24147d]">
+                    <Check size={12} strokeWidth={3} aria-hidden="true" />
+                  </span>
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-8 grid gap-3">
+              <div className="rounded-2xl border border-white/80 bg-white/90 p-3.5 text-left shadow-xl backdrop-blur">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#ebe9ff] text-[#3423b8]">
+                    <Building2 size={19} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-xs text-slate-500">Hunian pilihan</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Siap kamu jelajahi
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/80 bg-white/90 p-3.5 text-left shadow-xl backdrop-blur">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+                    <Wifi size={19} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-xs text-slate-500">Detail lengkap</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Fasilitas mudah dicek
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto hidden max-w-7xl items-center gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:pb-24 lg:pt-16">
           <div className="relative z-10 order-2 text-center lg:order-1 lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#dcd8ff] bg-[#f3f1ff] px-3 py-1.5 text-xs font-semibold text-[#3423b8] shadow-sm">
               <Sparkles size={14} aria-hidden="true" />
@@ -116,35 +214,6 @@ export default function PublicHomePage() {
               ))}
             </div>
 
-            <div className="mt-8 grid gap-3 sm:hidden">
-              <div className="rounded-2xl border border-white/80 bg-white/90 p-3.5 text-left shadow-xl backdrop-blur">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#ebe9ff] text-[#3423b8]">
-                    <Building2 size={19} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-xs text-slate-500">Hunian pilihan</p>
-                    <p className="text-sm font-semibold text-slate-900">
-                      Siap kamu jelajahi
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/80 bg-white/90 p-3.5 text-left shadow-xl backdrop-blur">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
-                    <Wifi size={19} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-xs text-slate-500">Detail lengkap</p>
-                    <p className="text-sm font-semibold text-slate-900">
-                      Fasilitas mudah dicek
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="relative mx-auto order-1 w-full max-w-[24rem] lg:max-w-none lg:order-2">
