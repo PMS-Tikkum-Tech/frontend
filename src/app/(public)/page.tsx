@@ -115,6 +115,36 @@ export default function PublicHomePage() {
                 </span>
               ))}
             </div>
+
+            <div className="mt-8 grid gap-3 sm:hidden">
+              <div className="rounded-2xl border border-white/80 bg-white/90 p-3.5 text-left shadow-xl backdrop-blur">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#ebe9ff] text-[#3423b8]">
+                    <Building2 size={19} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-xs text-slate-500">Hunian pilihan</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Siap kamu jelajahi
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/80 bg-white/90 p-3.5 text-left shadow-xl backdrop-blur">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+                    <Wifi size={19} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-xs text-slate-500">Detail lengkap</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Fasilitas mudah dicek
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="relative mx-auto order-1 w-full max-w-2xl lg:max-w-none lg:order-2">
@@ -126,7 +156,7 @@ export default function PublicHomePage() {
                 <picture>
                   <source
                     media="(max-width: 639px)"
-                    srcSet="/bg-1200-mobile.jpg"
+                    srcSet="/bg-1200-mobile-square-900.jpg"
                   />
                   <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
                   <img
@@ -175,7 +205,6 @@ export default function PublicHomePage() {
                 </div>
               </div>
             </div>
-
             <div className="absolute -bottom-5 right-3 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-bottom-7 sm:right-8 sm:block sm:p-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
