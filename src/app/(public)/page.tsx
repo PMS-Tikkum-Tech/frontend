@@ -129,7 +129,7 @@ export default function PublicHomePage() {
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 56vw"
-                  className="object-cover object-center"
+                  className="object-cover object-[22%_center] sm:object-center"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-900/5 to-white/5" />
 
