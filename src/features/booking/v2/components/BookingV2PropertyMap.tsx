@@ -46,20 +46,24 @@ function FitToLocations({ locations }: { locations: BookingV2MapLocation[] }) {
   const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
 
   useEffect(() => {
-    if (safeLocations.length === 0) {
+    try {
+      if (safeLocations.length === 0) {
+        map.setView(DEFAULT_CENTER, 12);
+        return;
+      }
+
+      if (safeLocations.length === 1) {
+        map.setView([safeLocations[0].lat, safeLocations[0].lng], FOCUSED_ZOOM);
+        return;
+      }
+
+      map.fitBounds(
+        safeLocations.map((location) => [location.lat, location.lng]),
+        { padding: [42, 42] }
+      );
+    } catch {
       map.setView(DEFAULT_CENTER, 12);
-      return;
     }
-
-    if (safeLocations.length === 1) {
-      map.setView([safeLocations[0].lat, safeLocations[0].lng], FOCUSED_ZOOM);
-      return;
-    }
-
-    map.fitBounds(
-      safeLocations.map((location) => [location.lat, location.lng]),
-      { padding: [42, 42] }
-    );
   }, [map, safeLocations]);
 
   return null;
@@ -85,9 +89,13 @@ function FocusSelected({
       return;
     }
 
-    map.flyTo([selectedLocation.lat, selectedLocation.lng], FOCUSED_ZOOM, {
-      duration: 0.35,
-    });
+    try {
+      map.flyTo([selectedLocation.lat, selectedLocation.lng], FOCUSED_ZOOM, {
+        duration: 0.35,
+      });
+    } catch {
+      // Ignore invalid transitions.
+    }
   }, [map, safeLocations, selectedId]);
 
   return null;

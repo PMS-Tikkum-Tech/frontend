@@ -59,7 +59,10 @@ import {
   getTenantProfile,
 } from "@/lib/dashboard/tenant.api";
 import { formatFilterLabel } from "@/lib/filter-options";
-import { resolveBackendCoordinate } from "@/lib/maps/property-coordinate";
+import {
+  resolveBackendCoordinate,
+  resolveKnownPropertyCoordinate,
+} from "@/lib/maps/property-coordinate";
 
 const BookingV2PropertyMap = dynamic(
   () => import("@/features/booking/v2/components/BookingV2PropertyMap"),
@@ -293,6 +296,14 @@ export default function BookingV2PropertyDetailPage() {
   const exactCoordinate = useMemo(() => {
     if (!property) {
       return null;
+    }
+
+    const knownCoordinate = resolveKnownPropertyCoordinate(
+      property.name,
+      property.address
+    );
+    if (knownCoordinate) {
+      return knownCoordinate;
     }
 
     return resolveBackendCoordinate(property.raw.latitude, property.raw.longitude);

@@ -14,6 +14,7 @@ import { getApiErrorMessage } from "@/lib/dashboard/tenant.api";
 import {
   geocodePropertyAddress,
   resolveBackendCoordinate,
+  resolveKnownPropertyCoordinate,
   type PropertyCoordinate,
 } from "@/lib/maps/property-coordinate";
 import type { BookingV2MapLocation } from "@/features/booking/v2/components/BookingV2PropertyMap";
@@ -117,6 +118,14 @@ const resolvePropertyCoordinate = (
   property: BookingV2Property,
   geocodedCoordinate?: PropertyCoordinate | null
 ) => {
+  const knownCoordinate = resolveKnownPropertyCoordinate(
+    property.name,
+    property.address
+  );
+  if (knownCoordinate) {
+    return knownCoordinate;
+  }
+
   if (geocodedCoordinate) {
     return geocodedCoordinate;
   }

@@ -21,6 +21,35 @@ const LONGITUDE_RANGE: CoordinateRange = { min: -180, max: 180 };
 const COORDINATE_CACHE_KEY = "kyra_property_coordinate_cache_v3";
 const GOOGLE_GEOCODE_CACHE_KEY = "kyra_google_geocode_cache_v3";
 
+const PROPERTY_COORDINATE_OVERRIDES: Array<{
+  matchers: string[];
+  coordinate: PropertyCoordinate;
+}> = [
+  {
+    matchers: ["bogor city kostel", "perikanan darat"],
+    coordinate: { lat: -6.5694101, lng: 106.7829123 },
+  },
+  {
+    matchers: [
+      "kinara cozy kost",
+      "kinara classic kost",
+      "kinara signature kost",
+      "rivere kostaycation",
+      "lingkar perwira",
+      "jalan lingkar perwira",
+    ],
+    coordinate: { lat: -6.5639838, lng: 106.7311665 },
+  },
+  {
+    matchers: ["kinara kost cifor", "raya cifor", "cifor"],
+    coordinate: { lat: -6.5581803, lng: 106.755096 },
+  },
+  {
+    matchers: ["kinara kost manunggal", "jalan manunggal", "manunggal"],
+    coordinate: { lat: -6.5850703, lng: 106.784622 },
+  },
+];
+
 const geocodeCache = new Map<string, PropertyCoordinate | null>();
 const pendingGeocodeRequests = new Map<string, Promise<PropertyCoordinate | null>>();
 const googleGeocodeCache = new Map<string, GoogleGeocodedAddress | null>();
@@ -437,6 +466,18 @@ export const resolveBackendCoordinate = (
   }
 
   return { lat, lng };
+};
+
+export const resolveKnownPropertyCoordinate = (
+  propertyName?: string | null,
+  address?: string | null
+): PropertyCoordinate | null => {
+  const haystack = `${propertyName || ""} ${address || ""}`.toLowerCase();
+  const override = PROPERTY_COORDINATE_OVERRIDES.find((item) =>
+    item.matchers.some((matcher) => haystack.includes(matcher))
+  );
+
+  return override?.coordinate || null;
 };
 
 export const geocodePropertyAddress = async (

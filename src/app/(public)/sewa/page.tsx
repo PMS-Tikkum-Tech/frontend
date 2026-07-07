@@ -52,6 +52,7 @@ import type { SewaMapLocation } from "@/components/maps/SewaLocationsMap";
 import {
   geocodePropertyAddress,
   resolveBackendCoordinate,
+  resolveKnownPropertyCoordinate,
   type PropertyCoordinate,
 } from "@/lib/maps/property-coordinate";
 import BookingVersionBadge from "@/features/booking/shared/components/BookingVersionBadge";
@@ -369,6 +370,14 @@ const resolveCoordinate = (
   item: TenantFavoriteProperty,
   geocodedCoordinate?: PropertyCoordinate | null
 ) => {
+  const knownCoordinate = resolveKnownPropertyCoordinate(
+    getPropertyDisplayName(item.property),
+    item.property.address
+  );
+  if (knownCoordinate) {
+    return knownCoordinate;
+  }
+
   if (geocodedCoordinate) {
     return geocodedCoordinate;
   }

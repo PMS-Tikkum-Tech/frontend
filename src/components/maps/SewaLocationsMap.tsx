@@ -40,20 +40,24 @@ function FitToMarkers({ locations }: { locations: SewaMapLocation[] }) {
   const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
 
   useEffect(() => {
-    if (safeLocations.length === 0) {
+    try {
+      if (safeLocations.length === 0) {
+        map.setView(DEFAULT_CENTER, 12);
+        return;
+      }
+
+      if (safeLocations.length === 1) {
+        map.setView([safeLocations[0].lat, safeLocations[0].lng], 14);
+        return;
+      }
+
+      map.fitBounds(
+        safeLocations.map((location) => [location.lat, location.lng]),
+        { padding: [35, 35] }
+      );
+    } catch {
       map.setView(DEFAULT_CENTER, 12);
-      return;
     }
-
-    if (safeLocations.length === 1) {
-      map.setView([safeLocations[0].lat, safeLocations[0].lng], 14);
-      return;
-    }
-
-    map.fitBounds(
-      safeLocations.map((location) => [location.lat, location.lng]),
-      { padding: [35, 35] }
-    );
   }, [map, safeLocations]);
 
   return null;
@@ -79,9 +83,13 @@ function FocusToSelected({
       return;
     }
 
-    map.flyTo([selectedLocation.lat, selectedLocation.lng], 14, {
-      duration: 0.35,
-    });
+    try {
+      map.flyTo([selectedLocation.lat, selectedLocation.lng], 14, {
+        duration: 0.35,
+      });
+    } catch {
+      // Ignore invalid map transitions and keep the page stable.
+    }
   }, [map, safeLocations, selectedId]);
 
   return null;
