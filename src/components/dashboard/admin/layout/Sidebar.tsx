@@ -2,24 +2,24 @@ import Link from "next/link";
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 bg-[#1F2747] text-white flex flex-col">
+    <aside className="flex w-full flex-col bg-[#1F2747] text-white sm:w-72 lg:w-64">
       {/* Logo */}
-      <div className="h-20 flex items-center px-6 border-b border-white/10">
-        <h1 className="text-xl font-semibold">kyrastay</h1>
+      <div className="flex h-16 items-center border-b border-white/10 px-4 sm:h-20 sm:px-6">
+        <h1 className="text-lg font-semibold sm:text-xl">kyrastay</h1>
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2 text-sm">
+      <nav className="flex-1 space-y-2 px-3 py-4 text-sm sm:px-4 sm:py-6">
         <Link
           href="/admin"
-          className="block px-4 py-3 rounded-lg bg-[#C9A74E] text-black font-medium"
+          className="block rounded-lg bg-[#C9A74E] px-4 py-3 font-medium text-black"
         >
           Dasbor
         </Link>
 
         <Link
           href="/admin/properties"
-          className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
+          className="block rounded-lg px-4 py-3 transition hover:bg-white/10"
         >
           Properti
         </Link>
@@ -68,13 +68,13 @@ export default function Sidebar() {
 
         <Link
           href="/admin/log-activity"
-          className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
+          className="block rounded-lg px-4 py-3 transition hover:bg-white/10"
         >
           Catatan Aktivitas
         </Link>
       </nav>
 
-      <div className="p-6 border-t border-white/10">
+      <div className="border-t border-white/10 p-4 sm:p-6">
         <button className="text-sm text-red-400 hover:text-red-300">
           Keluar
         </button>

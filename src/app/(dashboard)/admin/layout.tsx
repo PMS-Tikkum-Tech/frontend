@@ -225,7 +225,7 @@ export default function AdminDashboardLayout({
         {/* ================= MAIN AREA ================= */}
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           {/* HEADER */}
-          <header className="min-h-[72px] border-b border-[#e4e1ff] border-t-[3px] border-t-[#3423b8] bg-white px-4 shadow-sm sm:px-6 lg:px-8">
+          <header className="min-h-[72px] border-b border-[#e4e1ff] border-t-[3px] border-t-[#3423b8] bg-white px-3 shadow-sm sm:px-4 md:px-6 lg:px-8">
             <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 py-3 sm:flex-nowrap sm:py-0">
             {/* Search */}
               <div className="flex min-w-0 items-center gap-3">
@@ -315,7 +315,7 @@ export default function AdminDashboardLayout({
           </header>
 
           {/* CONTENT */}
-          <main className="flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          <main className="flex-1 overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8">
             {children}
           </main>
         </div>

@@ -13,7 +13,7 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
         <div className="h-1 bg-[linear-gradient(90deg,#3423b8_0%,#5747ca_72%,#d8ff3e_100%)]" />
 
         {/* CONTENT */}
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
           {children}
         </main>
       </div>

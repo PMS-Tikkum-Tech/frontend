@@ -19,14 +19,14 @@ export default function Sidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-[#1E2746] text-white flex flex-col">
+    <aside className="flex w-full flex-col bg-[#1E2746] text-white sm:w-72 lg:w-64">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-white/10">
-        <h1 className="text-xl font-semibold tracking-wide">{title}</h1>
+      <div className="border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5">
+        <h1 className="text-lg font-semibold tracking-wide sm:text-xl">{title}</h1>
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 space-y-2 p-3 sm:p-4">
         {menu.map((item) => {
           const active = pathname === item.href;
 
@@ -35,7 +35,7 @@ export default function Sidebar({
               key={item.href}
               href={item.href}
               className={`
-                flex items-center gap-3 px-4 h-11 rounded-xl text-sm font-medium
+                flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium
                 transition
                 ${
                   active
@@ -52,8 +52,8 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-white/10">
-        <button className="w-full flex items-center gap-3 px-4 h-11 rounded-xl text-sm hover:bg-white/10">
+      <div className="border-t border-white/10 p-3 sm:p-4">
+        <button className="flex h-11 w-full items-center gap-3 rounded-xl px-4 text-sm hover:bg-white/10">
           Keluar
         </button>
       </div>
