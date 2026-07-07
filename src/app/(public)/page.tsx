@@ -123,14 +123,21 @@ export default function PublicHomePage() {
 
             <div className="relative mx-auto overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem]">
               <div className="relative aspect-[4/5] min-h-[30rem] sm:aspect-[5/4] lg:aspect-[4/3] lg:min-h-[35rem]">
-                <Image
-                  src="/bg-1200.webp"
-                  alt="Hunian KIKOST dengan desain modern"
-                  fill
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 56vw"
-                  className="object-cover object-[22%_center] sm:object-center"
-                />
+                <picture>
+                  <source
+                    media="(max-width: 639px)"
+                    srcSet="/bg-1200-mobile.jpg"
+                  />
+                  <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
+                  <img
+                    src="/bg-1200.webp"
+                    alt="Hunian KIKOST dengan desain modern"
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                  />
+                </picture>
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-900/5 to-white/5" />
 
                 <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
