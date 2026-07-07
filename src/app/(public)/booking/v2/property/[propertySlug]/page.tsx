@@ -61,7 +61,6 @@ import {
 import { formatFilterLabel } from "@/lib/filter-options";
 import {
   resolveBackendCoordinate,
-  resolveKnownPropertyCoordinate,
 } from "@/lib/maps/property-coordinate";
 
 const BookingV2PropertyMap = dynamic(
@@ -296,14 +295,6 @@ export default function BookingV2PropertyDetailPage() {
   const exactCoordinate = useMemo(() => {
     if (!property) {
       return null;
-    }
-
-    const knownCoordinate = resolveKnownPropertyCoordinate(
-      property.name,
-      property.address
-    );
-    if (knownCoordinate) {
-      return knownCoordinate;
     }
 
     return resolveBackendCoordinate(property.raw.latitude, property.raw.longitude);

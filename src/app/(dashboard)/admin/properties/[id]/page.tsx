@@ -26,6 +26,7 @@ import {
   Wrench,
 } from "lucide-react";
 import AddPropertyModal from "@/components/dashboard/admin/properties/AddPropertyModal";
+import PropertyCoordinatePreviewMap from "@/components/dashboard/admin/properties/PropertyCoordinatePreviewMap";
 import {
   createAdminPropertyTenant,
   createAdminUnit,
@@ -1937,6 +1938,16 @@ export default function DetailPropertiPage() {
                     Alamat
                   </p>
                   <p className="leading-relaxed">{propertyDetail.property.address || "-"}</p>
+                </div>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-sm font-medium text-slate-700">
+                    Titik Koordinat
+                  </p>
+                  <PropertyCoordinatePreviewMap
+                    latitude={propertyDetail.property.latitude}
+                    longitude={propertyDetail.property.longitude}
+                  />
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { divIcon } from "leaflet";
 import {
   MapContainer,
@@ -100,6 +100,8 @@ export default function PropertyCoordinateMapPicker({
   longitude,
   onChange,
 }: PropertyCoordinateMapPickerProps) {
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const currentCoordinate = useMemo(
     () => getCurrentCoordinate(latitude, longitude),
     [latitude, longitude]
@@ -112,6 +114,35 @@ export default function PropertyCoordinateMapPicker({
   const markerCoordinate = currentCoordinate || {
     lat: DEFAULT_CENTER[0],
     lng: DEFAULT_CENTER[1],
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Browser ini tidak mendukung lokasi perangkat.");
+      return;
+    }
+
+    setIsFetchingLocation(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsFetchingLocation(false);
+        onChange({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        setIsFetchingLocation(false);
+        setLocationError("Gagal mengambil lokasi perangkat.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
   };
 
   return (
@@ -131,6 +162,20 @@ export default function PropertyCoordinateMapPicker({
               ? `Lat ${currentCoordinate.lat.toFixed(6)}, Lng ${currentCoordinate.lng.toFixed(6)}`
               : "Koordinat belum diisi"}
           </div>
+        </div>
+
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleUseCurrentLocation}
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-[#1E2746] px-4 text-sm font-medium text-[#1E2746] transition hover:bg-[#1E2746] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isFetchingLocation}
+          >
+            {isFetchingLocation ? "Mencari lokasi..." : "Gunakan lokasi saya"}
+          </button>
+          {locationError ? (
+            <p className="text-xs text-red-600">{locationError}</p>
+          ) : null}
         </div>
 
         <div className="h-[280px] overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-[340px]">
