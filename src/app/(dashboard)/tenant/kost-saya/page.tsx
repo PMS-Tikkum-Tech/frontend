@@ -331,11 +331,11 @@ export default function KostSayaPage() {
   return (
     <div className="space-y-8">
       {isLoading ? (
-        <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
+        <div className="rounded-2xl border bg-white p-4 text-sm text-slate-500 sm:p-8">
           Memuat data hunian...
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-6">
           <p className="text-sm text-red-700">{error}</p>
           <button
             onClick={() => setRefreshKey((value) => value + 1)}
@@ -345,8 +345,8 @@ export default function KostSayaPage() {
           </button>
         </div>
       ) : stays.length === 0 && !latestPayment ? (
-        <div className="rounded-2xl border bg-white p-10 text-center">
-          <h2 className="text-xl font-semibold text-green-600">
+        <div className="rounded-2xl border bg-white p-4 text-center sm:p-10">
+          <h2 className="text-lg font-semibold text-green-600 sm:text-xl">
             Kamu Belum Memiliki Hunian Aktif
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-slate-600">
@@ -354,18 +354,18 @@ export default function KostSayaPage() {
           </p>
           <Link
             href="/sewa"
-            className="mt-6 inline-flex rounded-xl bg-green-600 px-6 py-2 font-medium text-white hover:bg-green-700"
+            className="mt-6 inline-flex w-full justify-center rounded-xl bg-green-600 px-6 py-2 font-medium text-white hover:bg-green-700 sm:w-auto"
           >
             Cari Kost Sekarang
           </Link>
         </div>
       ) : (
         <>
-          <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-6 shadow-sm">
+          <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-4 shadow-sm sm:p-6">
             <div className="pointer-events-none absolute -left-12 -top-12 h-36 w-36 rounded-full bg-emerald-200/50 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-14 right-0 h-44 w-44 rounded-full bg-cyan-200/50 blur-3xl" />
 
-            <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">Kost Saya</h1>
                 <p className="mt-1 text-sm text-slate-600">
@@ -375,7 +375,7 @@ export default function KostSayaPage() {
                   <Building2 size={13} />
                   {stays.length > 0 ? `${stays.length} Hunian Aktif` : "Hunian Aktif"}
                 </p>
-                <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+                <h2 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">
                   {stays.length > 1
                     ? `${stays.length} unit aktif di ${Math.max(uniquePropertyCount, 1)} kost`
                     : primaryStay?.property_name || latestPayment?.property.name || "-"}
@@ -385,7 +385,7 @@ export default function KostSayaPage() {
                     {stays.slice(0, 4).map((stay) => (
                       <span
                         key={stay.booking_id}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 sm:text-sm"
                       >
                         <Home size={14} className="text-emerald-700" />
                         {getStayUnitDisplayName(stay)}
@@ -393,7 +393,7 @@ export default function KostSayaPage() {
                     ))}
                   </div>
                 ) : latestPayment ? (
-                  <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700">
+                  <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 sm:text-sm">
                     <Home size={14} className="text-emerald-700" />
                     {getTenantUnitDisplayName(latestPayment.unit)}
                   </p>
@@ -403,7 +403,7 @@ export default function KostSayaPage() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-emerald-200 bg-white/85 px-4 py-3 text-right shadow-sm">
+              <div className="rounded-2xl border border-emerald-200 bg-white/85 px-4 py-3 text-left shadow-sm sm:text-right">
                 <p className="text-xs font-medium text-slate-500">Total tagihan terbuka</p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {formatCurrency(
@@ -418,7 +418,7 @@ export default function KostSayaPage() {
               </div>
             </div>
 
-            <div className="relative mt-5 grid gap-3 md:grid-cols-3">
+            <div className="relative mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               <InfoCard
                 label="Hunian Aktif"
                 value={`${stays.length} Unit`}
@@ -476,9 +476,9 @@ export default function KostSayaPage() {
 
           {stays.length > 0 ? (
             <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-800">
+                  <h3 className="text-lg font-semibold text-slate-800 sm:text-xl">
                     Hunian Aktif
                   </h3>
                   <p className="mt-1 text-sm text-slate-600">
@@ -555,10 +555,10 @@ export default function KostSayaPage() {
             />
           </div>
 
-          <section className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-slate-800">
+                <h3 className="text-lg font-semibold text-slate-800 sm:text-xl">
                   Aktivitas Saya
                 </h3>
                 <p className="mt-1 text-sm text-slate-600">
@@ -572,7 +572,7 @@ export default function KostSayaPage() {
             </div>
 
             {recentActivities.length === 0 ? (
-              <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+              <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center sm:p-6">
                 <p className="text-sm text-slate-600">
                   Aktivitas kamu akan muncul di sini setelah ada pembayaran atau
                   laporan perawatan.
@@ -640,11 +640,11 @@ function QuickActionCard({
   return (
     <Link
       href={href}
-      className={`group relative overflow-hidden rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${classes.card}`}
+      className={`group relative overflow-hidden rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5 ${classes.card}`}
     >
       <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/70 blur-2xl" />
       <div className="relative flex items-start justify-between gap-4">
-        <div className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-lg ${classes.icon}`}>
+        <div className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-lg sm:h-12 sm:w-12 ${classes.icon}`}>
           {icon}
         </div>
         <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${classes.badge}`}>
@@ -653,7 +653,7 @@ function QuickActionCard({
       </div>
 
       <div className="relative mt-5">
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <h3 className="text-sm font-semibold text-slate-900 sm:text-base">{title}</h3>
         <p className="mt-2 min-h-[42px] text-sm leading-6 text-slate-600">
           {description}
         </p>
@@ -711,7 +711,7 @@ function InfoCard({
   const classes = toneClass[tone];
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm backdrop-blur-sm ${classes.card}`}>
+    <div className={`rounded-2xl border p-3 shadow-sm backdrop-blur-sm sm:p-4 ${classes.card}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
           {label}
@@ -720,7 +720,7 @@ function InfoCard({
           {icon}
         </span>
       </div>
-      <p className="mt-3 text-lg font-semibold text-slate-900">{value}</p>
+      <p className="mt-3 text-base font-semibold text-slate-900 sm:text-lg">{value}</p>
       <p className={`mt-1 text-xs font-medium ${classes.helper}`}>{helper}</p>
     </div>
   );
@@ -770,7 +770,7 @@ function ActiveStayCard({
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg">
-      <div className="relative h-40 overflow-hidden">
+      <div className="relative h-36 overflow-hidden sm:h-40">
         <Image
           src={heroImage}
           alt={stay.property_name || "Hunian aktif"}
@@ -779,25 +779,25 @@ function ActiveStayCard({
           className="object-cover"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/15 to-transparent" />
-        <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
+        <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-2 sm:left-4 sm:right-4 sm:top-4 sm:gap-3">
           <span
-            className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${statusMap[displayStatus].className}`}
+            className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:px-3 sm:text-[11px] ${statusMap[displayStatus].className}`}
           >
             {statusMap[displayStatus].label}
           </span>
-          <span className="rounded-full border border-white/30 bg-black/35 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+          <span className="rounded-full border border-white/30 bg-black/35 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm sm:px-3 sm:text-[11px]">
             #{stay.booking_code || stay.booking_id}
           </span>
         </div>
         <div className="absolute bottom-4 left-4 right-4 text-white">
-          <p className="text-lg font-semibold">{stay.property_name || "-"}</p>
-          <p className="mt-1 text-sm text-white/85">
+          <p className="text-base font-semibold sm:text-lg">{stay.property_name || "-"}</p>
+          <p className="mt-1 text-xs text-white/85 sm:text-sm">
             {getStayUnitDisplayName(stay)}
           </p>
         </div>
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 p-3 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <StayMetric
             label="Periode Tinggal"
@@ -830,7 +830,7 @@ function ActiveStayCard({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs text-slate-500">
             {stay.end_date
               ? `Akhir masa sewa: ${formatDate(stay.end_date)}`
@@ -838,15 +838,15 @@ function ActiveStayCard({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link
+          <Link
               href="/tenant/pembayaran"
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700 sm:w-auto"
             >
               Tagihan
             </Link>
             <Link
               href={stay.property_id ? `/sewa/${stay.property_id}` : "/sewa"}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 sm:w-auto"
             >
               Detail Kost
               <ArrowRight size={13} />
@@ -872,7 +872,7 @@ function StayMetric({
       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-900 sm:text-base">{value}</p>
       {helper ? <div className="mt-1">{helper}</div> : null}
     </div>
   );

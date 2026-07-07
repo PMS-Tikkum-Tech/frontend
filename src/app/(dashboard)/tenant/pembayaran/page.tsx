@@ -196,18 +196,18 @@ export default function TenantPaymentsPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-700 via-blue-700 to-cyan-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-700 via-blue-700 to-cyan-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Tagihan & Pembayaran</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Tagihan & Pembayaran</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Pantau tagihan aktif, status pembayaran, dan riwayat transaksi sewa
             kamu dalam satu halaman.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryStat
               icon={<WalletCards size={16} />}
               label="Total Tagihan"
@@ -252,7 +252,7 @@ export default function TenantPaymentsPage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             <FilterChip
               active={filter === "all"}
@@ -286,7 +286,7 @@ export default function TenantPaymentsPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-6">
           <p className="text-sm text-red-700">{error}</p>
           <button
             onClick={() => setRefreshKey((value) => value + 1)}
@@ -296,8 +296,8 @@ export default function TenantPaymentsPage() {
           </button>
         </div>
       ) : sortedHistory.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-10 text-center">
-          <h2 className="text-xl font-semibold text-green-600">
+        <div className="rounded-2xl border bg-white p-4 text-center sm:p-10">
+          <h2 className="text-lg font-semibold text-green-600 sm:text-xl">
             Tidak Ada Tagihan Saat Ini
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-slate-600">
@@ -306,7 +306,7 @@ export default function TenantPaymentsPage() {
           </p>
           <Link
             href="/tenant/kost-saya"
-            className="mt-6 inline-flex rounded-xl bg-green-600 px-6 py-2 font-medium text-white hover:bg-green-700"
+            className="mt-6 inline-flex w-full justify-center rounded-xl bg-green-600 px-6 py-2 font-medium text-white hover:bg-green-700 sm:w-auto"
           >
             Lihat Kost Saya
           </Link>
@@ -328,16 +328,16 @@ export default function TenantPaymentsPage() {
           )}
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-slate-800">
+            <h2 className="text-lg font-semibold text-slate-800 sm:text-xl">
               Riwayat Pembayaran ({filteredHistory.length})
             </h2>
 
             {filteredHistory.length === 0 ? (
-              <div className="rounded-2xl border bg-white p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border bg-white p-4 text-sm text-slate-500 sm:p-6">
                 Tidak ada data pembayaran untuk filter yang dipilih.
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
                 {filteredHistory.map((payment) => (
                   <HistoryPaymentCard key={payment.id} payment={payment} />
                 ))}
@@ -360,7 +360,7 @@ function SummaryStat({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/25 bg-white/10 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-3 backdrop-blur-sm sm:px-4">
       <p className="inline-flex items-center gap-2 text-xs text-white/80">
         {icon}
         {label}
@@ -399,7 +399,7 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
 
   return (
     <article
-      className={`rounded-2xl border p-5 shadow-sm transition hover:shadow ${
+      className={`rounded-2xl border p-4 shadow-sm transition hover:shadow sm:p-5 ${
         isDue
           ? "border-red-200 bg-red-50/70 hover:border-red-300"
           : "bg-white hover:border-green-300"

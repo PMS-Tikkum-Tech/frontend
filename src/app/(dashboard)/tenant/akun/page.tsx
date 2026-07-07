@@ -639,13 +639,13 @@ function TenantAccountPageContent() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-700 via-indigo-700 to-cyan-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-700 via-indigo-700 to-cyan-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
-        <div className="relative flex flex-wrap items-center justify-between gap-3">
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold">Profil</h1>
+            <h1 className="text-2xl font-semibold sm:text-3xl">Profil</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/90">
               Lengkapi data dasar hanya saat diperlukan untuk booking atau sewa.
               Data lanjutan tetap opsional dan bisa disusulkan.
@@ -674,26 +674,26 @@ function TenantAccountPageContent() {
       </section>
 
       {isBookingProfileRequired ? (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:px-5 sm:py-4">
           Lengkapi data dasar terlebih dahulu untuk melanjutkan proses booking
           unit. Setelah tersimpan, kamu akan diarahkan kembali ke halaman booking.
         </section>
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-2xl border bg-white p-8 text-sm text-slate-500">
+        <div className="rounded-2xl border bg-white p-4 text-sm text-slate-500 sm:p-8">
           Memuat profil akun...
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <section className="rounded-2xl border bg-white p-5 text-center shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <section className="rounded-2xl border bg-white p-4 text-center shadow-sm sm:p-5">
             <Image
               src={avatarUrl}
               alt="Foto Profil"
               width={180}
               height={180}
               unoptimized
-              className="mx-auto rounded-full border object-cover"
+              className="mx-auto h-36 w-36 rounded-full border object-cover sm:h-[180px] sm:w-[180px]"
             />
             <p className="mt-4 text-base font-semibold text-slate-800">
               {toDisplayValue(savedProfile.full_name)}
@@ -703,9 +703,7 @@ function TenantAccountPageContent() {
             </p>
 
             <div className="mt-4 space-y-2">
-              <label
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-              >
+              <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100">
                 <Upload size={13} className="text-blue-700" />
                 Ganti Foto Profil
                 <input
@@ -757,7 +755,7 @@ function TenantAccountPageContent() {
             </div>
           </section>
 
-          <section className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">
+          <section className="rounded-2xl border bg-white p-4 shadow-sm lg:col-span-2 sm:p-5">
             <h2 className="text-lg font-semibold text-slate-800">
               Formulir Data Diri Penyewa
             </h2>

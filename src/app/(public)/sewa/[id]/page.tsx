@@ -1221,7 +1221,7 @@ export default function SewaPropertyDetailPage() {
       )}
 
       <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-6 px-6 pb-8 pt-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+        <div className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 pt-5 sm:px-6 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
           <div
             className="relative min-h-[320px] overflow-hidden rounded-3xl border border-slate-200 shadow-sm"
             onTouchStart={(event) => {
@@ -1292,7 +1292,7 @@ export default function SewaPropertyDetailPage() {
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
             {heroMediaItems.length > 1 ? (
-              <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2">
+              <div className="absolute bottom-3 right-3 z-30 flex items-center gap-2 sm:bottom-4 sm:right-4">
                 <button
                   type="button"
                   onClick={goToPrevHeroMedia}
@@ -1314,7 +1314,7 @@ export default function SewaPropertyDetailPage() {
                 </button>
               </div>
             ) : null}
-            <div className="absolute left-4 right-4 top-4 z-20 flex flex-wrap items-center gap-2">
+            <div className="absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 sm:left-4 sm:right-4 sm:top-4">
               <Link
                 href="/sewa"
                 className="inline-flex items-center gap-1 rounded-full border border-white/45 bg-black/35 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-black/50"
@@ -1335,7 +1335,7 @@ export default function SewaPropertyDetailPage() {
               <p className="inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
                 {extractDistrict(property.address)}
               </p>
-              <h1 className="mt-2 text-3xl font-semibold text-white">
+              <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
                 {property.name}
               </h1>
               <p className="mt-1 inline-flex items-center gap-1 text-sm text-white/90">
@@ -1345,7 +1345,7 @@ export default function SewaPropertyDetailPage() {
             </div>
           </div>
 
-          <aside className="space-y-4 rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-700 p-5 text-white shadow-sm">
+          <aside className="space-y-4 rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-700 p-4 text-white shadow-sm sm:p-5">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               <Sparkles size={13} />
               Data properti berasal dari input administrator
@@ -1353,7 +1353,7 @@ export default function SewaPropertyDetailPage() {
 
             <div>
               <p className="text-sm text-white/80">Harga sewa</p>
-              <p className="mt-1 text-2xl font-semibold">
+              <p className="mt-1 text-xl font-semibold sm:text-2xl">
                 {getPriceRangeLabel(property)}
               </p>
               <p className="mt-1 text-xs text-white/80">
@@ -1374,7 +1374,7 @@ export default function SewaPropertyDetailPage() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="#unit-tersedia"
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/40 px-4 text-sm font-semibold text-white transition hover:bg-white/10 sm:w-auto"
               >
                 Lihat Blok Tersedia
                 <ArrowRight size={14} />
@@ -1449,9 +1449,9 @@ export default function SewaPropertyDetailPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6">
-          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+      <section className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-4 sm:space-y-6">
+          <article className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-900">Tentang Properti</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-600">
               Properti ini tersedia di area {extractDistrict(property.address)} dengan
@@ -1461,7 +1461,7 @@ export default function SewaPropertyDetailPage() {
             </p>
           </article>
 
-          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <article className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-900">Fasilitas Utama</h2>
             <div className="mt-4 flex flex-wrap gap-2.5">
               {(property.facilities || []).length > 0 ? (
@@ -1487,7 +1487,7 @@ export default function SewaPropertyDetailPage() {
               <h2 className="text-sm font-semibold text-slate-800">Lokasi Properti</h2>
               <span className="text-xs text-slate-500">Peta interaktif</span>
             </div>
-            <div className="relative z-0 h-[420px] w-full">
+            <div className="relative z-0 h-[340px] w-full sm:h-[420px]">
               <SewaLocationsMap
                 locations={mapLocation}
                 selectedId={property.id}
@@ -1498,9 +1498,9 @@ export default function SewaPropertyDetailPage() {
 
           <article
             id="unit-tersedia"
-            className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/70 via-white to-sky-50/60 p-5 shadow-sm scroll-mt-28"
+            className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/70 via-white to-sky-50/60 p-4 shadow-sm scroll-mt-28 sm:p-5"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                   <Sparkles size={13} />
@@ -1519,7 +1519,7 @@ export default function SewaPropertyDetailPage() {
               </span>
             </div>
 
-            <div className="mt-4 grid gap-3 rounded-2xl border border-blue-100 bg-white p-4 md:grid-cols-5">
+            <div className="mt-4 grid gap-3 rounded-2xl border border-blue-100 bg-white p-3 sm:p-4 md:grid-cols-5">
               <select
                 value={unitStatusFilter}
                 onChange={(event) => setUnitStatusFilter(event.target.value)}
@@ -1704,7 +1704,7 @@ export default function SewaPropertyDetailPage() {
         </div>
 
         <aside className="space-y-5">
-          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <article className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-base font-semibold text-slate-900">Ringkasan Cepat</h2>
             <div className="mt-3 space-y-2">
               <SidebarItem label="Tipe Properti" value={formatLabel(property.property_type)} />
@@ -1717,7 +1717,7 @@ export default function SewaPropertyDetailPage() {
             </div>
           </article>
 
-          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <article className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-base font-semibold text-slate-900">
               Properti Serupa
             </h2>

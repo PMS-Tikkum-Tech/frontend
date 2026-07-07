@@ -45,13 +45,13 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-5 text-white shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
               Modul Pemilik
             </p>
-            <h1 className="text-2xl font-semibold">Dasbor Pemilik</h1>
+            <h1 className="text-2xl font-semibold sm:text-2xl">Dasbor Pemilik</h1>
             <p className="text-sm text-blue-100">
               Data ditampilkan berdasarkan layanan pemilik dari sistem.
             </p>
@@ -120,7 +120,7 @@ export default function OwnerDashboardPage() {
         <OccupancyChart data={data.occupancyData} />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h3 className="mb-4 text-base font-semibold text-slate-800">
           Ringkasan Per Properti
         </h3>
@@ -185,7 +185,7 @@ export default function OwnerDashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h3 className="mb-4 text-base font-semibold text-slate-800">
           Pemesanan Terbaru
         </h3>
@@ -267,12 +267,12 @@ function SummaryCard({
           : "border-slate-200 bg-slate-50/70";
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+    <div className={`rounded-2xl border p-4 ${toneClass} sm:p-4`}>
       <div className="inline-flex rounded-lg bg-white/70 p-2 text-slate-700">{icon}</div>
       <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
         {title}
       </p>
-      <p className="mt-1 text-2xl font-semibold text-slate-800">{value}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs text-slate-600">{subtitle}</p>
     </div>
   );

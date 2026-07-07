@@ -173,18 +173,18 @@ export default function ComplaintPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-amber-600 via-orange-600 to-rose-600 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-amber-600 via-orange-600 to-rose-600 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Ajukan Keluhan</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Ajukan Keluhan</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Laporkan kendala unit dengan detail agar tim operasional bisa
             menindaklanjuti lebih cepat.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
               icon={<Home size={15} />}
               label="Unit Tersedia"
@@ -221,7 +221,7 @@ export default function ComplaintPage() {
         />
       </section>
 
-      <section className="rounded-2xl border bg-white p-5 shadow-sm md:p-6">
+      <section className="rounded-2xl border bg-white p-4 shadow-sm md:p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Nama Penyewa">
@@ -314,18 +314,18 @@ export default function ComplaintPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={resetForm}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               disabled={isSubmitting}
             >
               Atur Ulang Formulir
             </button>
             <button
               type="submit"
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               disabled={isSubmitting}
             >
               <SendHorizonal size={14} />

@@ -111,8 +111,8 @@ export default function PublicHeader() {
 
   return (
     <>
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 md:h-28 flex items-center justify-between">
+      <header className="sticky top-0 z-50 border-b bg-white">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:h-20 sm:px-6 md:h-28">
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Image
@@ -121,7 +121,7 @@ export default function PublicHeader() {
               width={416}
               height={416}
               priority
-              className="h-14 w-14 rounded-sm object-contain sm:h-16 sm:w-16 md:h-[6.5rem] md:w-[6.5rem]"
+              className="h-11 w-11 rounded-sm object-contain sm:h-14 sm:w-14 md:h-[6.5rem] md:w-[6.5rem]"
             />
           </Link>
 
@@ -154,7 +154,7 @@ export default function PublicHeader() {
 
           {/* Right Area */}
           {user ? (
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               {dashboardHref ? (
                 <Link
                   href={dashboardHref}
@@ -167,9 +167,10 @@ export default function PublicHeader() {
                 <Link
                   href="/tenant/notifikasi"
                   aria-label="Buka notifikasi"
-                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-[#6f63d7] hover:text-[#3423b8]"
+                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-[#6f63d7] hover:text-[#3423b8] sm:h-11 sm:w-11"
                 >
-                  <Bell size={19} />
+                  <Bell size={17} className="sm:hidden" />
+                  <Bell size={19} className="hidden sm:block" />
                   {showUnreadNotificationDot ? (
                     <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
                   ) : null}
@@ -178,7 +179,7 @@ export default function PublicHeader() {
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex items-center gap-2 hover:bg-slate-100 px-2.5 py-2 rounded-xl transition sm:gap-3 sm:px-3"
+                className="flex items-center gap-2 rounded-xl px-2 py-2 transition hover:bg-slate-100 sm:gap-3 sm:px-3"
               >
                 {avatarUrl ? (
                   <Image
@@ -188,11 +189,12 @@ export default function PublicHeader() {
                     height={36}
                     unoptimized
                     onError={() => setFailedAvatarKey(user?.avatar ?? null)}
-                    className="rounded-full"
+                    className="h-8 w-8 rounded-full sm:h-9 sm:w-9"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-slate-300 flex items-center justify-center text-white">
-                    <User size={18} />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-300 text-white sm:h-9 sm:w-9">
+                    <User size={16} className="sm:hidden" />
+                    <User size={18} className="hidden sm:block" />
                   </div>
                 )}
 
@@ -203,16 +205,16 @@ export default function PublicHeader() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] md:hidden"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] md:hidden"
                 aria-label="Buka menu navigasi"
                 aria-controls="public-mobile-menu"
                 aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+                {mobileMenuOpen ? <X size={17} /> : <Menu size={17} />}
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 href="/auth?mode=login"
                 className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] sm:inline-flex"
@@ -229,12 +231,12 @@ export default function PublicHeader() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] md:hidden"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-[#6f63d7] hover:text-[#3423b8] md:hidden"
                 aria-label="Buka menu navigasi"
                 aria-controls="public-mobile-menu"
                 aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+                {mobileMenuOpen ? <X size={17} /> : <Menu size={17} />}
               </button>
             </div>
           )}
@@ -246,14 +248,14 @@ export default function PublicHeader() {
             mobileMenuOpen ? "max-h-[480px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <div className="space-y-3 px-4 py-3">
-            <nav className="grid gap-1.5">
+          <div className="space-y-3 px-3 py-3">
+            <nav className="grid gap-1">
               {nav.map((item) =>
                 item.disabled ? (
                   <span
                     key={item.href}
                     aria-disabled="true"
-                    className="cursor-not-allowed rounded-lg px-3 py-2 text-sm font-medium text-slate-400"
+                    className="cursor-not-allowed rounded-xl px-3 py-3 text-sm font-medium text-slate-400"
                   >
                     {item.label}
                   </span>
@@ -279,14 +281,14 @@ export default function PublicHeader() {
                 <Link
                   href="/auth?mode=login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="inline-flex justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                  className="inline-flex justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700"
                 >
                   Masuk
                 </Link>
                 <Link
                   href="/auth?mode=register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="inline-flex justify-center rounded-xl bg-[#3423b8] px-4 py-2 text-sm font-medium text-white"
+                  className="inline-flex justify-center rounded-xl bg-[#3423b8] px-4 py-2.5 text-sm font-medium text-white"
                 >
                   Daftar
                 </Link>
@@ -295,7 +297,7 @@ export default function PublicHeader() {
               <Link
                 href={dashboardHref}
                 onClick={() => setMobileMenuOpen(false)}
-                className="inline-flex w-full justify-center rounded-xl bg-[#3423b8] px-4 py-2 text-sm font-medium text-white"
+                className="inline-flex w-full justify-center rounded-xl bg-[#3423b8] px-4 py-2.5 text-sm font-medium text-white"
               >
                 Masuk Dasbor
               </Link>

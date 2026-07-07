@@ -142,18 +142,18 @@ export default function NotifikasiPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-cyan-700 to-teal-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-cyan-700 to-teal-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Notifikasi</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Notifikasi</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Semua pengumuman penting dari administrator terkait hunianmu akan tampil di
             halaman ini.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatChip label="Total Notifikasi" value={`${statusCounts.all}`} />
             <StatChip label="Terjadwal" value={`${statusCounts.scheduled}`} />
             <StatChip label="Terkirim" value={`${statusCounts.sent}`} />
@@ -163,7 +163,7 @@ export default function NotifikasiPage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex flex-wrap gap-2">
             <FilterChip
               active={filter === "all"}
@@ -196,7 +196,7 @@ export default function NotifikasiPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-6">
           <p className="text-sm text-red-700">{error}</p>
           <button
             onClick={() => setRefreshKey((value) => value + 1)}
@@ -206,8 +206,8 @@ export default function NotifikasiPage() {
           </button>
         </div>
       ) : visibleItems.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-10 text-center">
-          <h2 className="text-xl font-semibold text-green-600">
+        <div className="rounded-2xl border bg-white p-4 text-center sm:p-10">
+          <h2 className="text-lg font-semibold text-green-600 sm:text-xl">
             {showBackendNotice
               ? "Kotak masuk penyewa belum tersedia"
               : "Belum Ada Notifikasi"}
@@ -223,9 +223,9 @@ export default function NotifikasiPage() {
           {visibleItems.map((item) => (
             <article
               key={item.id}
-              className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow"
+              className="rounded-2xl border bg-white p-4 shadow-sm transition hover:border-green-300 hover:shadow sm:p-5"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                 <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
                   {statusIconMap[item.status]}
                 </div>

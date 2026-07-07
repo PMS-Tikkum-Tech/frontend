@@ -1537,8 +1537,8 @@ export default function DetailPropertiPage() {
         />
       ) : null}
 
-      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-5 text-white shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
               Modul Properti
@@ -1552,11 +1552,11 @@ export default function DetailPropertiPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={() => router.push("/admin/properties")}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/15 px-4 text-sm font-medium text-white hover:bg-white/25"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white/15 px-4 text-sm font-medium text-white hover:bg-white/25 sm:w-auto"
             >
               <ArrowLeft size={16} />
               Kembali
@@ -1566,7 +1566,7 @@ export default function DetailPropertiPage() {
               type="button"
               onClick={() => setShowEditModal(true)}
               disabled={isLoading || !propertyDetail || isUpdating || isDeleting}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               <Pencil size={16} />
               {isUpdating ? "Menyimpan..." : "Ubah Properti"}
@@ -1578,7 +1578,7 @@ export default function DetailPropertiPage() {
                 void handleDeleteProperty();
               }}
               disabled={isDeleting || isLoading || !propertyDetail || isUpdating}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-red-300 bg-red-100 px-4 text-sm font-semibold text-red-700 hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-100 px-4 text-sm font-semibold text-red-700 hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               <CircleX size={16} />
               {isDeleting ? "Menghapus..." : "Hapus Properti"}
@@ -1614,11 +1614,11 @@ export default function DetailPropertiPage() {
       )}
 
       {isLoading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 sm:p-6">
           Memuat detail properti...
         </div>
       ) : !propertyDetail ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 sm:p-6">
           Data properti tidak ditemukan.
         </div>
       ) : (
@@ -1678,7 +1678,7 @@ export default function DetailPropertiPage() {
 
           <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
             <div className="space-y-5 xl:col-span-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-4 flex items-center gap-2">
                   <ImageIcon size={18} className="text-slate-500" />
                   <h2 className="text-lg font-semibold text-slate-800">
@@ -1792,7 +1792,7 @@ export default function DetailPropertiPage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-4 flex items-center gap-2">
                   <Video size={18} className="text-slate-500" />
                   <h2 className="text-lg font-semibold text-slate-800">
@@ -1881,7 +1881,7 @@ export default function DetailPropertiPage() {
             </div>
 
             <div className="space-y-5">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <h2 className="mb-4 text-lg font-semibold text-slate-800">
                   Informasi Properti
                 </h2>
@@ -1940,7 +1940,7 @@ export default function DetailPropertiPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <h3 className="mb-2 font-semibold text-slate-800">Deskripsi</h3>
                 <p className="text-sm leading-relaxed text-slate-600">
                   {propertyDetail.property.description || "-"}
@@ -1954,7 +1954,7 @@ export default function DetailPropertiPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="mb-3 text-lg font-semibold text-slate-800">Fasilitas</h2>
             <div className="flex flex-wrap gap-2">
               {propertyDetail.property.facilities.length === 0 ? (
@@ -1983,15 +1983,15 @@ export default function DetailPropertiPage() {
             onDeleteBlockMedia={handleDeleteBlockMedia}
           />
 
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-slate-800">
                 Daftar Penghuni ({tenantFiltered.length})
               </h2>
               <button
                 type="button"
                 onClick={openCreateTenantForm}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 sm:w-auto"
               >
                 <Plus size={14} />
                 {showTenantForm && !editingTenantRow ? "Tutup Form Penghuni" : "Tambah Penghuni"}
@@ -2016,7 +2016,7 @@ export default function DetailPropertiPage() {
                   onSubmit={(event) => {
                     void handleSubmitTenantForm(event);
                   }}
-                  className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2"
+                  className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 md:grid-cols-2"
                 >
                   {editingTenantRow ? (
                     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm md:col-span-2">
@@ -2131,7 +2131,7 @@ export default function DetailPropertiPage() {
               )
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <input
                 placeholder="Cari nama penghuni"
                 value={tenantSearch}
@@ -2157,22 +2157,22 @@ export default function DetailPropertiPage() {
               <table className="min-w-[1180px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
-                    <th className="p-3 text-left font-semibold">Nama</th>
-                    <th className="p-3 text-left font-semibold">Blok / Unit</th>
-                    <th className="p-3 text-left font-semibold">Check-in</th>
-                    <th className="p-3 text-left font-semibold">Nomor Telepon</th>
-                    <th className="p-3 text-left font-semibold">Check-out</th>
-                    <th className="p-3 text-left font-semibold">Lama Sewa</th>
-                    <th className="p-3 text-left font-semibold">Keterangan</th>
-                    <th className="p-3 text-left font-semibold">Status Pembayaran</th>
-                    <th className="p-3 text-right font-semibold">Aksi</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Nama</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Blok / Unit</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Check-in</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Nomor Telepon</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Check-out</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Lama Sewa</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Keterangan</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Status Pembayaran</th>
+                    <th className="p-2.5 text-right font-semibold sm:p-3">Aksi</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {tenantFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-4 text-center text-slate-500">
+                      <td colSpan={9} className="p-3 text-center text-slate-500 sm:p-4">
                         Tidak ada data penghuni.
                       </td>
                     </tr>
@@ -2185,33 +2185,33 @@ export default function DetailPropertiPage() {
                           key={tenant.lease_id}
                           className="border-t border-slate-100 hover:bg-slate-50"
                         >
-                          <td className="p-3 font-medium text-slate-800">
+                          <td className="p-2.5 font-medium text-slate-800 sm:p-3">
                             {tenant.tenant_name}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {structuredUnit
                               ? `${structuredUnit.buildingName} / ${structuredUnit.displayName}`
                               : tenant.unit_name}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {formatDate(tenant.lease_start)}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {tenant.mobile_phone || tenant.tenant_phone || "-"}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {formatDate(tenant.lease_end)}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {structuredUnit?.leaseDurationLabel || "-"}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {tenant.notes ||
                               tenant.description ||
                               structuredUnit?.note ||
                               "-"}
                           </td>
-                          <td className="p-3">
+                          <td className="p-2.5 sm:p-3">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                                 paymentBadgeClassMap[tenant.payment_status || ""] ||
@@ -2223,7 +2223,7 @@ export default function DetailPropertiPage() {
                                 "-"}
                             </span>
                           </td>
-                          <td className="p-3">
+                          <td className="p-2.5 sm:p-3">
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
@@ -2257,15 +2257,15 @@ export default function DetailPropertiPage() {
             </div>
           </section>
 
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-slate-800">
                 Daftar Unit ({unitFiltered.length})
               </h2>
               <button
                 type="button"
                 onClick={openCreateUnitForm}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 sm:w-auto"
               >
                 <Plus size={14} />
                 {showAddUnitForm && !editingUnitId ? "Tutup Form Unit" : "Tambah Unit"}
@@ -2277,7 +2277,7 @@ export default function DetailPropertiPage() {
                 onSubmit={(event) => {
                   void handleAddUnit(event);
                 }}
-                className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2"
+                className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4 md:grid-cols-2"
               >
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
@@ -2636,7 +2636,7 @@ export default function DetailPropertiPage() {
                     setUnitSort(defaultUnitSort);
                   }}
                   disabled={!hasActiveUnitFilter}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   <RotateCcw size={14} />
                   Reset
@@ -2660,23 +2660,23 @@ export default function DetailPropertiPage() {
               <table className="min-w-[1240px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
-                    <th className="p-3 text-left font-semibold">Blok</th>
-                    <th className="p-3 text-left font-semibold">Nomor Unit</th>
-                    <th className="p-3 text-left font-semibold">Tipe</th>
-                    <th className="p-3 text-left font-semibold">Owner</th>
-                    <th className="p-3 text-left font-semibold">Kapasitas</th>
-                    <th className="p-3 text-left font-semibold">Harga / Bulan</th>
-                    <th className="p-3 text-left font-semibold">Media</th>
-                    <th className="p-3 text-left font-semibold">Penyewa</th>
-                    <th className="p-3 text-left font-semibold">Status</th>
-                    <th className="p-3 text-right font-semibold">Aksi</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Blok</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Nomor Unit</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Tipe</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Owner</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Kapasitas</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Harga / Bulan</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Media</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Penyewa</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Status</th>
+                    <th className="p-2.5 text-right font-semibold sm:p-3">Aksi</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {unitFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="p-4 text-center text-slate-500">
+                      <td colSpan={10} className="p-3 text-center text-slate-500 sm:p-4">
                         Tidak ada data unit.
                       </td>
                     </tr>
@@ -2691,26 +2691,26 @@ export default function DetailPropertiPage() {
                           key={unit.unit_id}
                           className="border-t border-slate-100 hover:bg-slate-50"
                         >
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {structuredUnit?.buildingName || "-"}
                           </td>
-                          <td className="p-3 font-medium text-slate-800">
+                          <td className="p-2.5 font-medium text-slate-800 sm:p-3">
                             {structuredUnit?.displayName || unit.unit_name}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {formatReadableText(unit.unit_type)}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {unit.owner_name ||
                               propertyStructure.blocks.find((block) =>
                                 block.units.some((item) => item.id === unit.unit_id)
                               )?.ownerName ||
                               "-"}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {Number(unit.people_allowed || 0)} orang
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             {(() => {
                               const priceInfo = getUnitDisplayPrice(unit);
                               return priceInfo.hasPromo ? (
@@ -2729,7 +2729,7 @@ export default function DetailPropertiPage() {
                               );
                             })()}
                           </td>
-                          <td className="p-3 text-slate-700">
+                          <td className="p-2.5 text-slate-700 sm:p-3">
                             <div className="space-y-1 text-xs">
                               <span className="inline-flex items-center gap-1">
                                 <ImageIcon size={13} className="text-slate-500" />
@@ -2743,8 +2743,8 @@ export default function DetailPropertiPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="p-3 text-slate-700">{unit.tenant_name || "-"}</td>
-                          <td className="p-3">
+                          <td className="p-2.5 text-slate-700 sm:p-3">{unit.tenant_name || "-"}</td>
+                          <td className="p-2.5 sm:p-3">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                                 unitBadgeClassMap[unit.status] ||
@@ -2754,7 +2754,7 @@ export default function DetailPropertiPage() {
                               {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
                             </span>
                           </td>
-                          <td className="p-3">
+                          <td className="p-2.5 sm:p-3">
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
@@ -2788,7 +2788,7 @@ export default function DetailPropertiPage() {
             </div>
           </section>
 
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-800">
               Riwayat Perawatan ({maintenanceRows.length})
             </h2>
@@ -2797,20 +2797,20 @@ export default function DetailPropertiPage() {
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
-                    <th className="p-3 text-left font-semibold">Tanggal</th>
-                    <th className="p-3 text-left font-semibold">Unit</th>
-                    <th className="p-3 text-left font-semibold">Penghuni</th>
-                    <th className="p-3 text-left font-semibold">Keluhan</th>
-                    <th className="p-3 text-left font-semibold">Prioritas</th>
-                    <th className="p-3 text-left font-semibold">Status</th>
-                    <th className="p-3 text-left font-semibold">Teknisi</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Tanggal</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Unit</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Penghuni</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Keluhan</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Prioritas</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Status</th>
+                    <th className="p-2.5 text-left font-semibold sm:p-3">Teknisi</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {maintenanceSorted.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-4 text-center text-slate-500">
+                      <td colSpan={7} className="p-3 text-center text-slate-500 sm:p-4">
                         Tidak ada data perawatan.
                       </td>
                     </tr>
@@ -2820,15 +2820,15 @@ export default function DetailPropertiPage() {
                         key={item.id}
                         className="border-t border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="p-3 text-slate-700">{formatDate(item.date)}</td>
-                        <td className="p-3 text-slate-700">{item.unit_name}</td>
-                        <td className="p-3 text-slate-700">{item.tenant_name || "-"}</td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">{formatDate(item.date)}</td>
+                        <td className="p-2.5 text-slate-700 sm:p-3">{item.unit_name}</td>
+                        <td className="p-2.5 text-slate-700 sm:p-3">{item.tenant_name || "-"}</td>
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           <p className="max-w-[280px] break-words">
                             {item.issue || item.category || "-"}
                           </p>
                         </td>
-                        <td className="p-3">
+                        <td className="p-2.5 sm:p-3">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                               maintenancePriorityClassMap[item.priority] ||
@@ -2839,7 +2839,7 @@ export default function DetailPropertiPage() {
                               formatReadableText(item.priority)}
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="p-2.5 sm:p-3">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                               maintenanceStatusClassMap[item.status] ||
@@ -2850,7 +2850,7 @@ export default function DetailPropertiPage() {
                               formatReadableText(item.status)}
                           </span>
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {item.technician_name || "-"}
                         </td>
                       </tr>
@@ -2891,8 +2891,8 @@ function DeleteTenantDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="px-6 pb-5 pt-6">
-          <div className="flex items-start gap-4">
+        <div className="px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
               <AlertTriangle size={24} />
             </div>
@@ -2910,28 +2910,28 @@ function DeleteTenantDialog({
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-            <div className="flex items-start justify-between gap-4">
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm sm:p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Nama</span>
-              <span className="text-right font-semibold text-slate-900">
+              <span className="text-left font-semibold text-slate-900 sm:text-right">
                 {tenant.tenant_name}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Unit</span>
-              <span className="text-right font-medium text-slate-800">
+              <span className="text-left font-medium text-slate-800 sm:text-right">
                 {tenant.unit_name}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Mulai Sewa</span>
-              <span className="text-right font-medium text-slate-800">
+              <span className="text-left font-medium text-slate-800 sm:text-right">
                 {formatDate(tenant.lease_start)}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Akhir Sewa</span>
-              <span className="text-right font-medium text-slate-800">
+              <span className="text-left font-medium text-slate-800 sm:text-right">
                 {formatDate(tenant.lease_end)}
               </span>
             </div>
@@ -2976,8 +2976,8 @@ function DeleteUnitDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="px-6 pb-5 pt-6">
-          <div className="flex items-start gap-4">
+        <div className="px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
               <AlertTriangle size={24} />
             </div>
@@ -2995,22 +2995,22 @@ function DeleteUnitDialog({
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-            <div className="flex items-start justify-between gap-4">
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm sm:p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Unit</span>
-              <span className="text-right font-semibold text-slate-900">
+              <span className="text-left font-semibold text-slate-900 sm:text-right">
                 {unit.unit_name}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Tipe</span>
-              <span className="text-right font-medium text-slate-800">
+              <span className="text-left font-medium text-slate-800 sm:text-right">
                 {formatReadableText(unit.unit_type)}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Harga</span>
-              <span className="text-right">
+              <span className="text-left sm:text-right">
                 {(() => {
                   const priceInfo = getUnitDisplayPrice(unit);
                   return priceInfo.hasPromo ? (
@@ -3030,15 +3030,15 @@ function DeleteUnitDialog({
                 })()}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Status</span>
-              <span className="text-right font-medium text-slate-800">
+              <span className="text-left font-medium text-slate-800 sm:text-right">
                 {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
               </span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-4">
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <span className="text-slate-500">Penyewa</span>
-              <span className="text-right font-medium text-slate-800">
+              <span className="text-left font-medium text-slate-800 sm:text-right">
                 {unit.tenant_name || "-"}
               </span>
             </div>
@@ -3090,21 +3090,21 @@ function StatCard({
           : "border-slate-200 bg-slate-50/70";
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+    <div className={`rounded-2xl border p-3 sm:p-4 ${toneClass}`}>
       <div className="inline-flex rounded-lg bg-white/70 p-2 text-slate-700">{icon}</div>
       <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold text-slate-800">{value}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
     </div>
   );
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 px-3 py-2">
+    <div className="flex flex-col gap-1 rounded-lg border border-slate-200 px-3 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="text-sm font-medium text-slate-600">{label}</span>
-      <span className="max-w-[68%] break-words text-right text-sm text-slate-800">
+      <span className="max-w-full break-words text-left text-sm text-slate-800 sm:max-w-[68%] sm:text-right">
         {value}
       </span>
     </div>
@@ -3134,8 +3134,8 @@ function PropertyMappingSection({
   ) => void;
 }) {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Ringkasan Operasional
@@ -3167,7 +3167,7 @@ function PropertyMappingSection({
               key={block.key}
               className="overflow-hidden rounded-2xl border border-slate-200"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+              <div className="flex flex-col gap-3 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">
                     {block.name}
@@ -3186,7 +3186,7 @@ function PropertyMappingSection({
               </div>
 
               <div className="border-t border-slate-200 bg-white px-4 py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">
                       Media Blok
@@ -3196,7 +3196,7 @@ function PropertyMappingSection({
                     type="button"
                     onClick={() => onSaveBlockMedia(block)}
                     disabled={!block.id || savingBlockMediaId === block.id}
-                    className="inline-flex h-9 items-center justify-center rounded-lg bg-[#1E2746] px-3 text-xs font-semibold text-white transition hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-[#1E2746] px-3 text-xs font-semibold text-white transition hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
                     {savingBlockMediaId === block.id ? "Menyimpan..." : "Simpan Media"}
                   </button>
@@ -3335,16 +3335,16 @@ function PropertyMappingSection({
                 <table className="w-full min-w-[1080px] text-sm">
                   <thead className="bg-white text-slate-700">
                     <tr>
-                      <th className="p-3 text-left font-semibold">Unit</th>
-                      <th className="p-3 text-left font-semibold">Tipe</th>
-                      <th className="p-3 text-left font-semibold">Harga</th>
-                      <th className="p-3 text-left font-semibold">Status</th>
-                      <th className="p-3 text-left font-semibold">Tenant</th>
-                      <th className="p-3 text-left font-semibold">Nomor Telepon</th>
-                      <th className="p-3 text-left font-semibold">Check-in</th>
-                      <th className="p-3 text-left font-semibold">Check-out</th>
-                      <th className="p-3 text-left font-semibold">Lama Sewa</th>
-                      <th className="p-3 text-left font-semibold">Keterangan</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Unit</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Tipe</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Harga</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Status</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Tenant</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Nomor Telepon</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Check-in</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Check-out</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Lama Sewa</th>
+                      <th className="p-2.5 text-left font-semibold sm:p-3">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3353,13 +3353,13 @@ function PropertyMappingSection({
                         key={unit.id}
                         className="border-t border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="p-3 font-medium text-slate-900">
+                        <td className="p-2.5 font-medium text-slate-900 sm:p-3">
                           {unit.displayName}
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {formatReadableText(unit.unitType)}
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {(() => {
                             const priceInfo = getUnitDisplayPrice(unit);
                             return priceInfo.hasPromo ? (
@@ -3378,7 +3378,7 @@ function PropertyMappingSection({
                             );
                           })()}
                         </td>
-                        <td className="p-3">
+                        <td className="p-2.5 sm:p-3">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                               unitBadgeClassMap[unit.status] ||
@@ -3389,19 +3389,19 @@ function PropertyMappingSection({
                               formatReadableText(unit.status)}
                           </span>
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {unit.tenantName || "-"}
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {unit.tenantPhone || "-"}
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {formatDate(unit.leaseStart)}
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {formatDate(unit.leaseEnd)}
                         </td>
-                        <td className="p-3 text-slate-700">
+                        <td className="p-2.5 text-slate-700 sm:p-3">
                           {unit.leaseDurationLabel}
                         </td>
                         <td className="p-3 text-slate-700">{unit.note || "-"}</td>

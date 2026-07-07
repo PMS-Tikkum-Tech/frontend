@@ -59,13 +59,13 @@ export default function ExpandedSearchBar({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] bg-black/30 px-4 py-5 md:pt-24">
+    <div className="fixed inset-0 z-[90] bg-black/30 px-3 py-4 sm:px-4 md:pt-24">
       <form
         onSubmit={(event) => {
           event.preventDefault();
           onSubmit({ location, startDate, duration });
         }}
-        className="mx-auto max-w-5xl rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.2)] md:p-5"
+        className="mx-auto max-w-5xl rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_24px_80px_rgba(15,23,42,0.2)] sm:p-4 md:rounded-[28px] md:p-5"
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-slate-950">
@@ -75,14 +75,14 @@ export default function ExpandedSearchBar({
             type="button"
             onClick={onClose}
             aria-label="Tutup pencarian"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-700"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="grid overflow-hidden rounded-[24px] border border-slate-200 md:grid-cols-[minmax(0,1.2fr)_180px_170px_76px]">
-          <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+        <div className="grid overflow-hidden rounded-[20px] border border-slate-200 md:grid-cols-[minmax(0,1.2fr)_180px_170px_76px]">
+          <label className="block border-b border-slate-200 px-4 py-3 md:border-b-0 md:border-r md:px-5 md:py-4">
             <span className="block text-xs font-semibold text-slate-950">Lokasi</span>
             <input
               value={location}
@@ -92,7 +92,7 @@ export default function ExpandedSearchBar({
               autoFocus
             />
           </label>
-          <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+          <label className="block border-b border-slate-200 px-4 py-3 md:border-b-0 md:border-r md:px-5 md:py-4">
             <span className="block text-xs font-semibold text-slate-950">
               Mulai tinggal
             </span>
@@ -103,7 +103,7 @@ export default function ExpandedSearchBar({
               className="mt-1 w-full bg-transparent text-sm outline-none"
             />
           </label>
-          <label className="block border-b border-slate-200 px-5 py-4 md:border-b-0 md:border-r">
+          <label className="block border-b border-slate-200 px-4 py-3 md:border-b-0 md:border-r md:px-5 md:py-4">
             <span className="block text-xs font-semibold text-slate-950">
               Durasi sewa
             </span>
@@ -123,7 +123,7 @@ export default function ExpandedSearchBar({
           </label>
           <button
             type="submit"
-            className="m-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#3423b8] px-5 text-sm font-semibold text-white transition hover:bg-[#24147d]"
+            className="m-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#3423b8] px-5 text-sm font-semibold text-white transition hover:bg-[#24147d] md:m-2"
           >
             <Search size={16} />
             Cari

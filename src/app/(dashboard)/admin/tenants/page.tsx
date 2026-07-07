@@ -461,7 +461,7 @@ export default function AdminTenantsPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -592,11 +592,11 @@ export default function AdminTenantsPage() {
           <table className="min-w-[920px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="p-4 text-left">Penyewa</th>
-                <th className="p-4 text-left">Telepon</th>
-                <th className="p-4 text-left">Status Akun</th>
-                <th className="p-4 text-left">Tanggal Daftar</th>
-                <th className="p-4 text-left">Aksi</th>
+                <th className="p-3 text-left sm:p-4">Penyewa</th>
+                <th className="p-3 text-left sm:p-4">Telepon</th>
+                <th className="p-3 text-left sm:p-4">Status Akun</th>
+                <th className="p-3 text-left sm:p-4">Tanggal Daftar</th>
+                <th className="p-3 text-left sm:p-4">Aksi</th>
               </tr>
             </thead>
 
@@ -619,7 +619,7 @@ export default function AdminTenantsPage() {
                     key={tenant.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <div className="flex items-center gap-3">
                         <TenantAvatar
                           src={tenant.profile_picture_url}
@@ -635,19 +635,19 @@ export default function AdminTenantsPage() {
                       </div>
                     </td>
 
-                    <td className="p-4 text-slate-700">
+                    <td className="p-3 text-slate-700 sm:p-4">
                       {tenant.phone_number || "-"}
                     </td>
 
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <StatusBadge status={tenant.account_status} />
                     </td>
 
-                    <td className="p-4 text-slate-700">
+                    <td className="p-3 text-slate-700 sm:p-4">
                       {formatDate(tenant.created_at)}
                     </td>
 
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -731,9 +731,9 @@ export default function AdminTenantsPage() {
       </section>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
+            <div className="flex items-center justify-between border-b px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Penyewa" : "Ubah Penyewa"}
               </h2>
@@ -748,7 +748,7 @@ export default function AdminTenantsPage() {
               </button>
             </div>
 
-            <div className="space-y-4 px-6 py-5">
+            <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   label="Nama Lengkap"

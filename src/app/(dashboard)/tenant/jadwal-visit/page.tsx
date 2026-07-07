@@ -286,18 +286,18 @@ export default function JadwalVisitPage() {
         />
       ) : null}
 
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-700 via-green-700 to-teal-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-700 via-green-700 to-teal-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Jadwal Kunjungan</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Jadwal Kunjungan</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Pantau jadwal survei kost yang kamu ajukan sebelum memilih atau
             menyewa unit.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <SummaryStat
               icon={<CalendarClock size={16} />}
               label="Jadwal Mendatang"
@@ -345,9 +345,9 @@ export default function JadwalVisitPage() {
         </div>
       ) : null}
 
-      <section className="rounded-2xl border bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+      <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="inline-flex overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1">
             <button
               onClick={() => setTab("upcoming")}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -418,7 +418,7 @@ export default function JadwalVisitPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-6">
           <p className="text-sm text-red-700">{error}</p>
           <button
             onClick={() => setRefreshKey((value) => value + 1)}
@@ -428,7 +428,7 @@ export default function JadwalVisitPage() {
           </button>
         </div>
       ) : visibleRequests.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-8">
+        <div className="rounded-2xl border bg-white p-4 sm:p-8">
           <div className="flex flex-col items-center text-center">
             <h2 className="mt-6 text-xl font-semibold text-green-600">
               Belum Ada Jadwal Kunjungan
@@ -441,10 +441,10 @@ export default function JadwalVisitPage() {
 
             <Link
               href="/sewa"
-              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-white transition hover:bg-green-700"
-            >
-              <Search size={18} />
-              Cari Kost untuk Disurvei
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-white transition hover:bg-green-700 sm:w-auto"
+          >
+            <Search size={18} />
+            Cari Kost untuk Disurvei
             </Link>
           </div>
         </div>
@@ -480,7 +480,7 @@ function SummaryStat({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/25 bg-white/10 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-3 backdrop-blur-sm sm:px-4">
       <p className="inline-flex items-center gap-2 text-xs text-white/80">
         {icon}
         {label}
@@ -500,8 +500,8 @@ function VisitCard({
   onCancel: () => void;
 }) {
   return (
-    <article className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <article className="rounded-2xl border bg-white p-4 shadow-sm transition hover:border-green-300 hover:shadow sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-700">
             {getStatusIcon(request.status)}
@@ -528,7 +528,7 @@ function VisitCard({
         </div>
 
         <span
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
+          className={`inline-flex self-start rounded-full px-3 py-1 text-xs font-medium ${
             statusBadgeMap[request.status]
           }`}
         >
@@ -557,12 +557,12 @@ function VisitCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap justify-end gap-2">
+      <div className="mt-3 flex flex-col justify-end gap-2 sm:flex-row">
         {canCancel ? (
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 sm:w-auto"
           >
             <XCircle size={13} />
             Batalkan
@@ -570,7 +570,7 @@ function VisitCard({
         ) : null}
         <Link
           href={`/sewa/${request.property.id}`}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700"
+          className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700 sm:w-auto"
         >
           Lihat Detail Kost
         </Link>
@@ -601,7 +601,7 @@ function CancelVisitDialog({
       />
 
       <div className="relative z-[91] w-full max-w-md overflow-hidden rounded-3xl border border-red-100 bg-white shadow-2xl">
-        <div className="bg-gradient-to-br from-red-50 via-white to-orange-50 px-5 py-5">
+        <div className="bg-gradient-to-br from-red-50 via-white to-orange-50 px-4 py-4 sm:px-5 sm:py-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-red-100 text-red-700">
             <AlertTriangle size={20} />
           </div>
@@ -614,7 +614,7 @@ function CancelVisitDialog({
           </p>
         </div>
 
-        <div className="space-y-3 px-5 py-4">
+        <div className="space-y-3 px-4 py-4 sm:px-5">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-sm font-semibold text-slate-900">
               {request.property.name || "-"}
@@ -625,7 +625,7 @@ function CancelVisitDialog({
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}

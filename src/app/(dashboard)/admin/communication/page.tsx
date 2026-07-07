@@ -732,7 +732,7 @@ export default function AdminCommunicationPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -753,7 +753,7 @@ export default function AdminCommunicationPage() {
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 sm:w-auto"
           >
             <Plus size={16} />
             Tambah Pesan
@@ -835,7 +835,7 @@ export default function AdminCommunicationPage() {
           <button
             type="button"
             onClick={() => setVisitOnly((prev) => !prev)}
-            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition ${
+            className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition md:w-auto ${
               visitOnly
                 ? "border-sky-300 bg-sky-50 text-sky-700"
                 : "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -854,7 +854,7 @@ export default function AdminCommunicationPage() {
               setVisitOnly(false);
               setCurrentPage(1);
             }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
           >
             <RotateCcw size={14} />
             Atur Ulang

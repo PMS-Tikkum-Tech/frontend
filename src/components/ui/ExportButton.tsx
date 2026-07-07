@@ -375,7 +375,7 @@ export default function ExportButton({
   return (
     <button
       onClick={handleExportPDF}
-      className="px-5 py-2 bg-[#1E2746] text-white rounded-lg text-sm hover:bg-[#111827] transition"
+      className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#1E2746] px-5 text-sm text-white transition hover:bg-[#111827] sm:w-auto"
     >
       Ekspor PDF
     </button>

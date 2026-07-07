@@ -81,8 +81,8 @@ export default function FilterBar({
   }, [activeFilter]);
 
   return (
-    <div className="sticky top-20 z-40 border-b border-[#e2dfff] bg-white/95 backdrop-blur md:top-28">
-      <div className="mx-auto flex max-w-[1760px] items-center gap-3 px-5 py-3 md:px-8">
+    <div className="sticky top-16 z-40 border-b border-[#e2dfff] bg-white/95 backdrop-blur sm:top-20 md:top-28">
+      <div className="mx-auto flex max-w-[1760px] items-center gap-2 px-3 py-2 sm:px-4 md:gap-3 md:px-8 md:py-3">
         <button
           type="button"
           aria-label="Filter sebelumnya"
@@ -94,7 +94,7 @@ export default function FilterBar({
         </button>
 
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="mx-auto flex w-max gap-6">
+          <div className="flex w-max gap-2 md:mx-auto md:gap-6">
             {FILTERS.map((filter) => {
               const isActive = activeFilter === filter.value;
 
@@ -106,10 +106,10 @@ export default function FilterBar({
                     buttonRefs.current[filter.value] = node;
                   }}
                   onClick={() => onChange(filter.value)}
-                  className={`flex min-w-fit flex-col items-center gap-1 border-b-2 px-1 pb-2 pt-1 text-xs font-semibold transition ${
+                  className={`flex min-w-fit flex-none items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition md:flex-col md:gap-1 md:rounded-none md:border-b-2 md:px-1 md:pb-2 md:pt-1 ${
                     isActive
-                      ? "border-[#3423b8] text-[#3423b8]"
-                      : "border-transparent text-slate-500 hover:border-[#bcb5ff] hover:text-[#3423b8]"
+                      ? "bg-[#eeecff] text-[#3423b8] md:bg-transparent md:border-[#3423b8]"
+                      : "bg-white text-slate-500 hover:bg-[#f8f7ff] hover:text-[#3423b8] md:bg-transparent md:border-transparent md:hover:border-[#bcb5ff]"
                   }`}
                 >
                   {filter.icon}

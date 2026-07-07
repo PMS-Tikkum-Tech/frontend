@@ -36,7 +36,7 @@ export default function PropertyFilters({
     search.trim() !== "" || status !== "" || sortBy !== defaultSortBy;
 
   return (
-    <div className="w-full space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="w-full space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative flex-1">
           <Search
@@ -52,7 +52,7 @@ export default function PropertyFilters({
           />
         </div>
 
-        <div className="relative min-w-[210px]">
+        <div className="relative w-full lg:min-w-[210px]">
           <Filter
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -71,7 +71,7 @@ export default function PropertyFilters({
           </select>
         </div>
 
-        <div className="relative min-w-[220px]">
+        <div className="relative w-full lg:min-w-[220px]">
           <ArrowUpDown
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -93,7 +93,7 @@ export default function PropertyFilters({
           type="button"
           onClick={onReset}
           disabled={!hasActiveFilter}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
         >
           <RotateCcw size={14} />
           Atur Ulang

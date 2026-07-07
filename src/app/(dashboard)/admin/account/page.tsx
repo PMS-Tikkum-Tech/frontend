@@ -536,8 +536,8 @@ export default function AdminAccountPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-5 text-white shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">Manajemen Akun</h1>
             <p className="text-sm text-blue-100">
@@ -546,13 +546,13 @@ export default function AdminAccountPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => setRefreshKey((prev) => prev + 1)}
               disabled={isLoading}
               title="Perbarui data"
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               <RefreshCw
                 size={16}
@@ -565,7 +565,7 @@ export default function AdminAccountPage() {
               type="button"
               onClick={openCreateModal}
               disabled={isSubmitting}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               <Plus size={17} />
               Tambah Akun
@@ -824,13 +824,13 @@ export default function AdminAccountPage() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
+        <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
           <p>
             Menampilkan {showingFrom}-{showingTo} dari {filteredUsers.length}{" "}
             akun
           </p>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -861,9 +861,9 @@ export default function AdminAccountPage() {
       </section>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
           <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Akun" : "Ubah Akun"}
               </h2>
@@ -878,7 +878,7 @@ export default function AdminAccountPage() {
               </button>
             </div>
 
-            <div className="space-y-4 overflow-y-auto px-6 py-5">
+            <div className="space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
               <FormField
                 label="Nama Lengkap"
                 value={form.fullName}
@@ -1033,9 +1033,9 @@ export default function AdminAccountPage() {
       )}
 
       {viewUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
           <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 Detail Akun
               </h2>
@@ -1049,7 +1049,7 @@ export default function AdminAccountPage() {
               </button>
             </div>
 
-            <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm">
+            <div className="space-y-4 overflow-y-auto px-4 py-5 text-sm sm:px-6">
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <Image
                   src={

@@ -214,7 +214,7 @@ export default function AdminPropertiesPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#24305A] to-[#295A9A] p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#24305A] to-[#295A9A] p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -243,7 +243,7 @@ export default function AdminPropertiesPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total Properti"
           value={isLoading ? "..." : summary.totalProperty}
@@ -306,17 +306,17 @@ export default function AdminPropertiesPage() {
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
-              className="h-[355px] animate-pulse rounded-2xl border border-slate-200 bg-white"
+              className="h-[320px] animate-pulse rounded-2xl border border-slate-200 bg-white sm:h-[355px]"
             />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-          <h2 className="text-lg font-semibold text-slate-800">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center sm:p-8">
+          <h2 className="text-base font-semibold text-slate-800 sm:text-lg">
             Tidak ada properti yang sesuai filter
           </h2>
           <p className="mt-2 text-sm text-slate-500">
@@ -333,7 +333,7 @@ export default function AdminPropertiesPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((property) => (
             <PropertyCard key={property.id} data={property} />
           ))}

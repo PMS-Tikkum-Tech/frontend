@@ -67,7 +67,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-[#0B3D91] via-[#0E4F94] to-[#0EA5E9] p-6 text-white shadow-[0_18px_40px_-20px_rgba(11,61,145,0.7)]">
+      <section className="relative overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-[#0B3D91] via-[#0E4F94] to-[#0EA5E9] p-4 text-white shadow-[0_18px_40px_-20px_rgba(11,61,145,0.7)] sm:p-6">
         <div className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-white/20 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-52 w-52 rounded-full bg-cyan-200/20 blur-3xl" />
 
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
               <BarChart3 size={14} />
               Dasbor Operasional
             </p>
-            <h1 className="mt-3 text-3xl font-semibold leading-tight">
+            <h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">
               Pantau Properti, Perawatan, dan Pembayaran dalam Satu Layar
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
               Pilih periode data dan ekspor ringkasan dengan cepat.
             </p>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
               <GlobalFilter value={period} onChange={setPeriod} />
               <ExportButton
                 period={period}
@@ -349,15 +349,15 @@ function MetricCard({
   };
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-slate-500">{title}</p>
-          <h3 className="mt-1 text-2xl font-semibold text-slate-900">{value}</h3>
+          <h3 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{value}</h3>
           <p className="mt-1 text-xs text-slate-500">{note}</p>
         </div>
         <div
-          className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${accentClassMap[accent]}`}
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br sm:h-11 sm:w-11 ${accentClassMap[accent]}`}
         >
           {icon}
         </div>

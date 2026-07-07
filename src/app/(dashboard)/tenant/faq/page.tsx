@@ -100,7 +100,7 @@ export default function FAQPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-700 via-green-700 to-teal-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-700 via-green-700 to-teal-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -109,7 +109,7 @@ export default function FAQPage() {
             <LifeBuoy size={14} />
             Pusat Bantuan Penyewa
           </p>
-          <h1 className="text-3xl font-semibold">Pertanyaan Umum (FAQ)</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Pertanyaan Umum (FAQ)</h1>
           <p className="max-w-2xl text-sm text-white/90">
             Cari jawaban cepat terkait penyewaan, pembayaran, perawatan, dan akun.
           </p>
@@ -148,7 +148,7 @@ export default function FAQPage() {
       </section>
 
       {visibleFaq.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-8 text-center">
+        <div className="rounded-2xl border bg-white p-6 text-center sm:p-8">
           <p className="text-sm text-slate-600">
             Tidak ada FAQ yang cocok dengan kata kunci kamu.
           </p>
@@ -165,7 +165,7 @@ export default function FAQPage() {
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5 sm:py-4"
                 >
                   <span className="inline-flex items-start gap-2 text-sm font-medium text-slate-800">
                     <MessageSquareText size={16} className="mt-0.5 text-green-700" />
@@ -180,7 +180,7 @@ export default function FAQPage() {
                 </button>
 
                 {isOpen && (
-                  <div className="border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-600">
+                  <div className="border-t border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-600 sm:px-5 sm:py-4">
                     {faq.a}
                   </div>
                 )}
@@ -190,7 +190,7 @@ export default function FAQPage() {
         </section>
       )}
 
-      <section className="rounded-2xl border bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
         <p className="text-sm text-slate-600">
           Pertanyaan kamu belum terjawab?
         </p>

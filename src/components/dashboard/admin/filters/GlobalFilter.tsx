@@ -11,7 +11,9 @@ export default function GlobalFilter({ value, onChange }: Props) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="
-        h-9
+        h-10
+        w-full
+        min-w-0
         px-4
         bg-white
         border border-slate-300
@@ -19,6 +21,7 @@ export default function GlobalFilter({ value, onChange }: Props) {
         text-sm font-medium text-slate-700
         focus:outline-none focus:ring-2 focus:ring-[#1E2746]
         transition
+        sm:w-auto
       "
     >
       <option value="year">Tahun Ini</option>

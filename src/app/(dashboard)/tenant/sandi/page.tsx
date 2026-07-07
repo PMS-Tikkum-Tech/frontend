@@ -120,12 +120,12 @@ export default function TenantSandiPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-700 via-blue-700 to-sky-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-indigo-700 via-blue-700 to-sky-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Kata Sandi</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Kata Sandi</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Lindungi akunmu dengan kata sandi yang kuat dan tidak mudah ditebak.
           </p>
@@ -151,7 +151,7 @@ export default function TenantSandiPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <article className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">
+        <article className="space-y-3 rounded-2xl border bg-white p-4 shadow-sm lg:col-span-2 sm:p-5">
           <h2 className="text-lg font-semibold text-slate-800">Form Perubahan</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -194,7 +194,7 @@ export default function TenantSandiPage() {
 
             <button
               type="submit"
-              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Menyimpan..." : "Simpan Kata Sandi Baru"}
@@ -202,7 +202,7 @@ export default function TenantSandiPage() {
           </form>
         </article>
 
-        <article className="rounded-2xl border bg-white p-5 shadow-sm">
+        <article className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
           <h2 className="text-lg font-semibold text-slate-800">Checklist Keamanan</h2>
           <div className="mt-3 space-y-2">
             {rules.map((rule) => (

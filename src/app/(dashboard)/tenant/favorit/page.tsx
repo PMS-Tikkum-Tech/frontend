@@ -226,7 +226,7 @@ export default function FavoritPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-rose-500 via-pink-500 to-red-500 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-rose-500 via-pink-500 to-red-500 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-44 w-44 rounded-full bg-white/20 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-48 w-48 rounded-full bg-white/15 blur-3xl" />
 
@@ -236,13 +236,13 @@ export default function FavoritPage() {
             Daftar Properti Favorit
           </p>
 
-          <h1 className="text-3xl font-semibold">Favorit Saya</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Favorit Saya</h1>
           <p className="max-w-2xl text-sm text-white/90">
             Simpan kost yang kamu minati, pantau harganya, dan kelola daftar
             properti yang ingin segera kamu kunjungi.
           </p>
 
-          <div className="grid gap-3 pt-1 sm:grid-cols-3">
+          <div className="grid gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
             <StatChip label="Kost Favorit" value={`${favoriteItems.length} properti`} />
             <StatChip label="Area Tersimpan" value={`${favoriteAreaCount} area`} />
             <StatChip
@@ -287,27 +287,27 @@ export default function FavoritPage() {
           {Array.from({ length: 4 }).map((_, idx) => (
             <div
               key={idx}
-              className="h-[320px] animate-pulse rounded-2xl border bg-white"
+              className="h-[280px] animate-pulse rounded-2xl border bg-white sm:h-[320px]"
             />
           ))}
         </div>
       ) : (
         <>
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-semibold text-slate-800">
                 Kost Favorit ({favoriteItems.length})
               </h2>
             </div>
 
             {favoriteItems.length === 0 ? (
-              <div className="rounded-2xl border bg-white p-8 text-center">
+              <div className="rounded-2xl border bg-white p-4 text-center sm:p-8">
                 <p className="mt-4 text-sm text-slate-600">
                   Kamu belum menyimpan kost favorit.
                 </p>
                 <Link
                   href="/sewa"
-                  className="mt-4 inline-flex rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                  className="mt-4 inline-flex w-full justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 sm:w-auto"
                 >
                   Jelajahi Kost
                 </Link>
@@ -327,7 +327,7 @@ export default function FavoritPage() {
           </section>
 
           <section id="rekomendasi-favorit" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-semibold text-slate-800">
                 Rekomendasi Untuk Disimpan
               </h2>
@@ -335,7 +335,7 @@ export default function FavoritPage() {
             </div>
 
             {suggestedItems.length === 0 ? (
-              <div className="rounded-2xl border bg-white p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border bg-white p-4 text-sm text-slate-500 sm:p-6">
                 Tidak ada rekomendasi tambahan untuk kata kunci saat ini.
               </div>
             ) : (
@@ -382,7 +382,7 @@ function PropertyCard({
 
   return (
     <article className="overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
-      <div className="relative h-44 w-full">
+      <div className="relative h-40 w-full sm:h-44">
         <Image
           src={resolvePropertyImage(property.photo_url)}
           alt={property.name}
@@ -427,11 +427,11 @@ function PropertyCard({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
           <button
             onClick={() => onToggleFavorite(item)}
             disabled={isUpdating}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-60 ${
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-60 sm:w-auto ${
               item.is_favorite
                 ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                 : "border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
@@ -443,7 +443,7 @@ function PropertyCard({
 
           <Link
             href="/sewa"
-            className="inline-flex items-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:text-green-700 sm:w-auto"
           >
             Lihat di Sewa
           </Link>

@@ -433,7 +433,7 @@ export default function BookingV2PropertyPage() {
         onSubmit={handleSearchSubmit}
       />
       <section className="border-b border-[#e2dfff] bg-[linear-gradient(90deg,#f7f6ff_0%,#ffffff_50%,#f2f7ff_100%)]">
-        <div className="mx-auto flex max-w-[1760px] items-center justify-center px-5 py-4 md:px-8">
+        <div className="mx-auto flex max-w-[1760px] items-center justify-center px-3 py-3 sm:px-5 md:px-8 md:py-4">
           <CompactSearchBar
             location={search}
             startDate={startDate}
@@ -451,18 +451,18 @@ export default function BookingV2PropertyPage() {
       </section>
       <FilterBar activeFilter={activeFilter} onChange={setActiveFilter} />
 
-      <main className="mx-auto max-w-[1760px] px-5 py-7 md:px-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <main className="mx-auto max-w-[1760px] px-3 py-5 sm:px-5 sm:py-7 md:px-8">
+        <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <BookingVersionBadge version="Versi 2" tone="blue" />
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#ddd9ff] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#3423b8] shadow-sm">
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#ddd9ff] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#3423b8] shadow-sm sm:text-[11px] sm:tracking-[0.16em]">
               <span className="h-2 w-2 rounded-full bg-[#d8ff3e] ring-1 ring-[#3423b8]/15" />
               Pemesanan KIKOST
             </p>
-            <h1 className="mt-3 text-2xl font-semibold tracking-normal text-[#24147d] md:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold tracking-normal text-[#24147d] sm:text-2xl md:text-3xl">
               Kost yang cocok untukmu
             </h1>
-            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+            <p className="mt-2 max-w-2xl text-sm text-[var(--color-text-secondary)]">
               Pilih properti dan kamar sesuai kebutuhanmu.
             </p>
           </div>
@@ -471,7 +471,7 @@ export default function BookingV2PropertyPage() {
         {isLoading ? (
           <PropertySearchLoading />
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:p-5">
             <p className="inline-flex items-center gap-2 font-semibold">
               <AlertCircle size={16} />
               Data properti belum bisa dimuat
@@ -479,7 +479,7 @@ export default function BookingV2PropertyPage() {
             <p className="mt-2">{error}</p>
           </div>
         ) : filteredProperties.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center sm:p-10">
             <Building2 size={24} className="mx-auto text-slate-400" />
             <p className="mt-3 text-sm font-semibold text-slate-800">
               Belum ada kamar yang sesuai dengan pencarianmu.
@@ -487,11 +487,11 @@ export default function BookingV2PropertyPage() {
             <p className="mt-1 text-xs text-slate-500">
               Ubah kata kunci, hapus filter, atau lihat properti lainnya.
             </p>
-            <div className="mt-5 flex justify-center gap-2">
+            <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="inline-flex h-10 items-center rounded-full border border-slate-300 px-4 text-xs font-semibold text-slate-900"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 px-4 text-xs font-semibold text-slate-900"
               >
                 Ubah tanggal
               </button>
@@ -501,21 +501,21 @@ export default function BookingV2PropertyPage() {
                   setSearch("");
                   setActiveFilter("all");
                 }}
-                className="inline-flex h-10 items-center rounded-full bg-[#3423b8] px-4 text-xs font-semibold text-white"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-[#3423b8] px-4 text-xs font-semibold text-white"
               >
                 Hapus filter
               </button>
             </div>
           </div>
         ) : (
-          <section className="grid items-start gap-8 xl:grid-cols-[minmax(620px,780px)_minmax(0,1fr)]">
+          <section className="grid items-start gap-4 xl:grid-cols-[minmax(620px,780px)_minmax(0,1fr)]">
             <div>
-              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-base font-semibold text-slate-950">
+                  <p className="text-sm font-semibold text-slate-950 sm:text-base">
                     {filteredProperties.length} kost tersedia
                   </p>
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  <p className="mt-1 text-xs text-[var(--color-text-secondary)] sm:text-sm">
                     Tersedia untuk periode yang kamu pilih.
                   </p>
                 </div>
@@ -569,7 +569,7 @@ export default function BookingV2PropertyPage() {
 
 function PropertySearchLoading() {
   return (
-    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2">
+    <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2">
       {Array.from({ length: 8 }).map((_, index) => (
         <div key={index} className="animate-pulse">
           <div className="aspect-square rounded-2xl bg-slate-100" />

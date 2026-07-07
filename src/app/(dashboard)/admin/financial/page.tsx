@@ -524,7 +524,7 @@ export default function AdminFinancialPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -542,7 +542,7 @@ export default function AdminFinancialPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={() => {
@@ -676,7 +676,7 @@ export default function AdminFinancialPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total Pemasukan"
           value={isLoading ? "..." : formatCurrency(summary.total_revenue)}
@@ -702,8 +702,8 @@ export default function AdminFinancialPage() {
         />
       </div>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="h-[380px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="h-[320px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:h-[380px] sm:p-6">
           <h2 className="mb-1 font-semibold text-slate-800">
             Pemasukan vs Pengeluaran Bulanan
           </h2>
@@ -746,7 +746,7 @@ export default function AdminFinancialPage() {
           )}
         </div>
 
-        <div className="h-[380px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="h-[320px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:h-[380px] sm:p-6">
           <h2 className="mb-1 font-semibold text-slate-800">Komposisi Pendapatan</h2>
           <p className="mb-4 text-xs text-slate-500">
             Distribusi pendapatan berdasarkan kategori transaksi.
@@ -803,7 +803,7 @@ export default function AdminFinancialPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5">
           <h2 className="text-lg font-semibold text-slate-800">Daftar Transaksi</h2>
           <p className="text-xs text-slate-500">Total: {filteredTransactions.length}</p>
         </div>

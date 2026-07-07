@@ -925,7 +925,7 @@ export default function SewaPage() {
         <div className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 right-0 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
 
-        <div className="mx-auto max-w-7xl px-6 pb-14 pt-10">
+        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-10">
           <div className="flex flex-wrap items-center gap-2">
             <BookingVersionBadge version="Sewa KIKOST" tone="dark" />
             <p className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-xs font-medium">
@@ -933,7 +933,7 @@ export default function SewaPage() {
               Rekomendasi Hunian Mahasiswa IPB
             </p>
           </div>
-          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight">
+          <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">
             Temukan Kost yang Nyaman, Aman, dan Sesuai Anggaran Kamu
           </h1>
           <p className="mt-3 max-w-3xl text-sm text-white/90">
@@ -952,9 +952,9 @@ export default function SewaPage() {
         </div>
       </section>
 
-      <section className="relative z-20 mx-auto mt-5 max-w-7xl px-6">
-        <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-cyan-50 p-5 shadow-xl">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <section className="relative z-20 mx-auto mt-5 max-w-7xl px-4 sm:px-6">
+        <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-cyan-50 p-4 shadow-xl sm:p-5">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold text-sky-700">
               <Search size={13} />
               Filter Hunian
@@ -963,7 +963,7 @@ export default function SewaPage() {
               Cari lebih cepat berdasarkan area dan tipe kost
             </p>
           </div>
-          <div className="grid gap-4 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <FilterField
               label="Cari Lokasi / Nama Kost"
               icon={<Search size={16} />}
@@ -1033,11 +1033,11 @@ export default function SewaPage() {
               }
             />
 
-            <div className="flex flex-col justify-end gap-3">
+            <div className="flex flex-col justify-end gap-3 sm:col-span-2 lg:col-span-1">
               <button
                 type="button"
                 onClick={applySearchToUrl}
-                className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
+                className="h-11 w-full rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
               >
                 Terapkan Pencarian
               </button>
@@ -1073,7 +1073,7 @@ export default function SewaPage() {
       </section>
 
       {error && (
-        <section className="mx-auto max-w-7xl px-6 pb-3 pt-4">
+        <section className="mx-auto max-w-7xl px-4 pb-3 pt-4 sm:px-6">
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
             <button
@@ -1087,9 +1087,9 @@ export default function SewaPage() {
         </section>
       )}
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-8 pt-5 lg:grid-cols-[minmax(250px,320px)_minmax(0,1fr)]">
+      <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 pt-5 sm:px-6 lg:grid-cols-[minmax(250px,320px)_minmax(0,1fr)]">
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
             <h3 className="text-base font-semibold text-slate-900">
               Kenapa Sewa di Kyra Stay?
             </h3>
@@ -1167,7 +1167,7 @@ export default function SewaPage() {
             </div>
           )}
 
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
             <h3 className="text-base font-semibold text-slate-900">
               Ringkasan Pasar Sewa
             </h3>
@@ -1197,7 +1197,7 @@ export default function SewaPage() {
         </aside>
 
         <div className="relative z-0 isolate overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_20px_55px_-26px_rgba(15,23,42,0.45)]">
-          <div className="flex items-center justify-between border-b border-sky-100 bg-gradient-to-r from-sky-50 via-cyan-50 to-emerald-50 px-4 py-3">
+          <div className="flex flex-col gap-2 border-b border-sky-100 bg-gradient-to-r from-sky-50 via-cyan-50 to-emerald-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                 <MapPin size={14} className="text-sky-700" />
@@ -1211,7 +1211,7 @@ export default function SewaPage() {
               {mapLocations.length} titik aktif
             </span>
           </div>
-          <div className="relative z-0 h-[620px] w-full md:h-[680px] lg:h-[760px]">
+          <div className="relative z-0 h-[520px] w-full md:h-[680px] lg:h-[760px]">
             <SewaLocationsMap
               locations={mapLocations}
               selectedId={selectedPropertyId}
@@ -1226,7 +1226,7 @@ export default function SewaPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-14">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-600">
             {isLoading
               ? "Memuat properti..."

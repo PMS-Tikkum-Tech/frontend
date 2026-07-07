@@ -69,7 +69,7 @@ export default function PublicHomePage() {
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[42rem] bg-[radial-gradient(circle_at_18%_16%,rgba(52,35,184,0.08),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(87,199,255,0.1),transparent_28%)]" />
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:pb-24 lg:pt-16">
-          <div className="relative z-10">
+          <div className="relative z-10 order-2 lg:order-1">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#dcd8ff] bg-[#f3f1ff] px-3 py-1.5 text-xs font-semibold text-[#3423b8] shadow-sm">
               <Sparkles size={14} aria-hidden="true" />
               Hunian nyaman, hidup lebih tenang
@@ -117,7 +117,7 @@ export default function PublicHomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-2xl lg:max-w-none">
+          <div className="relative mx-auto w-full max-w-2xl order-1 lg:max-w-none lg:order-2">
             <div className="absolute -left-4 top-10 hidden h-28 w-28 rounded-full border border-[#dcd8ff] sm:block" />
             <div className="absolute -right-6 bottom-12 hidden h-40 w-40 rounded-full bg-sky-100 blur-sm sm:block" />
 

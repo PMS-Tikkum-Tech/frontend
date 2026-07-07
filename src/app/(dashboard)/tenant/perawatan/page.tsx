@@ -153,17 +153,17 @@ export default function TenantMaintenancePage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-700 via-indigo-700 to-violet-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-700 via-indigo-700 to-violet-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <h1 className="text-3xl font-semibold">Perawatan</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Perawatan</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Pantau status semua laporan perbaikan unit kamu secara real-time.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryStat icon={<Wrench size={16} />} label="Total Laporan" value={`${stats.total}`} />
             <SummaryStat icon={<Clock3 size={16} />} label="Sedang Diproses" value={`${stats.active}`} />
             <SummaryStat icon={<CheckCircle2 size={16} />} label="Selesai" value={`${stats.completed}`} />
@@ -183,7 +183,7 @@ export default function TenantMaintenancePage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             <FilterChip
               active={filter === "all"}
@@ -212,7 +212,7 @@ export default function TenantMaintenancePage() {
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-6">
           <p className="text-sm text-red-700">{error}</p>
           <button
             onClick={() => setRefreshKey((value) => value + 1)}
@@ -222,8 +222,8 @@ export default function TenantMaintenancePage() {
           </button>
         </div>
       ) : filteredRequests.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-10 text-center">
-          <h2 className="text-xl font-semibold text-green-600">
+        <div className="rounded-2xl border bg-white p-4 text-center sm:p-10">
+          <h2 className="text-lg font-semibold text-green-600 sm:text-xl">
             Belum Ada Laporan Perawatan
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-slate-600">
@@ -232,7 +232,7 @@ export default function TenantMaintenancePage() {
           </p>
           <Link
             href="/tenant/keluhan"
-            className="mt-5 inline-flex rounded-xl bg-green-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+            className="mt-5 inline-flex w-full justify-center rounded-xl bg-green-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-green-700 sm:w-auto"
           >
             Ajukan Keluhan
           </Link>
@@ -293,8 +293,8 @@ function FilterChip({
 
 function MaintenanceCard({ request }: { request: TenantMaintenanceRequest }) {
   return (
-    <article className="rounded-2xl border bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <article className="rounded-2xl border bg-white p-4 shadow-sm transition hover:border-green-300 hover:shadow sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-slate-800">
             {request.property.name || "-"} • {getTenantUnitDisplayName(request.unit)}

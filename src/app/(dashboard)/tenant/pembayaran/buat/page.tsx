@@ -957,7 +957,7 @@ function TenantCreatePaymentPageContent() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-700 p-6 text-white shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-700 p-4 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-white/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-14 bottom-0 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
 
@@ -975,13 +975,13 @@ function TenantCreatePaymentPageContent() {
               tone="light"
             />
           </div>
-          <h1 className="mt-4 text-3xl font-semibold">Pembayaran Sewa</h1>
+          <h1 className="mt-4 text-2xl font-semibold sm:text-3xl">Pembayaran Sewa</h1>
           <p className="mt-2 max-w-3xl text-sm text-white/90">
             Lengkapi informasi sewa, pilih kanal pembayaran, lalu unggah bukti
             transfer untuk diteruskan ke administrator.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <StepBadge
               icon={<CalendarClock size={15} />}
               label="1. Detail Informasi Sewa"
@@ -993,7 +993,7 @@ function TenantCreatePaymentPageContent() {
       </section>
 
       {successData ? (
-        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-6">
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700">
             <CheckCircle2 size={16} />
             Pengajuan pembayaran berhasil dikirim
@@ -1010,7 +1010,7 @@ function TenantCreatePaymentPageContent() {
           <p className="mt-1 text-sm text-emerald-800">
             Batas verifikasi: {formatDate(successData.dueDate)}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Link
               href="/tenant/pembayaran"
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
@@ -1032,7 +1032,7 @@ function TenantCreatePaymentPageContent() {
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]"
       >
         <div className="space-y-5">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-900">
               Detail Informasi Sewa
             </h2>
@@ -1302,7 +1302,7 @@ function TenantCreatePaymentPageContent() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-900">Metode Pembayaran</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {PAYMENT_METHODS.map((method) => {
@@ -1376,11 +1376,11 @@ function TenantCreatePaymentPageContent() {
             ) : null}
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-900">
               Unggah Bukti Pembayaran
             </h2>
-            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-blue-300 hover:bg-blue-50">
+            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-blue-300 hover:bg-blue-50 sm:py-8">
               <FileUp size={20} className="text-blue-700" />
               <span className="text-sm font-medium text-slate-700">
                 Klik untuk memilih file bukti pembayaran
@@ -1421,7 +1421,7 @@ function TenantCreatePaymentPageContent() {
         </div>
 
         <aside className="space-y-4">
-          <section className="sticky top-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <section className="sticky top-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:top-24">
             <div className="relative h-44">
               <Image
                 src={getPropertyHero(property)}
