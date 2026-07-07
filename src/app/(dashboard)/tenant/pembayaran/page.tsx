@@ -253,29 +253,30 @@ export default function TenantPaymentsPage() {
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <FilterChip
-              active={filter === "all"}
-              label={`Semua (${stats.total})`}
-              onClick={() => setFilter("all")}
-            />
-            <FilterChip
-              active={filter === "waiting"}
-              label={`Menunggu (${stats.waitingCount})`}
-              onClick={() => setFilter("waiting")}
-            />
-            <FilterChip
-              active={filter === "paid"}
-              label={`Lunas (${stats.paidCount})`}
-              onClick={() => setFilter("paid")}
-            />
-            <FilterChip
-              active={filter === "cancelled"}
-              label={`Dibatalkan (${stats.cancelledCount})`}
-              onClick={() => setFilter("cancelled")}
-            />
+          <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="flex w-max gap-2">
+              <FilterChip
+                active={filter === "all"}
+                label={`Semua (${stats.total})`}
+                onClick={() => setFilter("all")}
+              />
+              <FilterChip
+                active={filter === "waiting"}
+                label={`Menunggu (${stats.waitingCount})`}
+                onClick={() => setFilter("waiting")}
+              />
+              <FilterChip
+                active={filter === "paid"}
+                label={`Lunas (${stats.paidCount})`}
+                onClick={() => setFilter("paid")}
+              />
+              <FilterChip
+                active={filter === "cancelled"}
+                label={`Dibatalkan (${stats.cancelledCount})`}
+                onClick={() => setFilter("cancelled")}
+              />
+            </div>
           </div>
-
         </div>
       </section>
 
@@ -382,7 +383,7 @@ function FilterChip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${
         active
           ? "bg-green-600 text-white"
           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -405,7 +406,7 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
           : "bg-white hover:border-green-300"
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-slate-800">
             {payment.property.name || "-"}
@@ -470,7 +471,7 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
           : "bg-white hover:border-green-300"
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">
             {payment.property.name || "-"} • {getTenantUnitDisplayName(payment.unit)}

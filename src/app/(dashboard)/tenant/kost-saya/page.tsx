@@ -837,8 +837,8 @@ function ActiveStayCard({
               : "Tanggal akhir sewa belum tersedia"}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-          <Link
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Link
               href="/tenant/pembayaran"
               className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700 sm:w-auto"
             >

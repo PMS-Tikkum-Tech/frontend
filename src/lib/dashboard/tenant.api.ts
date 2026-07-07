@@ -2204,11 +2204,13 @@ export const getPublicProperties = async (
 
   if (!hasClientAccessToken) {
     try {
-      return await fetchAdminPropertiesForPublic(params);
-    } catch (adminError) {
-      if (!isStatusError(adminError, [401, 403, 404, 405])) {
-        throw adminError;
+      return await getPublicPropertiesFromCatalog(params);
+    } catch (catalogError) {
+      if (!isStatusError(catalogError, [401, 403, 404, 405])) {
+        throw catalogError;
       }
+
+      return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
     }
   }
 
@@ -2257,14 +2259,6 @@ export const getPublicProperties = async (
     }
   } catch (error) {
     if (isStatusError(error, [401, 403, 404, 405])) {
-      try {
-        return await fetchAdminPropertiesForPublic(params);
-      } catch (adminError) {
-        if (!isStatusError(adminError, [401, 403, 404, 405])) {
-          throw adminError;
-        }
-      }
-
       return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
     }
 

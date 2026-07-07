@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { divIcon } from "leaflet";
 import {
   MapContainer,
@@ -30,25 +30,37 @@ export type BookingV2MapLocation = {
 const DEFAULT_CENTER: [number, number] = [-6.5667, 106.7283];
 const FOCUSED_ZOOM = 16;
 
+const isValidLatLng = (lat: number, lng: number) =>
+  Number.isFinite(lat) &&
+  Number.isFinite(lng) &&
+  lat >= -90 &&
+  lat <= 90 &&
+  lng >= -180 &&
+  lng <= 180;
+
+const getSafeLocations = (locations: BookingV2MapLocation[]) =>
+  locations.filter((location) => isValidLatLng(location.lat, location.lng));
+
 function FitToLocations({ locations }: { locations: BookingV2MapLocation[] }) {
   const map = useMap();
+  const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
 
   useEffect(() => {
-    if (locations.length === 0) {
+    if (safeLocations.length === 0) {
       map.setView(DEFAULT_CENTER, 12);
       return;
     }
 
-    if (locations.length === 1) {
-      map.setView([locations[0].lat, locations[0].lng], FOCUSED_ZOOM);
+    if (safeLocations.length === 1) {
+      map.setView([safeLocations[0].lat, safeLocations[0].lng], FOCUSED_ZOOM);
       return;
     }
 
     map.fitBounds(
-      locations.map((location) => [location.lat, location.lng]),
+      safeLocations.map((location) => [location.lat, location.lng]),
       { padding: [42, 42] }
     );
-  }, [locations, map]);
+  }, [map, safeLocations]);
 
   return null;
 }
@@ -61,13 +73,14 @@ function FocusSelected({
   selectedId?: number | null;
 }) {
   const map = useMap();
+  const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
 
   useEffect(() => {
     if (!selectedId) {
       return;
     }
 
-    const selectedLocation = locations.find((location) => location.id === selectedId);
+    const selectedLocation = safeLocations.find((location) => location.id === selectedId);
     if (!selectedLocation) {
       return;
     }
@@ -75,7 +88,7 @@ function FocusSelected({
     map.flyTo([selectedLocation.lat, selectedLocation.lng], FOCUSED_ZOOM, {
       duration: 0.35,
     });
-  }, [locations, map, selectedId]);
+  }, [map, safeLocations, selectedId]);
 
   return null;
 }
@@ -155,6 +168,8 @@ export default function BookingV2PropertyMap({
   selectedId?: number | null;
   onSelect: (id: number) => void;
 }) {
+  const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
+
   return (
     <MapContainer
       center={DEFAULT_CENTER}
@@ -166,10 +181,10 @@ export default function BookingV2PropertyMap({
     >
       <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
       <ZoomControl position="bottomright" />
-      <FitToLocations locations={locations} />
-      <FocusSelected locations={locations} selectedId={selectedId} />
+      <FitToLocations locations={safeLocations} />
+      <FocusSelected locations={safeLocations} selectedId={selectedId} />
 
-      {locations.map((location) => {
+      {safeLocations.map((location) => {
         const isSelected = selectedId === location.id;
 
         return (

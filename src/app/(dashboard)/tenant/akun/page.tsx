@@ -960,11 +960,11 @@ function TenantAccountPageContent() {
                 </div>
               ) : null}
 
-              <div className="flex justify-end pt-1">
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
                   <Save size={14} />
                   {isSaving ? "Menyimpan..." : "Simpan Profil"}
@@ -997,12 +997,12 @@ function StatChip({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/30 bg-white/10 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-xl border border-white/30 bg-white/10 px-3 py-3 backdrop-blur-sm sm:px-4">
       <p className="inline-flex items-center gap-2 text-xs text-white/85">
         {icon}
         {label}
       </p>
-      <p className="mt-1 truncate text-base font-semibold text-white">{value}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-white sm:text-base">{value}</p>
     </div>
   );
 }
@@ -1129,8 +1129,8 @@ function UploadField({
         <span className="text-blue-700">{icon}</span>
         {label}
       </p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100">
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100 sm:w-auto">
           <Upload size={13} className="text-blue-700" />
           Pilih File
           <input

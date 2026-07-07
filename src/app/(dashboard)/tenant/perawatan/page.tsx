@@ -173,7 +173,7 @@ export default function TenantMaintenancePage() {
           <div className="mt-4">
             <Link
               href="/tenant/keluhan"
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-slate-100"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-slate-100 sm:w-auto"
             >
               <Wrench size={16} />
               Buat Laporan Baru
@@ -258,7 +258,7 @@ function SummaryStat({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/25 bg-white/10 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-3 backdrop-blur-sm sm:px-4">
       <p className="inline-flex items-center gap-2 text-xs text-white/80">
         {icon}
         {label}

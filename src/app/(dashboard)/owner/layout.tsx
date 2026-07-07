@@ -138,14 +138,14 @@ export default function OwnerDashboardLayout({
         ) : null}
         {/* ================= SIDEBAR ================= */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1d1269] text-white shadow-[8px_0_30px_rgba(29,18,105,0.18)] transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 w-[86vw] max-w-72 bg-[#1d1269] text-white shadow-[8px_0_30px_rgba(29,18,105,0.18)] transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex h-full flex-col justify-between py-6">
-          <div>
+          <div className="flex h-full flex-col justify-between py-5 sm:py-6">
+            <div>
             {/* Logo */}
-            <div className="mb-8 flex items-center justify-between px-4 lg:mb-12 lg:justify-center lg:px-0">
+              <div className="mb-8 flex items-center justify-between px-4 lg:mb-12 lg:justify-center lg:px-0">
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(false)}
@@ -163,47 +163,46 @@ export default function OwnerDashboardLayout({
                 className="h-auto w-auto max-w-[150px] object-contain"
               />
               <span className="w-9 lg:hidden" />
-            </div>
+              </div>
 
             {/* Menu */}
-            <nav className="flex flex-col gap-1 px-3 text-sm">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
+              <nav className="flex flex-col gap-1 px-3 text-sm">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
-                  ${
-                    isActive
-                      ? "bg-[#d8ff3e] text-[#24147d] font-semibold shadow-md"
-                      : "text-blue-100/75 hover:bg-white/10 hover:text-white"
-                  }`}
-                  >
-                    <Icon size={18} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsSidebarOpen(false)}
+                      className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 ${
+                        isActive
+                          ? "bg-[#d8ff3e] font-semibold text-[#24147d] shadow-md"
+                          : "text-blue-100/75 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <Icon size={18} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
 
-          {/* Logout */}
-          <div className="px-3">
-            <button
-              type="button"
-              onClick={() => {
-                void handleLogout();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
-            >
-              <LogOut size={18} />
-              Keluar
-            </button>
-          </div>
+            {/* Logout */}
+            <div className="px-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleLogout();
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-300 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
+              >
+                <LogOut size={18} />
+                Keluar
+              </button>
+            </div>
           </div>
         </aside>
 

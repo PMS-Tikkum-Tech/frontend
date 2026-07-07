@@ -962,10 +962,10 @@ function TenantCreatePaymentPageContent() {
         <div className="pointer-events-none absolute -right-14 bottom-0 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
 
         <div className="relative">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               href={`/sewa/${property.id}`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/20"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/20 sm:w-auto"
             >
               <ArrowLeft size={13} />
               Kembali ke Detail Properti
@@ -1029,9 +1029,9 @@ function TenantCreatePaymentPageContent() {
 
       <form
         onSubmit={handleSubmit}
-        className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]"
+        className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"
       >
-        <div className="space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold text-slate-900">
               Detail Informasi Sewa
@@ -1087,7 +1087,7 @@ function TenantCreatePaymentPageContent() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">
                     Data Diri Penyewa
@@ -1235,14 +1235,14 @@ function TenantCreatePaymentPageContent() {
                     </ProfileField>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                     <button
                       type="button"
                       onClick={() => {
                         void saveBasicProfile().catch(() => {});
                       }}
                       disabled={isSavingProfile || isSubmitting}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       {isSavingProfile ? (
                         <>
@@ -1344,7 +1344,7 @@ function TenantCreatePaymentPageContent() {
                   <div className="mt-4 rounded-xl border border-blue-100 bg-white p-3">
                     {BSI_QRIS_IMAGE_URL ? (
                       <>
-                        <div className="relative mx-auto aspect-square w-full max-w-72 overflow-hidden rounded-xl bg-white">
+                        <div className="relative mx-auto aspect-square w-full max-w-64 overflow-hidden rounded-xl bg-white sm:max-w-72">
                           <Image
                             src={BSI_QRIS_IMAGE_URL}
                             alt="QRIS BSI KIKOST"
@@ -1360,7 +1360,7 @@ function TenantCreatePaymentPageContent() {
                         </p>
                       </>
                     ) : (
-                      <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/60 px-5 text-center">
+                      <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/60 px-5 text-center sm:min-h-56">
                         <QrCode size={42} className="text-blue-300" />
                         <p className="mt-3 text-sm font-semibold text-blue-900">
                           Gambar QRIS BSI belum tersedia
@@ -1380,7 +1380,7 @@ function TenantCreatePaymentPageContent() {
             <h2 className="text-lg font-semibold text-slate-900">
               Unggah Bukti Pembayaran
             </h2>
-            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-blue-300 hover:bg-blue-50 sm:py-8">
+            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-300 hover:bg-blue-50 sm:py-8">
               <FileUp size={20} className="text-blue-700" />
               <span className="text-sm font-medium text-slate-700">
                 Klik untuk memilih file bukti pembayaran
@@ -1422,7 +1422,7 @@ function TenantCreatePaymentPageContent() {
 
         <aside className="space-y-4">
           <section className="sticky top-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:top-24">
-            <div className="relative h-44">
+            <div className="relative h-40 sm:h-44">
               <Image
                 src={getPropertyHero(property)}
                 alt={property.name}
@@ -1478,7 +1478,7 @@ function TenantCreatePaymentPageContent() {
                 </p>
               </div>
 
-              <p className="inline-flex items-start gap-1.5 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <p className="inline-flex items-start gap-1.5 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 <ShieldCheck size={13} className="mt-0.5" />
                 Pembayaran akan masuk ke admin untuk proses peninjauan.
               </p>
@@ -1577,12 +1577,12 @@ function SummaryRow({
   value: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+    <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
       <p className="inline-flex items-center gap-1.5 text-xs text-slate-600">
         {icon}
         {label}
       </p>
-      <p className="text-right text-xs font-semibold text-slate-800">{value}</p>
+      <p className="text-left text-xs font-semibold text-slate-800 sm:text-right">{value}</p>
     </div>
   );
 }

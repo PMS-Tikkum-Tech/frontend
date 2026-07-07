@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { divIcon } from "leaflet";
 import {
   MapContainer,
@@ -24,25 +24,37 @@ export type SewaMapLocation = {
 
 const DEFAULT_CENTER: [number, number] = [-6.5667, 106.7283];
 
+const isValidLatLng = (lat: number, lng: number) =>
+  Number.isFinite(lat) &&
+  Number.isFinite(lng) &&
+  lat >= -90 &&
+  lat <= 90 &&
+  lng >= -180 &&
+  lng <= 180;
+
+const getSafeLocations = (locations: SewaMapLocation[]) =>
+  locations.filter((location) => isValidLatLng(location.lat, location.lng));
+
 function FitToMarkers({ locations }: { locations: SewaMapLocation[] }) {
   const map = useMap();
+  const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
 
   useEffect(() => {
-    if (locations.length === 0) {
+    if (safeLocations.length === 0) {
       map.setView(DEFAULT_CENTER, 12);
       return;
     }
 
-    if (locations.length === 1) {
-      map.setView([locations[0].lat, locations[0].lng], 14);
+    if (safeLocations.length === 1) {
+      map.setView([safeLocations[0].lat, safeLocations[0].lng], 14);
       return;
     }
 
     map.fitBounds(
-      locations.map((location) => [location.lat, location.lng]),
+      safeLocations.map((location) => [location.lat, location.lng]),
       { padding: [35, 35] }
     );
-  }, [locations, map]);
+  }, [map, safeLocations]);
 
   return null;
 }
@@ -55,13 +67,14 @@ function FocusToSelected({
   selectedId?: number | null;
 }) {
   const map = useMap();
+  const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
 
   useEffect(() => {
     if (!selectedId) {
       return;
     }
 
-    const selectedLocation = locations.find((item) => item.id === selectedId);
+    const selectedLocation = safeLocations.find((item) => item.id === selectedId);
     if (!selectedLocation) {
       return;
     }
@@ -69,7 +82,7 @@ function FocusToSelected({
     map.flyTo([selectedLocation.lat, selectedLocation.lng], 14, {
       duration: 0.35,
     });
-  }, [locations, map, selectedId]);
+  }, [map, safeLocations, selectedId]);
 
   return null;
 }
@@ -140,6 +153,8 @@ export default function SewaLocationsMap({
   selectedId?: number | null;
   onSelect?: (id: number) => void;
 }) {
+  const safeLocations = useMemo(() => getSafeLocations(locations), [locations]);
+
   return (
     <MapContainer
       center={DEFAULT_CENTER}
@@ -154,10 +169,10 @@ export default function SewaLocationsMap({
       />
       <ZoomControl position="bottomright" />
 
-      <FitToMarkers locations={locations} />
-      <FocusToSelected locations={locations} selectedId={selectedId} />
+      <FitToMarkers locations={safeLocations} />
+      <FocusToSelected locations={safeLocations} selectedId={selectedId} />
 
-      {locations.map((location) => (
+      {safeLocations.map((location) => (
         <Marker
           key={location.id}
           position={[location.lat, location.lng]}

@@ -120,12 +120,12 @@ export default function OwnerDashboardPage() {
         <OccupancyChart data={data.occupancyData} />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
         <h3 className="mb-4 text-base font-semibold text-slate-800">
           Ringkasan Per Properti
         </h3>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
           <table className="min-w-[930px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
@@ -185,12 +185,12 @@ export default function OwnerDashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
         <h3 className="mb-4 text-base font-semibold text-slate-800">
           Pemesanan Terbaru
         </h3>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
           <table className="min-w-[1040px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
@@ -267,12 +267,12 @@ function SummaryCard({
           : "border-slate-200 bg-slate-50/70";
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass} sm:p-4`}>
+    <div className={`rounded-2xl border p-3 ${toneClass} sm:p-4`}>
       <div className="inline-flex rounded-lg bg-white/70 p-2 text-slate-700">{icon}</div>
       <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
         {title}
       </p>
-      <p className="mt-1 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
+      <p className="mt-1 text-lg font-semibold text-slate-800 sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs text-slate-600">{subtitle}</p>
     </div>
   );

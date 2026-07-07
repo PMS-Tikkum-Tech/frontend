@@ -449,7 +449,8 @@ function TenantKostDetailContent() {
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="flex w-max gap-2">
                 {stays.map((stay) => {
                   const isActive = stay.booking_id === currentStay?.booking_id;
 
@@ -457,7 +458,7 @@ function TenantKostDetailContent() {
                     <Link
                       key={stay.booking_id}
                       href={`/tenant/kost-saya/detail?booking_id=${stay.booking_id}`}
-                      className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                      className={`shrink-0 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition ${
                         isActive
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                           : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
@@ -475,6 +476,7 @@ function TenantKostDetailContent() {
                     </Link>
                   );
                 })}
+                </div>
               </div>
             </section>
           ) : null}
