@@ -69,25 +69,25 @@ export default function PublicHomePage() {
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[42rem] bg-[radial-gradient(circle_at_18%_16%,rgba(52,35,184,0.08),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(87,199,255,0.1),transparent_28%)]" />
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:pb-24 lg:pt-16">
-          <div className="relative z-10 order-2 lg:order-1">
+          <div className="relative z-10 order-2 text-center lg:order-1 lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#dcd8ff] bg-[#f3f1ff] px-3 py-1.5 text-xs font-semibold text-[#3423b8] shadow-sm">
               <Sparkles size={14} aria-hidden="true" />
               Hunian nyaman, hidup lebih tenang
             </div>
 
-            <h1 className="mt-6 max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-slate-950 sm:text-5xl lg:text-[4rem]">
+            <h1 className="mx-auto mt-6 max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-slate-950 sm:text-5xl lg:mx-0 lg:text-[4rem]">
               Kost yang terasa seperti
               <span className="font-playfair block font-normal italic text-[#3423b8]">
                 tempat pulang.
               </span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8 lg:mx-0">
               Temukan kost nyaman di lokasi pilihan, dengan informasi yang jelas
               dan proses sewa yang tidak bikin ribet.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-start lg:justify-start">
               <Link
                 href="/booking/v2"
                 className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#3423b8] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(52,35,184,0.24)] transition hover:-translate-y-0.5 hover:bg-[#24147d]"
@@ -101,7 +101,7 @@ export default function PublicHomePage() {
               </Link>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-600">
+            <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-slate-600 lg:justify-start">
               {[
                 "Pilihan fleksibel",
                 "Informasi transparan",
@@ -117,11 +117,11 @@ export default function PublicHomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-2xl order-1 lg:max-w-none lg:order-2">
+          <div className="relative mx-auto order-1 w-full max-w-2xl lg:max-w-none lg:order-2">
             <div className="absolute -left-4 top-10 hidden h-28 w-28 rounded-full border border-[#dcd8ff] sm:block" />
             <div className="absolute -right-6 bottom-12 hidden h-40 w-40 rounded-full bg-sky-100 blur-sm sm:block" />
 
-            <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem]">
+            <div className="relative mx-auto overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem]">
               <div className="relative aspect-[4/5] min-h-[30rem] sm:aspect-[5/4] lg:aspect-[4/3] lg:min-h-[35rem]">
                 <Image
                   src="/bg-1200.webp"
