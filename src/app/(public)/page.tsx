@@ -156,7 +156,7 @@ export default function PublicHomePage() {
                 <picture>
                   <source
                     media="(max-width: 639px)"
-                    srcSet="/bg-1200-mobile-square-900.jpg"
+                    srcSet="/bg-1200-mobile-center-900.jpg"
                   />
                   <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
                   <img
