@@ -147,7 +147,7 @@ export default function PublicHomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto order-1 w-full max-w-2xl lg:max-w-none lg:order-2">
+          <div className="relative mx-auto order-1 w-full max-w-[24rem] lg:max-w-none lg:order-2">
             <div className="absolute -left-4 top-10 hidden h-28 w-28 rounded-full border border-[#dcd8ff] sm:block" />
             <div className="absolute -right-6 bottom-12 hidden h-40 w-40 rounded-full bg-sky-100 blur-sm sm:block" />
 
@@ -156,7 +156,7 @@ export default function PublicHomePage() {
                 <picture>
                   <source
                     media="(max-width: 639px)"
-                    srcSet="/bg-1200-mobile-center-900.jpg"
+                    srcSet="/bg-1200-mobile-center.jpg"
                   />
                   <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
                   <img
