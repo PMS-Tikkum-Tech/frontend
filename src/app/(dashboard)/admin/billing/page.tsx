@@ -72,6 +72,20 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
+const formatRupiahInputValue = (value: number | string) => {
+  const numericValue = String(value ?? "").replace(/\D/g, "");
+  if (!numericValue) {
+    return "";
+  }
+
+  return Number(numericValue).toLocaleString("id-ID");
+};
+
+const parseRupiahInputValue = (value: string) => {
+  const numericValue = value.replace(/\D/g, "");
+  return numericValue ? Number(numericValue) : 0;
+};
+
 const toInputDate = (value?: string | null) => {
   if (!value) {
     return "";
@@ -782,7 +796,7 @@ export default function AdminBillingPage() {
       leaseId: payment.lease_id ? String(payment.lease_id) : "",
       status: payment.status,
       dueDate: toInputDate(payment.due_date),
-      amount: String(payment.amount || ""),
+      amount: formatRupiahInputValue(payment.amount || ""),
       paymentMethod: payment.payment_method || "",
       checkInDate: billingDescription.checkInDate,
       checkOutDate: billingDescription.checkOutDate,
@@ -822,10 +836,10 @@ export default function AdminBillingPage() {
     const unitId = Number(form.unitId);
     const tenantId = Number(form.tenantId);
     const leaseId = Number(form.leaseId);
-    const amount = Number(form.amount);
+    const amount = parseRupiahInputValue(form.amount);
 
     if (!propertyId || !unitId || !tenantId) {
-      setFormError("Unit, nomor kamar, dan nama penghuni wajib dipilih.");
+      setFormError("Unit, nomor kamar, dan nama penyewa wajib dipilih.");
       return;
     }
 
@@ -1237,7 +1251,7 @@ export default function AdminBillingPage() {
               <tr>
                 <th className="px-4 py-3 text-left">Faktur</th>
                 <th className="px-4 py-3 text-left">Unit / Nomor Kamar</th>
-                <th className="px-4 py-3 text-left">Nama Penghuni</th>
+                <th className="px-4 py-3 text-left">Nama Penyewa</th>
                 <th className="px-4 py-3 text-left">Tanggal</th>
                 <th className="px-4 py-3 text-left">Total Harga</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -1498,7 +1512,7 @@ export default function AdminBillingPage() {
                   </span>
                 </div>
                 <div className="mt-3 flex items-start justify-between gap-4">
-                  <span className="text-slate-500">Nama Penghuni</span>
+                  <span className="text-slate-500">Nama Penyewa</span>
                   <span className="text-right font-medium text-slate-800">
                     {approveConfirmationPayment.tenant.full_name || "-"}
                   </span>
@@ -1599,7 +1613,7 @@ export default function AdminBillingPage() {
                 value={viewPayment.unit.name || "-"}
               />
               <DetailRow
-                label="Nama Penghuni"
+                label="Nama Penyewa"
                 value={viewPayment.tenant.full_name || "-"}
               />
               <DetailRow
@@ -1811,7 +1825,7 @@ export default function AdminBillingPage() {
                       );
                       const nextAmount =
                         selectedUnit && Number(selectedUnit.price || 0) > 0
-                          ? String(selectedUnit.price)
+                          ? formatRupiahInputValue(selectedUnit.price)
                           : "";
 
                       setForm((previous) => ({
@@ -1843,7 +1857,7 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Nama Penghuni
+                    Nama Penyewa
                   </label>
                   <select
                     value={form.tenantId}
@@ -1916,20 +1930,24 @@ export default function AdminBillingPage() {
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Total Harga
                   </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="1000"
-                    value={form.amount}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        amount: event.target.value,
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                    placeholder="3500000"
-                  />
+                  <div className="flex h-11 overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[#1E2746]">
+                    <span className="inline-flex items-center border-r bg-slate-50 px-4 text-sm font-medium text-slate-600">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.amount}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          amount: formatRupiahInputValue(event.target.value),
+                        }))
+                      }
+                      className="h-full min-w-0 flex-1 px-4 text-sm focus:outline-none"
+                      placeholder="1.500.000"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -1973,7 +1991,7 @@ export default function AdminBillingPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    CS
+                    CS (Opsional)
                   </label>
                   <select
                     value={form.customerService}
@@ -1985,7 +2003,7 @@ export default function AdminBillingPage() {
                     }
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                   >
-                    <option value="">Pilih CS</option>
+                    <option value="">Tanpa CS</option>
                     {!selectedCustomerServiceIsAvailable ? (
                       <option value={form.customerService}>
                         {form.customerService}
