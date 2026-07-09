@@ -1774,23 +1774,6 @@ export default function AdminFinancialPage() {
                     <option value="expense">Pengeluaran</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    value={form.transactionDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        transactionDate: event.target.value,
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  />
-                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
