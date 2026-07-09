@@ -45,6 +45,12 @@ export interface AdminPropertyListItem {
   video_url?: string | null;
   video_360_url?: string | null;
   photo_360_url?: string | null;
+  user?: {
+    id: number;
+    full_name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -216,6 +222,8 @@ export interface AdminPropertyUnitRow {
   check_out_date?: string | null;
   building_id?: number | null;
   building_name?: string | null;
+  owner_id?: number | null;
+  owner_name?: string | null;
   building_owner_id?: number | null;
   building_owner_name?: string | null;
   block_id?: number | null;
@@ -226,8 +234,6 @@ export interface AdminPropertyUnitRow {
   block_roomphoto_urls?: string[];
   block_video_url?: string | null;
   block_video_360_url?: string | null;
-  owner_id?: number | null;
-  owner_name?: string | null;
   notes?: string | null;
   description?: string | null;
   roomphoto_urls?: string[];
@@ -396,6 +402,16 @@ export interface AdminMaintenanceUpdatePayload {
 export interface AdminFinancialTransaction {
   id: number;
   transaction_date?: string | null;
+  check_in_date?: string | null;
+  check_out_date?: string | null;
+  tenant_id?: number | null;
+  tenant_name?: string | null;
+  tenant?: {
+    id?: number | null;
+    full_name?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
   property: {
     id: number;
     name?: string | null;
@@ -423,6 +439,10 @@ export interface AdminFinancialTransactionCreatePayload {
   unit_id?: number;
   category: "income" | "expense";
   transaction_date: string;
+  check_in_date?: string;
+  check_out_date?: string;
+  tenant_id?: number;
+  tenant_name?: string;
   amount: number;
   description: string;
   notes?: string;
@@ -434,10 +454,59 @@ export interface AdminFinancialTransactionUpdatePayload {
   unit_id?: number;
   category?: "income" | "expense";
   transaction_date?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+  tenant_id?: number;
+  tenant_name?: string;
   amount?: number;
   description?: string;
   notes?: string;
   receipt?: File | null;
+}
+
+export interface AdminCashflowEntry {
+  id: number;
+  account_scope: "admin" | "owner" | string;
+  entry_type: string;
+  direction: "inflow" | "outflow" | string;
+  status: string;
+  amount: number;
+  occurred_on?: string | null;
+  description?: string | null;
+  notes?: string | null;
+  property?: {
+    id?: number | null;
+    name?: string | null;
+  } | null;
+  unit?: {
+    id?: number | null;
+    name?: string | null;
+  } | null;
+  tenant?: {
+    id?: number | null;
+    full_name?: string | null;
+    email?: string | null;
+  } | null;
+  owner?: {
+    id?: number | null;
+    full_name?: string | null;
+    email?: string | null;
+  } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminCashflowEntryCreatePayload {
+  account_scope: "admin" | "owner";
+  direction: "inflow" | "outflow";
+  amount: number;
+  occurred_on: string;
+  description: string;
+  notes?: string;
+  property_id?: number;
+  unit_id?: number;
+  tenant_id?: number;
+  owner_id?: number;
 }
 
 export interface AdminFinancialSummary {
@@ -1032,6 +1101,31 @@ const toFinancialTransactionFormData = (
     );
   }
 
+  if (payload.check_in_date !== undefined) {
+    formData.append(
+      "financial_transaction[check_in_date]",
+      payload.check_in_date,
+    );
+  }
+
+  if (payload.check_out_date !== undefined) {
+    formData.append(
+      "financial_transaction[check_out_date]",
+      payload.check_out_date,
+    );
+  }
+
+  if (payload.tenant_id !== undefined) {
+    formData.append(
+      "financial_transaction[tenant_id]",
+      String(payload.tenant_id),
+    );
+  }
+
+  if (payload.tenant_name !== undefined) {
+    formData.append("financial_transaction[tenant_name]", payload.tenant_name);
+  }
+
   if (payload.amount !== undefined) {
     formData.append("financial_transaction[amount]", String(payload.amount));
   }
@@ -1195,6 +1289,15 @@ export const buildPeriodParams = (period: string): QueryParams => {
   switch (period) {
     case "month":
       return { period: "this_month" };
+    case "lastMonth": {
+      const fromDate = new Date(year, now.getMonth() - 1, 1);
+      const toDate = new Date(year, now.getMonth(), 0);
+
+      return {
+        date_from: toDateInput(fromDate),
+        date_to: toDateInput(toDate),
+      };
+    }
     case "quarter": {
       const fromDate = new Date(year, now.getMonth() - 2, 1);
       const toDate = new Date(year, now.getMonth() + 1, 0);
@@ -1685,6 +1788,25 @@ export const deleteAdminFinancialTransaction = async (id: number | string) => {
     message: response.data.message,
   };
 };
+
+export const createAdminCashflowEntry = async (
+  payload: AdminCashflowEntryCreatePayload,
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminCashflowEntry>>(
+    "/api/v1/cashflow_entries",
+    {
+      cashflow_entry: payload,
+    },
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const getAdminCashflowEntries = (params?: QueryParams) =>
+  getList<AdminCashflowEntry>("/api/v1/cashflow_entries", params);
 
 export const exportAdminFinancialTransactions = async (
   params?: QueryParams,

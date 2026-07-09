@@ -26,6 +26,7 @@ export default function GlobalFilter({ value, onChange }: Props) {
     >
       <option value="year">Tahun Ini</option>
       <option value="month">Bulan Ini</option>
+      <option value="lastMonth">Bulan Lalu</option>
       <option value="quarter">3 Bulan Terakhir</option>
       <option value="lastYear">Tahun Lalu</option>
     </select>

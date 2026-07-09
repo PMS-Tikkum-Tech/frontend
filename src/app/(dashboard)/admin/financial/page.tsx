@@ -32,20 +32,26 @@ import {
 import StatCard from "@/components/dashboard/admin/cards/StatCard";
 import {
   buildPeriodParams,
+  createAdminCashflowEntry,
   createAdminFinancialTransaction,
   deleteAdminFinancialTransaction,
   exportAdminFinancialTransactions,
   getAdminFinancialDashboard,
   getAdminFinancialTransactions,
+  getAdminCashflowEntries,
+  getAllAdminPropertyUnits,
   getAdminProperties,
   getAdminPropertyUnits,
+  getAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
   updateAdminFinancialTransaction,
+  type AdminCashflowEntry,
   type AdminFinancialSummary,
   type AdminFinancialTransaction,
   type AdminPropertyListItem,
   type AdminPropertyUnitRow,
+  type AdminUser,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
 
@@ -98,9 +104,164 @@ const toDateInput = (value?: string | null) => {
 const formatCurrency = (value: number) =>
   `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
+const formatRupiahInputValue = (value: number | string) => {
+  const numericValue = String(value ?? "").replace(/\D/g, "");
+  if (!numericValue) {
+    return "";
+  }
+
+  return Number(numericValue).toLocaleString("id-ID");
+};
+
+const parseRupiahInputValue = (value: string) => {
+  const numericValue = value.replace(/\D/g, "");
+  return numericValue ? Number(numericValue) : 0;
+};
+
 const parseFilenameFromDisposition = (contentDisposition: string) => {
   const match = /filename="?([^"]+)"?/i.exec(contentDisposition || "");
   return match?.[1] || "financial-transactions.xls";
+};
+
+const normalizeOptional = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const getAccountDisplayName = (user: AdminUser) =>
+  user.full_name?.trim() || user.email || `Akun #${user.id}`;
+
+type ResolvedFinancialOwner = {
+  id: number;
+  name: string;
+};
+
+const resolveFinancialOwner = (
+  unit?: AdminPropertyUnitRow | null,
+  property?: AdminPropertyListItem | null,
+): ResolvedFinancialOwner | null => {
+  const unitOwnerId = Number(
+    unit?.owner_id || unit?.building_owner_id || unit?.block_owner_id || 0,
+  );
+
+  if (unitOwnerId > 0) {
+    return {
+      id: unitOwnerId,
+      name:
+        unit?.owner_name ||
+        unit?.building_owner_name ||
+        unit?.block_owner_name ||
+        `Owner #${unitOwnerId}`,
+    };
+  }
+
+  const propertyOwnerId = Number(property?.user?.id || 0);
+  if (propertyOwnerId > 0) {
+    return {
+      id: propertyOwnerId,
+      name: property?.user?.full_name || `Owner #${propertyOwnerId}`,
+    };
+  }
+
+  return null;
+};
+
+const getOwnerCashflowMarker = (transactionId: number) =>
+  `Transaksi keuangan #${transactionId}`;
+
+const buildOwnerCashflowDescription = (
+  transactionId: number,
+  description: string,
+) => `${getOwnerCashflowMarker(transactionId)}: ${description}`;
+
+const toCashflowDate = (value?: string | null) =>
+  toDateInput(value) || new Date().toISOString().slice(0, 10);
+
+const hasOwnerCashflowForTransaction = (
+  cashflows: AdminCashflowEntry[],
+  transactionId: number,
+) => {
+  const marker = getOwnerCashflowMarker(transactionId);
+
+  return cashflows.some((entry) => entry.description?.includes(marker));
+};
+
+const loadAllFinancialTransactionsForSync = async () => {
+  const rows: AdminFinancialTransaction[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const response = await getAdminFinancialTransactions({
+      page,
+      per_page: 100,
+    });
+
+    rows.push(...response.data);
+    totalPages = Number(response.meta?.total_pages || 1);
+    page += 1;
+  }
+
+  return rows;
+};
+
+const loadAllOwnerCashflowsForSync = async () => {
+  const rows: AdminCashflowEntry[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const response = await getAdminCashflowEntries({
+      page,
+      per_page: 100,
+      account_scope: "owner",
+    });
+
+    rows.push(...response.data);
+    totalPages = Number(response.meta?.total_pages || 1);
+    page += 1;
+  }
+
+  return rows;
+};
+
+const loadAllPropertiesForSync = async () => {
+  const rows: AdminPropertyListItem[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const response = await getAdminProperties({
+      page,
+      per_page: 100,
+    });
+
+    rows.push(...response.data);
+    totalPages = Number(response.meta?.total_pages || 1);
+    page += 1;
+  }
+
+  return rows;
+};
+
+const loadUnitMapForSync = async (propertyIds: number[]) => {
+  const unitMap = new Map<number, AdminPropertyUnitRow>();
+
+  await Promise.all(
+    propertyIds.map(async (propertyId) => {
+      try {
+        const response = await getAllAdminPropertyUnits(propertyId);
+
+        response.data.forEach((unit) => {
+          unitMap.set(unit.unit_id, unit);
+        });
+      } catch {
+        // Property owner is still usable as fallback if unit owner lookup fails.
+      }
+    }),
+  );
+
+  return unitMap;
 };
 
 const initialSummary: AdminFinancialSummary = {
@@ -120,8 +281,12 @@ type TransactionFormMode = "create" | "edit";
 type TransactionFormState = {
   propertyId: string;
   unitId: string;
+  tenantId: string;
+  tenantName: string;
   category: "income" | "expense";
   transactionDate: string;
+  checkInDate: string;
+  checkOutDate: string;
   amount: string;
   description: string;
   notes: string;
@@ -131,13 +296,122 @@ type TransactionFormState = {
 const getInitialForm = (propertyId = ""): TransactionFormState => ({
   propertyId,
   unitId: "",
+  tenantId: "",
+  tenantName: "",
   category: "income",
   transactionDate: new Date().toISOString().slice(0, 10),
+  checkInDate: "",
+  checkOutDate: "",
   amount: "",
   description: "",
   notes: "",
   receiptFile: null,
 });
+
+type TransactionNoteFields = Pick<
+  TransactionFormState,
+  "tenantName" | "checkInDate" | "checkOutDate" | "notes"
+>;
+
+const getEmptyTransactionNoteFields = (): TransactionNoteFields => ({
+  tenantName: "",
+  checkInDate: "",
+  checkOutDate: "",
+  notes: "",
+});
+
+const normalizeTransactionNoteLabel = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ")
+    .trim();
+
+const parseTransactionNotes = (
+  notes?: string | null,
+): TransactionNoteFields => {
+  const parsed = getEmptyTransactionNoteFields();
+  const value = notes?.trim();
+
+  if (!value) {
+    return parsed;
+  }
+
+  const unmatchedLines: string[] = [];
+  const labelToField: Record<string, keyof TransactionNoteFields> = {
+    "nama penyewa": "tenantName",
+    penyewa: "tenantName",
+    tenant: "tenantName",
+    "check in": "checkInDate",
+    "check out": "checkOutDate",
+    catatan: "notes",
+    keterangan: "notes",
+    notes: "notes",
+  };
+
+  value.split(/\r?\n/).forEach((line) => {
+    const trimmedLine = line.trim();
+    const match = /^([^:]+):\s*(.*)$/.exec(trimmedLine);
+
+    if (!trimmedLine) {
+      return;
+    }
+
+    if (!match) {
+      unmatchedLines.push(trimmedLine);
+      return;
+    }
+
+    const field = labelToField[normalizeTransactionNoteLabel(match[1])];
+    if (!field) {
+      unmatchedLines.push(trimmedLine);
+      return;
+    }
+
+    parsed[field] = match[2].trim();
+  });
+
+  if (unmatchedLines.length > 0) {
+    parsed.notes = [parsed.notes, unmatchedLines.join("\n")]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return parsed;
+};
+
+const buildTransactionNotes = (form: TransactionFormState) =>
+  (
+    [
+      ["Nama Penyewa", form.tenantName],
+      ["Check In", form.checkInDate],
+      ["Check Out", form.checkOutDate],
+      ["Catatan", form.notes],
+    ] satisfies Array<[string, string]>
+  )
+    .filter(([, value]) => value.trim())
+    .map(([label, value]) => `${label}: ${value.trim()}`)
+    .join("\n");
+
+const getTransactionTenantName = (transaction: AdminFinancialTransaction) =>
+  transaction.tenant_name?.trim() ||
+  transaction.tenant?.full_name?.trim() ||
+  transaction.tenant?.name?.trim() ||
+  parseTransactionNotes(transaction.notes).tenantName;
+
+const getTransactionDetails = (transaction: AdminFinancialTransaction) => {
+  const parsedNotes = parseTransactionNotes(transaction.notes);
+
+  return {
+    tenantName: getTransactionTenantName(transaction),
+    checkInDate:
+      toDateInput(transaction.check_in_date) ||
+      toDateInput(parsedNotes.checkInDate),
+    checkOutDate:
+      toDateInput(transaction.check_out_date) ||
+      toDateInput(parsedNotes.checkOutDate),
+    notes: parsedNotes.notes,
+  };
+};
 
 export default function AdminFinancialPage() {
   const [search, setSearch] = useState("");
@@ -149,21 +423,29 @@ export default function AdminFinancialPage() {
   const [monthlyData, setMonthlyData] = useState<
     Array<{ month: string; revenue: number; expense: number }>
   >([]);
-  const [categoryData, setCategoryData] = useState<Array<{ name: string; value: number }>>([]);
-  const [transactions, setTransactions] = useState<AdminFinancialTransaction[]>([]);
+  const [categoryData, setCategoryData] = useState<
+    Array<{ name: string; value: number }>
+  >([]);
+  const [transactions, setTransactions] = useState<AdminFinancialTransaction[]>(
+    [],
+  );
   const [properties, setProperties] = useState<AdminPropertyListItem[]>([]);
   const [units, setUnits] = useState<AdminPropertyUnitRow[]>([]);
+  const [tenants, setTenants] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [notice, setNotice] = useState<Notice>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSyncingOwnerCashflows, setIsSyncingOwnerCashflows] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const [viewTransaction, setViewTransaction] =
     useState<AdminFinancialTransaction | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<TransactionFormMode>("create");
-  const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
+  const [editingTransactionId, setEditingTransactionId] = useState<
+    number | null
+  >(null);
   const [form, setForm] = useState<TransactionFormState>(getInitialForm());
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,34 +467,56 @@ export default function AdminFinancialPage() {
       const periodParams = buildPeriodParams(period);
 
       try {
-        const [dashboardResponse, transactionResponse, propertiesResponse] =
-          await Promise.all([
-            getAdminFinancialDashboard(periodParams),
-            getAdminFinancialTransactions({
-              ...periodParams,
-              page: 1,
-              per_page: 100,
-            }),
-            getAdminProperties({
-              page: 1,
-              per_page: 100,
-            }),
-          ]);
+        const [
+          dashboardResponse,
+          transactionResponse,
+          propertiesResponse,
+          tenantsResponse,
+        ] = await Promise.all([
+          getAdminFinancialDashboard(periodParams),
+          getAdminFinancialTransactions({
+            ...periodParams,
+            page: 1,
+            per_page: 100,
+          }),
+          getAdminProperties({
+            page: 1,
+            per_page: 100,
+          }),
+          getAdminTenants({
+            page: 1,
+            per_page: 100,
+          }).catch(() => ({ data: [] as AdminUser[] })),
+        ]);
 
         if (!active) {
           return;
         }
 
         setSummary(dashboardResponse.data.summary);
-        setMonthlyData(dashboardResponse.data.charts.monthly_revenue_vs_expense);
+        setMonthlyData(
+          dashboardResponse.data.charts.monthly_revenue_vs_expense,
+        );
         setCategoryData(
-          dashboardResponse.data.charts.revenue_breakdown_by_category.map((item) => ({
-            name: item.category,
-            value: item.amount,
-          }))
+          dashboardResponse.data.charts.revenue_breakdown_by_category.map(
+            (item) => ({
+              name: item.category,
+              value: item.amount,
+            }),
+          ),
         );
         setTransactions(transactionResponse.data);
         setProperties(propertiesResponse.data);
+        setTenants(
+          tenantsResponse.data
+            .slice()
+            .sort((first, second) =>
+              getAccountDisplayName(first).localeCompare(
+                getAccountDisplayName(second),
+                "id-ID",
+              ),
+            ),
+        );
       } catch (loadError) {
         if (!active) {
           return;
@@ -221,8 +525,8 @@ export default function AdminFinancialPage() {
         setError(
           getApiErrorMessage(
             loadError,
-            "Laporan keuangan gagal dimuat. Silakan coba lagi."
-          )
+            "Laporan keuangan gagal dimuat. Silakan coba lagi.",
+          ),
         );
       } finally {
         if (active) {
@@ -243,9 +547,9 @@ export default function AdminFinancialPage() {
       uniqueFilterOptions(
         transactions,
         (transaction) => transaction.category,
-        (value) => categoryLabelMap[value]
+        (value) => categoryLabelMap[value],
       ),
-    [transactions]
+    [transactions],
   );
 
   const propertyFilterOptions = useMemo(
@@ -254,14 +558,20 @@ export default function AdminFinancialPage() {
         transactions,
         (transaction) => transaction.property.id || null,
         (value, transaction) =>
-          transaction.property_label || transaction.property.name || `Properti #${value}`
+          transaction.property_label ||
+          transaction.property.name ||
+          `Properti #${value}`,
       ),
-    [transactions]
+    [transactions],
   );
 
   const filteredTransactions = useMemo(() => {
     const filtered = transactions.filter((transaction) => {
-      const searchable = `${transaction.property_label} ${transaction.description}`.toLowerCase();
+      const details = getTransactionDetails(transaction);
+      const searchable =
+        `${transaction.property_label} ${transaction.description} ${
+          details.tenantName
+        } ${details.notes}`.toLowerCase();
       return (
         searchable.includes(search.toLowerCase()) &&
         (category ? transaction.category === category : true) &&
@@ -283,17 +593,46 @@ export default function AdminFinancialPage() {
     });
   }, [transactions, search, category, propertyFilter, sortBy]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTransactions.length / PAGE_SIZE),
+  );
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const pagedTransactions = filteredTransactions.slice(
     startIndex,
-    startIndex + PAGE_SIZE
+    startIndex + PAGE_SIZE,
   );
 
   const editingTransaction = useMemo(
     () => transactions.find((item) => item.id === editingTransactionId) || null,
-    [transactions, editingTransactionId]
+    [transactions, editingTransactionId],
   );
+
+  const tenantOptions = useMemo(
+    () =>
+      tenants.map((tenant) => ({
+        tenant,
+        label: getAccountDisplayName(tenant),
+      })),
+    [tenants],
+  );
+
+  const selectedProperty = useMemo(
+    () =>
+      properties.find((property) => String(property.id) === form.propertyId),
+    [properties, form.propertyId],
+  );
+
+  const selectedUnit = useMemo(
+    () => units.find((unit) => String(unit.unit_id) === form.unitId),
+    [units, form.unitId],
+  );
+
+  const resolvedOwner = resolveFinancialOwner(selectedUnit, selectedProperty);
+
+  const viewTransactionDetails = viewTransaction
+    ? getTransactionDetails(viewTransaction)
+    : null;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -317,7 +656,10 @@ export default function AdminFinancialPage() {
     }
   }, [currentPage, totalPages]);
 
-  const loadUnitsByProperty = async (propertyId: string, selectedUnitId = "") => {
+  const loadUnitsByProperty = async (
+    propertyId: string,
+    selectedUnitId = "",
+  ) => {
     if (!propertyId) {
       setUnits([]);
       setForm((prev) => ({ ...prev, unitId: "" }));
@@ -340,6 +682,38 @@ export default function AdminFinancialPage() {
     } finally {
       setIsLoadingUnits(false);
     }
+  };
+
+  const handleTenantNameChange = (value: string) => {
+    const matchedTenant = tenantOptions.find(
+      (option) =>
+        option.label.trim().toLowerCase() === value.trim().toLowerCase(),
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      tenantName: value,
+      tenantId: matchedTenant ? String(matchedTenant.tenant.id) : "",
+    }));
+  };
+
+  const handleUnitChange = (unitId: string) => {
+    const selectedUnit = units.find((unit) => String(unit.unit_id) === unitId);
+    const nextCheckIn = toDateInput(
+      selectedUnit?.check_in_date || selectedUnit?.lease_start,
+    );
+    const nextCheckOut = toDateInput(
+      selectedUnit?.check_out_date || selectedUnit?.lease_end,
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      unitId,
+      tenantId: prev.tenantId,
+      tenantName: prev.tenantName || selectedUnit?.tenant_name || "",
+      checkInDate: prev.checkInDate || nextCheckIn,
+      checkOutDate: prev.checkOutDate || nextCheckOut,
+    }));
   };
 
   const openCreateModal = () => {
@@ -365,14 +739,22 @@ export default function AdminFinancialPage() {
       ? String(transaction.property.id)
       : "";
     const unitId = transaction.unit.id ? String(transaction.unit.id) : "";
+    const transactionDetails = getTransactionDetails(transaction);
     setForm({
       propertyId,
       unitId,
+      tenantId:
+        transaction.tenant?.id || transaction.tenant_id
+          ? String(transaction.tenant?.id || transaction.tenant_id)
+          : "",
+      tenantName: transactionDetails.tenantName,
       category: transaction.category,
       transactionDate: toDateInput(transaction.transaction_date),
-      amount: String(transaction.amount ?? ""),
+      checkInDate: transactionDetails.checkInDate,
+      checkOutDate: transactionDetails.checkOutDate,
+      amount: formatRupiahInputValue(transaction.amount ?? ""),
       description: transaction.description || "",
-      notes: transaction.notes || "",
+      notes: transactionDetails.notes,
       receiptFile: null,
     });
     setUnits([]);
@@ -391,8 +773,10 @@ export default function AdminFinancialPage() {
 
   const handleSaveTransaction = async () => {
     const propertyId = Number(form.propertyId);
-    const amount = Number(form.amount);
+    const amount = parseRupiahInputValue(form.amount);
     const description = form.description.trim();
+    const tenantName = normalizeOptional(form.tenantName);
+    const transactionNotes = normalizeOptional(buildTransactionNotes(form));
 
     if (!propertyId) {
       setFormError("Pilih properti terlebih dahulu.");
@@ -414,6 +798,13 @@ export default function AdminFinancialPage() {
       return;
     }
 
+    if (formMode === "create" && !resolvedOwner?.id) {
+      setFormError(
+        "Pemilik properti tidak ditemukan. Pilih properti atau unit yang sudah terhubung ke akun owner.",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setFormError(null);
     setNotice(null);
@@ -422,19 +813,53 @@ export default function AdminFinancialPage() {
       const payload = {
         property_id: propertyId,
         ...(form.unitId ? { unit_id: Number(form.unitId) } : {}),
+        ...(form.tenantId ? { tenant_id: Number(form.tenantId) } : {}),
+        ...(tenantName ? { tenant_name: tenantName } : {}),
         category: form.category,
         transaction_date: form.transactionDate,
+        ...(form.checkInDate ? { check_in_date: form.checkInDate } : {}),
+        ...(form.checkOutDate ? { check_out_date: form.checkOutDate } : {}),
         amount,
         description,
-        notes: form.notes.trim() || undefined,
+        notes: transactionNotes,
         receipt: form.receiptFile,
       };
 
       if (formMode === "create") {
-        await createAdminFinancialTransaction(payload);
+        const createdTransaction =
+          await createAdminFinancialTransaction(payload);
+        let ownerCashflowError: string | null = null;
+
+        if (resolvedOwner?.id) {
+          try {
+            await createAdminCashflowEntry({
+              account_scope: "owner",
+              direction: form.category === "income" ? "inflow" : "outflow",
+              amount,
+              occurred_on: form.transactionDate,
+              description: buildOwnerCashflowDescription(
+                createdTransaction.data.id,
+                description,
+              ),
+              ...(transactionNotes ? { notes: transactionNotes } : {}),
+              property_id: propertyId,
+              ...(form.unitId ? { unit_id: Number(form.unitId) } : {}),
+              ...(form.tenantId ? { tenant_id: Number(form.tenantId) } : {}),
+              owner_id: resolvedOwner.id,
+            });
+          } catch (syncError) {
+            ownerCashflowError = getApiErrorMessage(
+              syncError,
+              "Gagal mengirim transaksi ke dashboard owner.",
+            );
+          }
+        }
+
         setNotice({
-          variant: "success",
-          message: "Transaksi berhasil ditambahkan.",
+          variant: ownerCashflowError ? "error" : "success",
+          message: ownerCashflowError
+            ? `Transaksi tersimpan, tetapi belum masuk dashboard owner: ${ownerCashflowError}`
+            : "Transaksi berhasil ditambahkan dan masuk dashboard owner.",
         });
       } else {
         if (!editingTransactionId) {
@@ -452,16 +877,110 @@ export default function AdminFinancialPage() {
       setRefreshKey((prev) => prev + 1);
     } catch (saveError) {
       setFormError(
-        getApiErrorMessage(saveError, "Gagal menyimpan transaksi keuangan.")
+        getApiErrorMessage(saveError, "Gagal menyimpan transaksi keuangan."),
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteTransaction = async (transaction: AdminFinancialTransaction) => {
+  const handleSyncOwnerCashflows = async () => {
+    setIsSyncingOwnerCashflows(true);
+    setNotice(null);
+
+    try {
+      const [allTransactions, ownerCashflows, allProperties] =
+        await Promise.all([
+          loadAllFinancialTransactionsForSync(),
+          loadAllOwnerCashflowsForSync(),
+          loadAllPropertiesForSync(),
+        ]);
+      const propertyMap = new Map(
+        allProperties.map((property) => [property.id, property]),
+      );
+      const propertyIds = Array.from(
+        new Set(
+          allTransactions
+            .map((transaction) => Number(transaction.property.id || 0))
+            .filter((propertyId) => propertyId > 0),
+        ),
+      );
+      const unitMap = await loadUnitMapForSync(propertyIds);
+
+      let syncedCount = 0;
+      let existingCount = 0;
+      let skippedOwnerCount = 0;
+      let failedCount = 0;
+
+      for (const transaction of allTransactions) {
+        if (hasOwnerCashflowForTransaction(ownerCashflows, transaction.id)) {
+          existingCount += 1;
+          continue;
+        }
+
+        const propertyId = Number(transaction.property.id || 0);
+        const unitId = Number(transaction.unit.id || 0);
+        const property =
+          propertyMap.get(propertyId) ||
+          properties.find((item) => item.id === propertyId) ||
+          null;
+        const unit = unitId ? unitMap.get(unitId) || null : null;
+        const owner = resolveFinancialOwner(unit, property);
+
+        if (!propertyId || !owner?.id) {
+          skippedOwnerCount += 1;
+          continue;
+        }
+
+        try {
+          await createAdminCashflowEntry({
+            account_scope: "owner",
+            direction: transaction.category === "income" ? "inflow" : "outflow",
+            amount: Number(transaction.amount || 0),
+            occurred_on: toCashflowDate(transaction.transaction_date),
+            description: buildOwnerCashflowDescription(
+              transaction.id,
+              transaction.description,
+            ),
+            ...(transaction.notes?.trim()
+              ? { notes: transaction.notes.trim() }
+              : {}),
+            property_id: propertyId,
+            ...(unitId ? { unit_id: unitId } : {}),
+            owner_id: owner.id,
+          });
+          syncedCount += 1;
+        } catch {
+          failedCount += 1;
+        }
+      }
+
+      setNotice({
+        variant: failedCount > 0 || skippedOwnerCount > 0 ? "error" : "success",
+        message:
+          `Sinkronisasi owner selesai. ${syncedCount} transaksi dibuat, ` +
+          `${existingCount} sudah tersinkron, ${skippedOwnerCount} tanpa owner, ` +
+          `${failedCount} gagal.`,
+      });
+      setRefreshKey((prev) => prev + 1);
+    } catch (syncError) {
+      setNotice({
+        variant: "error",
+        message: getApiErrorMessage(
+          syncError,
+          "Sinkronisasi transaksi lama ke dashboard owner gagal.",
+        ),
+      });
+    } finally {
+      setIsSyncingOwnerCashflows(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (
+    transaction: AdminFinancialTransaction,
+  ) => {
     const agreed = window.confirm(
-      `Hapus transaksi "${transaction.description}"? Tindakan ini tidak bisa dibatalkan.`
+      `Hapus transaksi "${transaction.description}"? Tindakan ini tidak bisa dibatalkan.`,
     );
     if (!agreed) {
       return;
@@ -553,6 +1072,17 @@ export default function AdminFinancialPage() {
             >
               <Download size={16} />
               {isExporting ? "Mengekspor..." : "Ekspor CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void handleSyncOwnerCashflows();
+              }}
+              disabled={isSyncingOwnerCashflows}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RotateCcw size={16} />
+              {isSyncingOwnerCashflows ? "Sinkronisasi..." : "Sinkronkan Owner"}
             </button>
             <button
               type="button"
@@ -649,12 +1179,13 @@ export default function AdminFinancialPage() {
             <RotateCcw size={14} />
             Atur Ulang
           </button>
-
         </div>
 
         <p className="mt-3 text-xs text-slate-500">
-          Menampilkan <span className="font-semibold">{filteredTransactions.length}</span>{" "}
-          dari <span className="font-semibold">{transactions.length}</span> transaksi.
+          Menampilkan{" "}
+          <span className="font-semibold">{filteredTransactions.length}</span>{" "}
+          dari <span className="font-semibold">{transactions.length}</span>{" "}
+          transaksi.
         </p>
       </section>
 
@@ -691,13 +1222,17 @@ export default function AdminFinancialPage() {
 
         <StatCard
           title="Pendapatan Bersih"
-          value={isLoading ? "..." : formatCurrency(summary.net_operating_income)}
+          value={
+            isLoading ? "..." : formatCurrency(summary.net_operating_income)
+          }
           icon={<TrendingUp size={20} />}
         />
 
         <StatCard
           title="Tagihan Tertunggak"
-          value={isLoading ? "..." : formatCurrency(summary.outstanding_balances)}
+          value={
+            isLoading ? "..." : formatCurrency(summary.outstanding_balances)
+          }
           icon={<FileText size={20} />}
         />
       </div>
@@ -717,7 +1252,9 @@ export default function AdminFinancialPage() {
                 <LineChart data={monthlyData}>
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
                   <Line
                     type="monotone"
                     dataKey="revenue"
@@ -747,7 +1284,9 @@ export default function AdminFinancialPage() {
         </div>
 
         <div className="h-[320px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:h-[380px] sm:p-6">
-          <h2 className="mb-1 font-semibold text-slate-800">Komposisi Pendapatan</h2>
+          <h2 className="mb-1 font-semibold text-slate-800">
+            Komposisi Pendapatan
+          </h2>
           <p className="mb-4 text-xs text-slate-500">
             Distribusi pendapatan berdasarkan kategori transaksi.
           </p>
@@ -764,10 +1303,15 @@ export default function AdminFinancialPage() {
                       outerRadius={100}
                     >
                       {categoryData.map((item, index) => (
-                        <Cell key={item.name} fill={COLORS[index % COLORS.length]} />
+                        <Cell
+                          key={item.name}
+                          fill={COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
 
@@ -780,7 +1324,9 @@ export default function AdminFinancialPage() {
                       <span className="inline-flex items-center gap-2 text-slate-600">
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                          style={{
+                            backgroundColor: COLORS[index % COLORS.length],
+                          }}
                         />
                         {item.name}
                       </span>
@@ -804,8 +1350,12 @@ export default function AdminFinancialPage() {
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-5">
-          <h2 className="text-lg font-semibold text-slate-800">Daftar Transaksi</h2>
-          <p className="text-xs text-slate-500">Total: {filteredTransactions.length}</p>
+          <h2 className="text-lg font-semibold text-slate-800">
+            Daftar Transaksi
+          </h2>
+          <p className="text-xs text-slate-500">
+            Total: {filteredTransactions.length}
+          </p>
         </div>
 
         <div className="overflow-x-auto">
@@ -836,91 +1386,116 @@ export default function AdminFinancialPage() {
                   </td>
                 </tr>
               ) : (
-                pagedTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-t border-slate-100">
-                    <td className="p-3 text-slate-700">
-                      {formatDate(transaction.transaction_date)}
-                    </td>
+                pagedTransactions.map((transaction) => {
+                  const details = getTransactionDetails(transaction);
+                  const stayPeriod =
+                    details.checkInDate || details.checkOutDate
+                      ? `${details.checkInDate ? formatDate(details.checkInDate) : "-"} - ${
+                          details.checkOutDate
+                            ? formatDate(details.checkOutDate)
+                            : "-"
+                        }`
+                      : "";
 
-                    <td className="p-3">
-                      <p className="font-medium text-slate-700">
-                        {transaction.property_label || "-"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Unit: {transaction.unit.name || "-"}
-                      </p>
-                    </td>
+                  return (
+                    <tr
+                      key={transaction.id}
+                      className="border-t border-slate-100"
+                    >
+                      <td className="p-3 text-slate-700">
+                        {formatDate(transaction.transaction_date)}
+                      </td>
 
-                    <td className="p-3">
-                      <p className="max-w-[300px] truncate text-slate-700">
-                        {transaction.description}
-                      </p>
-                      {transaction.notes ? (
-                        <p className="max-w-[300px] truncate text-xs text-slate-500">
-                          Catatan: {transaction.notes}
+                      <td className="p-3">
+                        <p className="font-medium text-slate-700">
+                          {transaction.property_label || "-"}
                         </p>
-                      ) : null}
-                    </td>
+                        <p className="text-xs text-slate-500">
+                          Unit: {transaction.unit.name || "-"}
+                        </p>
+                      </td>
 
-                    <td className="p-3 font-semibold text-slate-800">
-                      {formatCurrency(transaction.amount)}
-                    </td>
+                      <td className="p-3">
+                        <p className="max-w-[300px] truncate text-slate-700">
+                          {transaction.description}
+                        </p>
+                        {details.tenantName ? (
+                          <p className="max-w-[300px] truncate text-xs text-slate-500">
+                            Penyewa: {details.tenantName}
+                          </p>
+                        ) : null}
+                        {stayPeriod ? (
+                          <p className="max-w-[300px] truncate text-xs text-slate-500">
+                            Masa sewa: {stayPeriod}
+                          </p>
+                        ) : null}
+                        {details.notes ? (
+                          <p className="max-w-[300px] truncate text-xs text-slate-500">
+                            Catatan: {details.notes}
+                          </p>
+                        ) : null}
+                      </td>
 
-                    <td className="p-3">
-                      <CategoryBadge category={transaction.category} />
-                    </td>
+                      <td className="p-3 font-semibold text-slate-800">
+                        {formatCurrency(transaction.amount)}
+                      </td>
 
-                    <td className="p-3">
-                      {transaction.receipt_url ? (
-                        <a
-                          href={
-                            toAbsoluteAssetUrl(transaction.receipt_url) ||
-                            transaction.receipt_url
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Lihat
-                        </a>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </td>
+                      <td className="p-3">
+                        <CategoryBadge category={transaction.category} />
+                      </td>
 
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setViewTransaction(transaction)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
-                          title="Lihat detail"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(transaction)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Ubah transaksi"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleDeleteTransaction(transaction);
-                          }}
-                          disabled={isDeletingId === transaction.id}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Hapus transaksi"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      <td className="p-3">
+                        {transaction.receipt_url ? (
+                          <a
+                            href={
+                              toAbsoluteAssetUrl(transaction.receipt_url) ||
+                              transaction.receipt_url
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            Lihat
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setViewTransaction(transaction)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+                            title="Lihat detail"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(transaction)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                            title="Ubah transaksi"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDeleteTransaction(transaction);
+                            }}
+                            disabled={isDeletingId === transaction.id}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Hapus transaksi"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -975,7 +1550,9 @@ export default function AdminFinancialPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-800">Detail Transaksi</h2>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Detail Transaksi
+              </h2>
               <button
                 type="button"
                 onClick={() => setViewTransaction(null)}
@@ -998,7 +1575,10 @@ export default function AdminFinancialPage() {
                   {viewTransaction.unit.name || "-"}
                 </p>
               </div>
-              <DetailRow label="Tanggal" value={formatDate(viewTransaction.transaction_date)} />
+              <DetailRow
+                label="Tanggal"
+                value={formatDate(viewTransaction.transaction_date)}
+              />
               <DetailRow
                 label="Kategori"
                 value={toCategoryLabel(viewTransaction.category)}
@@ -1007,13 +1587,40 @@ export default function AdminFinancialPage() {
                 label="Properti"
                 value={viewTransaction.property.name || "-"}
               />
-              <DetailRow label="Unit" value={viewTransaction.unit.name || "-"} />
+              <DetailRow
+                label="Unit"
+                value={viewTransaction.unit.name || "-"}
+              />
+              {viewTransactionDetails?.tenantName ? (
+                <DetailRow
+                  label="Nama Penyewa"
+                  value={viewTransactionDetails.tenantName}
+                />
+              ) : null}
+              {viewTransactionDetails?.checkInDate ? (
+                <DetailRow
+                  label="Check In"
+                  value={formatDate(viewTransactionDetails.checkInDate)}
+                />
+              ) : null}
+              {viewTransactionDetails?.checkOutDate ? (
+                <DetailRow
+                  label="Check Out"
+                  value={formatDate(viewTransactionDetails.checkOutDate)}
+                />
+              ) : null}
               <DetailRow
                 label="Jumlah"
                 value={formatCurrency(viewTransaction.amount)}
               />
-              <DetailRow label="Deskripsi" value={viewTransaction.description || "-"} />
-              <DetailRow label="Catatan" value={viewTransaction.notes || "-"} />
+              <DetailRow
+                label="Deskripsi"
+                value={viewTransaction.description || "-"}
+              />
+              <DetailRow
+                label="Catatan"
+                value={viewTransactionDetails?.notes || "-"}
+              />
               <DetailRow
                 label="Dibuat Oleh"
                 value={viewTransaction.created_by.full_name || "-"}
@@ -1021,7 +1628,9 @@ export default function AdminFinancialPage() {
 
               {viewTransaction.receipt_url && (
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
-                  <span className="font-medium text-slate-600">Bukti Transaksi</span>
+                  <span className="font-medium text-slate-600">
+                    Bukti Transaksi
+                  </span>
                   <a
                     href={
                       toAbsoluteAssetUrl(viewTransaction.receipt_url) ||
@@ -1080,6 +1689,10 @@ export default function AdminFinancialPage() {
                       ...prev,
                       propertyId: nextPropertyId,
                       unitId: "",
+                      tenantId: "",
+                      tenantName: "",
+                      checkInDate: "",
+                      checkOutDate: "",
                     }));
                     void loadUnitsByProperty(nextPropertyId);
                   }}
@@ -1100,9 +1713,7 @@ export default function AdminFinancialPage() {
                 </label>
                 <select
                   value={form.unitId}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, unitId: event.target.value }))
-                  }
+                  onChange={(event) => handleUnitChange(event.target.value)}
                   disabled={!form.propertyId || isLoadingUnits}
                   className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
@@ -1115,6 +1726,33 @@ export default function AdminFinancialPage() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Pemilik: {resolvedOwner?.name || "-"}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Nama Penyewa
+                </label>
+                <input
+                  list="financial-tenant-options"
+                  value={form.tenantName}
+                  onChange={(event) =>
+                    handleTenantNameChange(event.target.value)
+                  }
+                  placeholder="Nama penyewa"
+                  className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                />
+                <datalist id="financial-tenant-options">
+                  {tenantOptions.map(({ tenant, label }) => (
+                    <option
+                      key={tenant.id}
+                      value={label}
+                      label={tenant.email || undefined}
+                    />
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1155,20 +1793,64 @@ export default function AdminFinancialPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Check In
+                  </label>
+                  <input
+                    type="date"
+                    value={form.checkInDate}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        checkInDate: event.target.value,
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Check Out
+                  </label>
+                  <input
+                    type="date"
+                    value={form.checkOutDate}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        checkOutDate: event.target.value,
+                      }))
+                    }
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Jumlah
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.amount}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, amount: event.target.value }))
-                  }
-                  placeholder="Contoh: 1500000"
-                  className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                />
+                <div className="flex h-11 overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[#1E2746]">
+                  <span className="inline-flex items-center border-r bg-slate-50 px-4 text-sm font-medium text-slate-600">
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.amount}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        amount: formatRupiahInputValue(event.target.value),
+                      }))
+                    }
+                    placeholder="1.500.000"
+                    className="h-full min-w-0 flex-1 px-4 text-sm focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1179,7 +1861,10 @@ export default function AdminFinancialPage() {
                   rows={3}
                   value={form.description}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, description: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
                   }
                   placeholder="Tuliskan deskripsi transaksi (minimal 10 karakter)"
                   className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
@@ -1279,7 +1964,9 @@ function CategoryBadge({ category }: { category: "income" | "expense" }) {
       : "border border-red-200 bg-red-50 text-red-700";
 
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${styles}`}>
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${styles}`}
+    >
       {toCategoryLabel(category)}
     </span>
   );
@@ -1289,7 +1976,9 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
       <span className="font-medium text-slate-600">{label}</span>
-      <span className="max-w-[62%] break-words text-right text-slate-800">{value}</span>
+      <span className="max-w-[62%] break-words text-right text-slate-800">
+        {value}
+      </span>
     </div>
   );
 }
