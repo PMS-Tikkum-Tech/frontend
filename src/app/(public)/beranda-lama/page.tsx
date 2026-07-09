@@ -531,7 +531,7 @@ const footerColumns = [
 export default function LegacyPublicHomePage() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const isTenant = user?.role === "tenant";
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "finance";
   const { showErrorToast, showSuccessToast } = useTransientToast();
   const [slideIndex, setSlideIndex] = useState(0);
   const [properties, setProperties] = useState<PropertyItem[]>([]);

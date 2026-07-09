@@ -113,7 +113,7 @@ const mapAuthPayload = (payload: AuthPayload): AuthResult => ({
 });
 
 export const getDefaultRouteByRole = (role: UserRole) => {
-  if (role === "admin") {
+  if (role === "admin" || role === "finance") {
     return "/admin";
   }
 
@@ -136,7 +136,11 @@ export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
 
   const requiredRole = getRequiredRoleByPath(pathWithoutQuery);
 
-  if (!requiredRole || requiredRole === role) {
+  if (
+    !requiredRole ||
+    requiredRole === role ||
+    (requiredRole === "admin" && role === "finance")
+  ) {
     return nextPath;
   }
 

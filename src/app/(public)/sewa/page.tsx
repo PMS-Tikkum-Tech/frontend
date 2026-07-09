@@ -425,7 +425,7 @@ export default function SewaPage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const isTenant = user?.role === "tenant";
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "finance";
 
   const [items, setItems] = useState<TenantFavoriteProperty[]>([]);
   const [search, setSearch] = useState("");

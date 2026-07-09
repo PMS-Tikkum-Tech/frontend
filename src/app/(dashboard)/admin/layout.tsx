@@ -140,7 +140,7 @@ export default function AdminDashboardLayout({
   ];
 
   return (
-    <RoleGuard allowedRoles={["admin"]}>
+    <RoleGuard allowedRoles={["admin", "finance"]}>
       <div className="min-h-screen overflow-x-hidden bg-[#f8f8ff] lg:flex">
         {isSidebarOpen ? (
           <button

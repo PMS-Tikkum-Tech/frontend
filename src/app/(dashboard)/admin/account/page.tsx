@@ -59,6 +59,7 @@ const formatDate = (value?: string | null) => {
 const roleLabelMap: Record<string, string> = {
   cs: "CS",
   admin: "Administrator",
+  finance: "Finance",
   owner: "Pemilik",
   tenant: "Penyewa",
   housekeeper: "Petugas Kebersihan",
@@ -68,6 +69,7 @@ const roleLabelMap: Record<string, string> = {
 const roleStyleMap: Record<string, string> = {
   cs: "bg-lime-100 text-lime-700",
   admin: "bg-emerald-100 text-emerald-700",
+  finance: "bg-violet-100 text-violet-700",
   owner: "bg-blue-100 text-blue-700",
   tenant: "bg-amber-100 text-amber-700",
   housekeeper: "bg-cyan-100 text-cyan-700",
@@ -98,6 +100,7 @@ type SortValue = "newest" | "oldest" | "name_asc" | "name_desc";
 type UserRole =
   | "cs"
   | "admin"
+  | "finance"
   | "owner"
   | "tenant"
   | "housekeeper"
@@ -468,6 +471,7 @@ export default function AdminAccountPage() {
     const adminCount = users.filter(
       (user) => user.role === "admin" && !isCsUser(user),
     ).length;
+    const financeCount = users.filter((user) => user.role === "finance").length;
     const ownerCount = users.filter((user) => user.role === "owner").length;
     const tenantCount = users.filter((user) => user.role === "tenant").length;
     const housekeeperCount = users.filter(
@@ -484,6 +488,7 @@ export default function AdminAccountPage() {
       inactiveCount,
       adminCount,
       csCount,
+      financeCount,
       ownerCount,
       tenantCount,
       housekeeperCount,
@@ -574,7 +579,7 @@ export default function AdminAccountPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-9">
         <SummaryCard
           title="Total Akun"
           value={summary.total}
@@ -597,6 +602,12 @@ export default function AdminAccountPage() {
           value={summary.csCount}
           caption="Customer service"
           tone="cyan"
+        />
+        <SummaryCard
+          title="Finance"
+          value={summary.financeCount}
+          caption="Akses keuangan admin"
+          tone="info"
         />
         <SummaryCard
           title="Pemilik"
@@ -905,6 +916,7 @@ export default function AdminAccountPage() {
                 >
                   <option value="cs">CS</option>
                   <option value="admin">Administrator</option>
+                  <option value="finance">Finance</option>
                   <option value="owner">Pemilik</option>
                   <option value="tenant">Penyewa</option>
                   <option value="housekeeper">Petugas Kebersihan</option>

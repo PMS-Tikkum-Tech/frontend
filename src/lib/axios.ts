@@ -15,7 +15,7 @@ type StoredSession = {
     id: number;
     name: string;
     email: string;
-    role: "admin" | "owner" | "tenant";
+    role: "admin" | "finance" | "owner" | "tenant";
     avatar?: string | null;
   };
   accessToken?: string;
@@ -30,7 +30,7 @@ type RefreshResponsePayload = {
       id: number;
       full_name?: string;
       email: string;
-      role: "admin" | "owner" | "tenant";
+      role: "admin" | "finance" | "owner" | "tenant";
       profile_picture_url?: string | null;
     };
     token?: string;

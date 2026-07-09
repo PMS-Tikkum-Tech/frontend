@@ -20,7 +20,7 @@ export default function PublicHeader() {
   const [failedAvatarKey, setFailedAvatarKey] = useState<string | null>(null);
   const previousPathnameRef = useRef(pathname);
   const dashboardHref =
-    user?.role === "admin"
+    user?.role === "admin" || user?.role === "finance"
       ? "/admin"
       : user?.role === "owner"
         ? "/owner"

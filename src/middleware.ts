@@ -12,7 +12,7 @@ import {
   isSessionExpired,
 } from "@/lib/auth-cookies";
 
-type SessionRole = "admin" | "owner" | "tenant";
+type SessionRole = "admin" | "finance" | "owner" | "tenant";
 type AuthMeResponse = {
   data?: {
     role?: string;
@@ -31,7 +31,12 @@ type AuthRefreshResponse = {
   };
 };
 
-const VALID_ROLES = new Set<SessionRole>(["admin", "owner", "tenant"]);
+const VALID_ROLES = new Set<SessionRole>([
+  "admin",
+  "finance",
+  "owner",
+  "tenant",
+]);
 const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "kikost.com": "https://api.kikost.com",
   "www.kikost.com": "https://api.kikost.com",
@@ -48,7 +53,7 @@ const isSafeNextPath = (nextPath: string) => {
 };
 
 const getDefaultRouteByRole = (role: string) => {
-  if (role === "admin") {
+  if (role === "admin" || role === "finance") {
     return "/admin";
   }
 
@@ -87,7 +92,11 @@ const resolveRoleRoute = (role: SessionRole, nextPath?: string | null) => {
 
   const requiredRole = getRequiredRole(pathWithoutQuery);
 
-  if (!requiredRole || requiredRole === role) {
+  if (
+    !requiredRole ||
+    requiredRole === role ||
+    (requiredRole === "admin" && role === "finance")
+  ) {
     return nextPath;
   }
 
@@ -353,7 +362,10 @@ export async function middleware(req: NextRequest) {
       return buildAuthRedirect(req, `${pathname}${search}`);
     }
 
-    if (validatedRole !== requiredRole) {
+    if (
+      validatedRole !== requiredRole &&
+      !(requiredRole === "admin" && validatedRole === "finance")
+    ) {
       const response = NextResponse.redirect(
         new URL(getDefaultRouteByRole(validatedRole), req.url)
       );

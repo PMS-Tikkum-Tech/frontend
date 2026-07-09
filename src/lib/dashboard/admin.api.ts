@@ -305,7 +305,13 @@ export interface AdminUser {
   emergency_contact_number?: string | null;
   relationship?: string | null;
   nik?: string | null;
-  role: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
+  role:
+    | "admin"
+    | "finance"
+    | "owner"
+    | "tenant"
+    | "housekeeper"
+    | "technician";
   account_status: "active" | "inactive" | "pending_verification";
   occupation?: string | null;
   profile_picture_url?: string | null;
@@ -323,7 +329,13 @@ export interface AdminUserCreatePayload {
   relationship?: string;
   nik?: string;
   occupation?: string;
-  role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
+  role?:
+    | "admin"
+    | "finance"
+    | "owner"
+    | "tenant"
+    | "housekeeper"
+    | "technician";
   account_status?: "active" | "inactive" | "pending_verification";
 }
 
@@ -337,7 +349,13 @@ export interface AdminUserUpdatePayload {
   relationship?: string;
   nik?: string;
   occupation?: string;
-  role?: "admin" | "owner" | "tenant" | "housekeeper" | "technician";
+  role?:
+    | "admin"
+    | "finance"
+    | "owner"
+    | "tenant"
+    | "housekeeper"
+    | "technician";
   account_status?: "active" | "inactive" | "pending_verification";
 }
 

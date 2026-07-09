@@ -2200,7 +2200,7 @@ export const getPublicProperties = async (
 
   const hasClientAccessToken = getClientAccessToken() != null;
   const clientRole = getClientRoleFromAccessToken();
-  const isAdminSession = clientRole === "admin";
+  const isAdminSession = clientRole === "admin" || clientRole === "finance";
 
   if (!hasClientAccessToken) {
     try {

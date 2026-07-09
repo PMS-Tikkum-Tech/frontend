@@ -708,7 +708,7 @@ export default function SewaPropertyDetailPage() {
   const propertyId = Number(params?.id);
   const { user } = useAuth();
   const isTenant = user?.role === "tenant";
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "finance";
 
   const [property, setProperty] = useState<PublicPropertySummary | null>(null);
   const [related, setRelated] = useState<PublicPropertySummary[]>([]);

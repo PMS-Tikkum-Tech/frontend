@@ -123,11 +123,14 @@ export default function ProfilePanel({
   const displayRole =
     user?.role === "admin"
       ? "Administrator"
-      : user?.role === "owner"
+      : user?.role === "finance"
+        ? "Finance"
+        : user?.role === "owner"
         ? "Pemilik Properti"
         : "Penyewa";
   const isTenant = user?.role === "tenant";
-  const dashboardHref = user?.role === "admin" ? "/admin" : "/owner";
+  const dashboardHref =
+    user?.role === "admin" || user?.role === "finance" ? "/admin" : "/owner";
   const avatarUrl = (() => {
     if (!user?.avatar || failedAvatarKey === user.avatar) {
       return null;
@@ -335,7 +338,7 @@ export default function ProfilePanel({
                       onClose={onClose}
                     />
 
-                    {user?.role === "admin" ? (
+                    {user?.role === "admin" || user?.role === "finance" ? (
                       <MenuItem
                         icon={<User size={20} />}
                         title="Pengaturan Akun"
