@@ -315,6 +315,8 @@ export interface AdminUser {
   account_status: "active" | "inactive" | "pending_verification";
   occupation?: string | null;
   profile_picture_url?: string | null;
+  bank_name?: string | null;
+  bank_account_number?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -329,6 +331,8 @@ export interface AdminUserCreatePayload {
   relationship?: string;
   nik?: string;
   occupation?: string;
+  bank_name?: string;
+  bank_account_number?: string;
   role?:
     | "admin"
     | "finance"
@@ -349,6 +353,8 @@ export interface AdminUserUpdatePayload {
   relationship?: string;
   nik?: string;
   occupation?: string;
+  bank_name?: string;
+  bank_account_number?: string;
   role?:
     | "admin"
     | "finance"

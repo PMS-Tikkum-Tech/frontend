@@ -110,6 +110,8 @@ type UserFormState = {
   fullName: string;
   email: string;
   phoneNumber: string;
+  bankName: string;
+  bankAccountNumber: string;
   role: UserRole;
   accountStatus: "active" | "inactive" | "pending_verification";
   password: string;
@@ -121,6 +123,8 @@ const getInitialForm = (): UserFormState => ({
   fullName: "",
   email: "",
   phoneNumber: "",
+  bankName: "",
+  bankAccountNumber: "",
   role: "tenant",
   accountStatus: "active",
   password: "",
@@ -170,6 +174,24 @@ const getUserFormErrors = (
     }
   }
 
+  if (isOwnerRole(form.role)) {
+    const bankNameError = getTextValidationMessage(form.bankName, {
+      label: "Nama bank",
+      required: true,
+    });
+    if (bankNameError) {
+      errors.bankName = bankNameError;
+    }
+
+    const bankAccountError = getTextValidationMessage(form.bankAccountNumber, {
+      label: "Nomor rekening",
+      required: true,
+    });
+    if (bankAccountError) {
+      errors.bankAccountNumber = bankAccountError;
+    }
+  }
+
   return errors;
 };
 
@@ -180,6 +202,8 @@ const normalizeOptional = (value: string) => {
 
 const isOperationalRole = (role: string) =>
   role === "housekeeper" || role === "technician";
+
+const isOwnerRole = (role: string) => role === "owner";
 
 const isCsUser = (user: AdminUser) =>
   user.role === "admin" && user.occupation?.trim().toLowerCase() === "cs";
@@ -284,6 +308,8 @@ export default function AdminAccountPage() {
       fullName: user.full_name || "",
       email: isOperationalRole(user.role) ? "" : user.email,
       phoneNumber: sanitizePhoneInput(user.phone_number || ""),
+      bankName: user.bank_name || "",
+      bankAccountNumber: user.bank_account_number || "",
       role: getAccountRole(user),
       accountStatus: user.account_status,
       password: "",
@@ -308,6 +334,7 @@ export default function AdminAccountPage() {
     const email = sanitizeEmailInput(form.email);
     const password = form.password.trim();
     const operationalRole = isOperationalRole(form.role);
+    const ownerRole = isOwnerRole(form.role);
     const nextFieldErrors = getUserFormErrors(form, formMode);
     const firstFieldError = Object.values(nextFieldErrors)[0];
 
@@ -326,6 +353,12 @@ export default function AdminAccountPage() {
         await createAdminUser({
           full_name: fullName,
           phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
+          ...(ownerRole
+            ? {
+                bank_name: normalizeOptional(form.bankName),
+                bank_account_number: normalizeOptional(form.bankAccountNumber),
+              }
+            : {}),
           role: toApiUserRole(form.role),
           occupation: toApiOccupation(form.role),
           account_status: form.accountStatus,
@@ -346,6 +379,12 @@ export default function AdminAccountPage() {
         await updateAdminUser(editingUserId, {
           full_name: fullName,
           phone_number: normalizeOptional(sanitizePhoneInput(form.phoneNumber)),
+          ...(ownerRole
+            ? {
+                bank_name: normalizeOptional(form.bankName),
+                bank_account_number: normalizeOptional(form.bankAccountNumber),
+              }
+            : {}),
           role: toApiUserRole(form.role),
           occupation: toApiOccupation(form.role),
           account_status: form.accountStatus,
@@ -538,6 +577,7 @@ export default function AdminAccountPage() {
   };
 
   const formIsOperationalRole = isOperationalRole(form.role);
+  const formIsOwnerRole = isOwnerRole(form.role);
 
   return (
     <div className="space-y-6">
@@ -964,6 +1004,37 @@ export default function AdminAccountPage() {
                 error={fieldErrors.phoneNumber}
               />
 
+              {formIsOwnerRole && (
+                <>
+                  <FormField
+                    label="Nama Bank"
+                    value={form.bankName}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        bankName: value,
+                      }))
+                    }
+                    placeholder="Contoh: BCA, BRI, Mandiri"
+                    error={fieldErrors.bankName}
+                  />
+
+                  <FormField
+                    label="Nomor Rekening"
+                    value={form.bankAccountNumber}
+                    onChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        bankAccountNumber: value,
+                      }))
+                    }
+                    placeholder="Masukkan nomor rekening"
+                    inputMode="numeric"
+                    error={fieldErrors.bankAccountNumber}
+                  />
+                </>
+              )}
+
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Status Akun
@@ -1093,6 +1164,11 @@ export default function AdminAccountPage() {
                 value={roleLabelMap[getAccountRole(viewUser)] || "-"}
               />
               <DetailRow label="Telepon" value={viewUser.phone_number || "-"} />
+              <DetailRow label="Nama Bank" value={viewUser.bank_name || "-"} />
+              <DetailRow
+                label="Nomor Rekening"
+                value={viewUser.bank_account_number || "-"}
+              />
               <DetailRow
                 label="Status"
                 value={statusLabelMap[viewUser.account_status] || "-"}
