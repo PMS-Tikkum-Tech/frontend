@@ -791,7 +791,7 @@ const dedupeMediaPaths = (...groups: unknown[]) => {
   );
 };
 
-const getClientAccessToken = () => {
+const getClientSessionRole = () => {
   if (typeof window === "undefined") {
     return null;
   }
@@ -802,40 +802,12 @@ const getClientAccessToken = () => {
       return null;
     }
 
-    const session = JSON.parse(rawSession) as { accessToken?: unknown };
-    if (
-      typeof session.accessToken === "string" &&
-      session.accessToken.trim() !== ""
-    ) {
-      return session.accessToken;
-    }
+    const session = JSON.parse(rawSession) as {
+      user?: { role?: unknown };
+    };
+    const role = session.user?.role;
 
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-const getClientRoleFromAccessToken = () => {
-  const token = getClientAccessToken();
-  if (!token || typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const payloadSegment = token.split(".")[1];
-    if (!payloadSegment) {
-      return null;
-    }
-
-    const normalized = payloadSegment
-      .replace(/-/g, "+")
-      .replace(/_/g, "/")
-      .padEnd(Math.ceil(payloadSegment.length / 4) * 4, "=");
-    const decodedPayload = window.atob(normalized);
-    const payload = JSON.parse(decodedPayload) as { role?: unknown };
-
-    return typeof payload.role === "string" ? payload.role : null;
+    return typeof role === "string" ? role : null;
   } catch {
     return null;
   }
@@ -845,17 +817,9 @@ const getPublicApi = async <T, M = ApiPaginationMeta>(
   path: string,
   params?: QueryParams
 ) => {
-  const token = getClientAccessToken();
-  const headers =
-    token != null
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : undefined;
-
   return axios.get<ApiResponse<T, M>>(`${resolveApiBaseUrl()}${path}`, {
     params: sanitizeParams(params),
-    headers,
+    withCredentials: true,
   });
 };
 
@@ -2198,11 +2162,11 @@ export const getPublicProperties = async (
     };
   };
 
-  const hasClientAccessToken = getClientAccessToken() != null;
-  const clientRole = getClientRoleFromAccessToken();
+  const clientRole = getClientSessionRole();
+  const hasClientSession = clientRole != null;
   const isAdminSession = clientRole === "admin" || clientRole === "finance";
 
-  if (!hasClientAccessToken) {
+  if (!hasClientSession) {
     try {
       return await getPublicPropertiesFromCatalog(params);
     } catch (catalogError) {

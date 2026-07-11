@@ -178,7 +178,7 @@ const formatFacilityLabel = (value?: string | null) => {
 const resolvePropertyImage = (path?: string | null) => {
   const normalizedPath = path?.trim();
   if (!normalizedPath) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^data:image\//i.test(normalizedPath)) {
@@ -248,7 +248,7 @@ const buildPropertyMedias = (
     return medias;
   }
 
-  return [{ type: "image", src: "/bg-1200.webp" }];
+  return [{ type: "image", src: "/bg.jpg" }];
 };
 
 const extractDistrict = (address?: string | null) => {
@@ -721,7 +721,7 @@ export default function SewaPropertyDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [heroMediaItems, setHeroMediaItems] = useState<PropertyMedia[]>([
-    { type: "image", src: "/bg-1200.webp" },
+    { type: "image", src: "/bg.jpg" },
   ]);
   const [activeHeroMediaIndex, setActiveHeroMediaIndex] = useState(0);
   const [isMediaViewerOpen, setIsMediaViewerOpen] = useState(false);
@@ -735,7 +735,7 @@ export default function SewaPropertyDetailPage() {
 
   useEffect(() => {
     if (!property) {
-      setHeroMediaItems([{ type: "image", src: "/bg-1200.webp" }]);
+      setHeroMediaItems([{ type: "image", src: "/bg.jpg" }]);
       setActiveHeroMediaIndex(0);
       return;
     }
@@ -1138,7 +1138,7 @@ export default function SewaPropertyDetailPage() {
 
   const activeHeroMedia = heroMediaItems[activeHeroMediaIndex] || {
     type: "image" as const,
-    src: "/bg-1200.webp",
+    src: "/bg.jpg",
   };
   const goToPrevHeroMedia = () => {
     setActiveHeroMediaIndex((prev) =>
@@ -1264,7 +1264,7 @@ export default function SewaPropertyDetailPage() {
                   setHeroMediaItems((prev) =>
                     prev.map((media, idx) =>
                       idx === activeHeroMediaIndex
-                        ? { type: "image", src: "/bg-1200.webp" }
+                        ? { type: "image", src: "/bg.jpg" }
                         : media
                     )
                   );
@@ -1282,7 +1282,7 @@ export default function SewaPropertyDetailPage() {
                   setHeroMediaItems((prev) =>
                     prev.map((media, idx) =>
                       idx === activeHeroMediaIndex
-                        ? { type: "image", src: "/bg-1200.webp" }
+                        ? { type: "image", src: "/bg.jpg" }
                         : media
                     )
                   );

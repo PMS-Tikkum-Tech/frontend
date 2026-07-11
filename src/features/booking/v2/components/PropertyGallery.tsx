@@ -13,7 +13,7 @@ export default function PropertyGallery({
   propertyName: string;
 }) {
   const [open, setOpen] = useState(false);
-  const galleryImages = images.length > 0 ? images : ["/bg-1200.webp"];
+  const galleryImages = images.length > 0 ? images : ["/bg.jpg"];
   const displayImages = galleryImages.slice(0, 5);
 
   useEffect(() => {

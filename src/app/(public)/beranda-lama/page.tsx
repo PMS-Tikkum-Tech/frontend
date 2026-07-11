@@ -47,17 +47,17 @@ import { useTransientToast } from "@/hooks/useTransientToast";
 
 const heroSlides = [
   {
-    src: "/bg-1200.webp",
+    src: "/bg.jpg",
     alt: "Visual hunian Kyra Stay - tampak depan properti",
     objectPosition: "center 58%",
   },
   {
-    src: "/bg-1200.webp",
+    src: "/bg.jpg",
     alt: "Visual hunian Kyra Stay - area bangunan modern",
     objectPosition: "center 42%",
   },
   {
-    src: "/bg-1200.webp",
+    src: "/bg.jpg",
     alt: "Visual hunian Kyra Stay - fasad properti",
     objectPosition: "center 72%",
   },
@@ -142,7 +142,7 @@ const getAvailabilityBadgeClass = (status: PublicPropertyAvailabilityStatus) => 
 const resolvePropertyImage = (path?: string | null) => {
   const normalizedPath = path?.trim();
   if (!normalizedPath) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^data:image\//i.test(normalizedPath)) {
@@ -207,7 +207,7 @@ const buildPropertyMedias = (
     return medias;
   }
 
-  return [{ type: "image", src: "/bg-1200.webp" }];
+  return [{ type: "image", src: "/bg.jpg" }];
 };
 
 const extractDistrict = (address?: string | null) => {
@@ -394,7 +394,7 @@ const toPropertyItem = (
     facilities: (property.facilities || [])
       .slice(0, 3)
       .map((facility) => formatLabel(facility)),
-    image: medias[0]?.src || "/bg-1200.webp",
+    image: medias[0]?.src || "/bg.jpg",
     medias,
     occupiedUnits,
     totalUnits,
@@ -1215,7 +1215,7 @@ export default function LegacyPublicHomePage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Image
-                  src="/logo-header-400.webp"
+                  src="/logo-header.png"
                   alt="KiKost"
                   width={204}
                   height={64}
@@ -1223,7 +1223,7 @@ export default function LegacyPublicHomePage() {
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image
-                  src="/logo-white-400.webp"
+                  src="/logo-white.png"
                   alt="Kyra Stay"
                   width={92}
                   height={28}
@@ -1317,7 +1317,7 @@ function PropertyCard({
   const router = useRouter();
   const detailHref = `/sewa/${item.id}`;
   const [mediaItems, setMediaItems] = useState<PropertyMedia[]>(
-    item.medias.length > 0 ? item.medias : [{ type: "image", src: "/bg-1200.webp" }]
+    item.medias.length > 0 ? item.medias : [{ type: "image", src: "/bg.jpg" }]
   );
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -1326,7 +1326,7 @@ function PropertyCard({
 
   const activeMedia = mediaItems[activeMediaIndex] || {
     type: "image" as const,
-    src: "/bg-1200.webp",
+    src: "/bg.jpg",
   };
   const goToPrevMedia = () => {
     setActiveMediaIndex((prev) => (prev <= 0 ? mediaItems.length - 1 : prev - 1));
@@ -1411,7 +1411,7 @@ function PropertyCard({
               setMediaItems((prev) =>
                 prev.map((media, idx) =>
                   idx === activeMediaIndex
-                    ? { type: "image", src: "/bg-1200.webp" }
+                    ? { type: "image", src: "/bg.jpg" }
                     : media
                 )
               );
@@ -1428,7 +1428,7 @@ function PropertyCard({
               setMediaItems((prev) =>
                 prev.map((media, idx) =>
                   idx === activeMediaIndex
-                    ? { type: "image", src: "/bg-1200.webp" }
+                    ? { type: "image", src: "/bg.jpg" }
                     : media
                 )
               );

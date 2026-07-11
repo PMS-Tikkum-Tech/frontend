@@ -3,11 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { getMe, logoutUser } from "@/lib/auth";
 import { AUTH_SESSION_STORAGE_KEY } from "@/lib/axios";
-import {
-  clearClientAuthCookies,
-  isSessionExpired,
-  syncClientAuthCookies,
-} from "@/lib/auth-cookies";
+import { clearClientAuthCookies, isSessionExpired } from "@/lib/auth-cookies";
 import type { AuthSession, SessionUser } from "@/types/auth";
 const SESSION_REFRESH_TIMEOUT_MS = 10_000;
 
@@ -17,8 +13,14 @@ const getStoredSession = () => {
   }
 
   try {
-    return window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    const raw = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as AuthSession;
   } catch {
+    removeStoredSession();
     return null;
   }
 };
@@ -111,18 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const hydrateSession = async () => {
       try {
         const storedSession = getStoredSession();
-        if (!storedSession) {
-          clearClientAuthCookies();
-          if (active) {
-            setSessionState(null);
-          }
-          return;
-        }
-
-        const parsedSession = JSON.parse(storedSession) as AuthSession;
         if (
-          isSessionExpired(parsedSession.expiresAt) &&
-          isSessionExpired(parsedSession.refreshTokenExpiresAt)
+          storedSession?.refreshTokenExpiresAt &&
+          isSessionExpired(storedSession.refreshTokenExpiresAt)
         ) {
           removeStoredSession();
           clearClientAuthCookies();
@@ -132,14 +125,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setSessionState(parsedSession);
-        syncClientAuthCookies({
-          role: parsedSession.user.role,
-          accessToken: parsedSession.accessToken,
-          expiresAt: parsedSession.expiresAt,
-          refreshToken: parsedSession.refreshToken,
-          refreshTokenExpiresAt: parsedSession.refreshTokenExpiresAt,
-        });
+        if (storedSession?.user && active) {
+          setSessionState(storedSession);
+        }
 
         try {
           const freshUser = await withTimeout(
@@ -150,19 +138,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
+          const latestStoredSession = getStoredSession();
           const refreshedSession = {
-            ...parsedSession,
+            ...(storedSession ?? {}),
+            ...(latestStoredSession ?? {}),
             user: freshUser,
           };
           setStoredSession(refreshedSession);
           setSessionState(refreshedSession);
-          syncClientAuthCookies({
-            role: freshUser.role,
-            accessToken: parsedSession.accessToken,
-            expiresAt: parsedSession.expiresAt,
-            refreshToken: parsedSession.refreshToken,
-            refreshTokenExpiresAt: parsedSession.refreshTokenExpiresAt,
-          });
         } catch {
           if (!active) {
             return;
@@ -191,13 +174,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setSession = (nextSession: AuthSession) => {
     setStoredSession(nextSession);
-    syncClientAuthCookies({
-      role: nextSession.user.role,
-      accessToken: nextSession.accessToken,
-      expiresAt: nextSession.expiresAt,
-      refreshToken: nextSession.refreshToken,
-      refreshTokenExpiresAt: nextSession.refreshTokenExpiresAt,
-    });
     setSessionState(nextSession);
     setIsLoading(false);
   };
@@ -219,25 +195,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshUser = async () => {
-    if (!session?.accessToken) {
-      return;
-    }
-
     try {
       const freshUser = await withTimeout(getMe(), SESSION_REFRESH_TIMEOUT_MS);
+      const latestStoredSession = getStoredSession();
       const refreshedSession = {
-        ...session,
+        ...(latestStoredSession ?? {}),
+        ...(session ?? {}),
         user: freshUser,
       };
       setStoredSession(refreshedSession);
       setSessionState(refreshedSession);
-      syncClientAuthCookies({
-        role: freshUser.role,
-        accessToken: session.accessToken,
-        expiresAt: session.expiresAt,
-        refreshToken: session.refreshToken,
-        refreshTokenExpiresAt: session.refreshTokenExpiresAt,
-      });
     } catch {
       // Keep existing user data if refresh fails.
     }
@@ -247,8 +214,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user: session?.user ?? null,
-        accessToken: session?.accessToken ?? null,
-        isAuthenticated: Boolean(session?.accessToken),
+        accessToken: null,
+        isAuthenticated: Boolean(session?.user),
         isLoading,
         setSession,
         refreshUser,

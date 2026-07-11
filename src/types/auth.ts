@@ -11,8 +11,6 @@ export type SessionUser = {
 
 export type AuthSession = {
   user: SessionUser;
-  accessToken: string;
-  refreshToken: string;
   expiresAt?: string | null;
   refreshTokenExpiresAt?: string | null;
 };
@@ -43,8 +41,8 @@ export type BackendUser = {
 
 export type AuthPayload = {
   user: BackendUser;
-  token: string;
-  refresh_token: string;
+  token?: string;
+  refresh_token?: string;
   expires_at?: string | null;
   refresh_token_expires_at?: string | null;
 };

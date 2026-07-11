@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
-import Image from "next/image";
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,6 +22,7 @@ import {
   updateAdminUser,
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
+import SafeImage from "@/components/ui/SafeImage";
 import {
   EMAIL_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -795,15 +795,14 @@ export default function AdminAccountPage() {
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <Image
+                        <SafeImage
                           src={
                             toAbsoluteAssetUrl(user.profile_picture_url) ||
-                            "/bg-1200.webp"
+                            "/bg.jpg"
                           }
                           alt={user.full_name || user.email}
                           width={40}
                           height={40}
-                          unoptimized
                           className="rounded-xl object-cover"
                         />
                         <div className="space-y-0.5">
@@ -1134,15 +1133,14 @@ export default function AdminAccountPage() {
 
             <div className="space-y-4 overflow-y-auto px-4 py-5 text-sm sm:px-6">
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <Image
+                <SafeImage
                   src={
                     toAbsoluteAssetUrl(viewUser.profile_picture_url) ||
-                    "/bg-1200.webp"
+                    "/bg.jpg"
                   }
                   alt={viewUser.full_name || viewUser.email}
                   width={44}
                   height={44}
-                  unoptimized
                   className="rounded-xl object-cover"
                 />
                 <div>

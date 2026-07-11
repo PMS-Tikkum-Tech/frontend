@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -31,6 +30,7 @@ import {
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import { formatFilterLabel } from "@/lib/filter-options";
 import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
+import SafeImage from "@/components/ui/SafeImage";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 
@@ -123,7 +123,7 @@ const getPaymentDisplayStatus = (
 const resolveAssetUrl = (value?: string | null) => {
   const normalized = value?.trim();
   if (!normalized) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^https?:\/\//i.test(normalized)) {
@@ -482,13 +482,12 @@ function TenantKostDetailContent() {
           ) : null}
 
           <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-900 p-4 text-white shadow-sm sm:p-6">
-            <Image
+            <SafeImage
               src={heroImage}
               alt={displayedPropertyName || "Detail kost"}
               fill
               className="object-cover opacity-35"
               sizes="100vw"
-              unoptimized
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-slate-900/30" />
 
@@ -647,13 +646,12 @@ function TenantKostDetailContent() {
                     key={imagePath}
                     className="relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                   >
-                    <Image
+                    <SafeImage
                       src={resolveAssetUrl(imagePath)}
                       alt="Galeri kost"
                       fill
                       className="object-cover"
                       sizes="(max-width: 1024px) 50vw, 25vw"
-                      unoptimized
                     />
                   </div>
                 ))}

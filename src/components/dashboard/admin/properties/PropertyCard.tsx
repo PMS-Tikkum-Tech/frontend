@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,6 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import SafeImage from "@/components/ui/SafeImage";
 import { Property } from "@/types/dashboard";
 
 export default function PropertyCard({ data }: { data: Property }) {
@@ -44,11 +44,10 @@ export default function PropertyCard({ data }: { data: Property }) {
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
         <div className="relative">
           <div className="relative h-52 w-full overflow-hidden">
-            <Image
-              src={data.image || "/bg-1200.webp"}
+            <SafeImage
+              src={data.image || "/bg.jpg"}
               alt={data.name}
               fill
-              unoptimized
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 33vw"
             />

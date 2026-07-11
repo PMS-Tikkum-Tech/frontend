@@ -191,7 +191,7 @@ const formatMoveInDate = (value: string) => {
 const resolvePropertyImage = (path?: string | null) => {
   const normalizedPath = path?.trim();
   if (!normalizedPath) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^data:image\//i.test(normalizedPath)) {
@@ -256,7 +256,7 @@ const buildPropertyMedias = (
     return medias;
   }
 
-  return [{ type: "image", src: "/bg-1200.webp" }];
+  return [{ type: "image", src: "/bg.jpg" }];
 };
 
 const extractDistrict = (address?: string | null) => {
@@ -781,7 +781,7 @@ export default function SewaPage() {
       filteredItems.find((item) => item.property.id === selectedPropertyId) || null
     );
   }, [filteredItems, selectedPropertyId]);
-  const [selectedPreviewSrc, setSelectedPreviewSrc] = useState("/bg-1200.webp");
+  const [selectedPreviewSrc, setSelectedPreviewSrc] = useState("/bg.jpg");
 
   useEffect(() => {
     setSelectedPreviewSrc(
@@ -1118,7 +1118,7 @@ export default function SewaPage() {
                   fill
                   unoptimized
                   onError={() => {
-                    setSelectedPreviewSrc("/bg-1200.webp");
+                    setSelectedPreviewSrc("/bg.jpg");
                   }}
                   className="object-cover"
                 />
@@ -1407,7 +1407,7 @@ export default function SewaPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Image
-                  src="/logo-header-400.webp"
+                  src="/logo-header.png"
                   alt="KiKost"
                   width={204}
                   height={64}
@@ -1415,7 +1415,7 @@ export default function SewaPage() {
                 />
                 <span className="text-sm text-blue-100">dikelola oleh</span>
                 <Image
-                  src="/logo-white-400.webp"
+                  src="/logo-white.png"
                   alt="Kyra Stay"
                   width={92}
                   height={28}
@@ -1546,7 +1546,7 @@ function PropertyCard({
 
   const activeMedia = mediaItems[activeMediaIndex] || {
     type: "image" as const,
-    src: "/bg-1200.webp",
+    src: "/bg.jpg",
   };
   const goToPrevMedia = () => {
     setActiveMediaIndex((prev) => (prev <= 0 ? mediaItems.length - 1 : prev - 1));
@@ -1635,7 +1635,7 @@ function PropertyCard({
               setMediaItems((prev) =>
                 prev.map((media, idx) =>
                   idx === activeMediaIndex
-                    ? { type: "image", src: "/bg-1200.webp" }
+                    ? { type: "image", src: "/bg.jpg" }
                     : media
                 )
               );
@@ -1652,7 +1652,7 @@ function PropertyCard({
               setMediaItems((prev) =>
                 prev.map((media, idx) =>
                   idx === activeMediaIndex
-                    ? { type: "image", src: "/bg-1200.webp" }
+                    ? { type: "image", src: "/bg.jpg" }
                     : media
                 )
               );

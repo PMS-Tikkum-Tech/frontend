@@ -47,7 +47,7 @@ export default function AuthModal({ open, onClose }: Props) {
             {/* LEFT IMAGE */}
             <div className="hidden md:block w-1/2 relative">
               <Image
-                src="/bg-1200.webp"
+                src="/bg.jpg"
                 alt="Auth"
                 fill
                 className="object-cover"
@@ -99,7 +99,7 @@ export default function AuthModal({ open, onClose }: Props) {
                 {/* LOGO */}
                 <div className="flex justify-center mb-8">
                   <Image
-                    src="/logo-kikost-400.webp"
+                    src="/logo-kikost.jpeg"
                     alt="KiKost"
                     width={160}
                     height={40}

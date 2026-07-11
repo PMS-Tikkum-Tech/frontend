@@ -73,7 +73,7 @@ export default function PublicHomePage() {
             <div className="relative aspect-[4/5]">
               <picture>
                 <source media="(max-width: 639px)" srcSet="/bg-1200-mobile-center.jpg" />
-                <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
+                <source media="(min-width: 640px)" srcSet="/bg.jpg" />
                 <img
                   src="/bg-1200-mobile-center.jpg"
                   alt="Hunian KIKOST dengan desain modern"
@@ -227,9 +227,9 @@ export default function PublicHomePage() {
                     media="(max-width: 639px)"
                     srcSet="/bg-1200-mobile-center.jpg"
                   />
-                  <source media="(min-width: 640px)" srcSet="/bg-1200.webp" />
+                  <source media="(min-width: 640px)" srcSet="/bg.jpg" />
                   <img
-                    src="/bg-1200.webp"
+                    src="/bg.jpg"
                     alt="Hunian KIKOST dengan desain modern"
                     loading="eager"
                     fetchPriority="high"
@@ -424,7 +424,7 @@ export default function PublicHomePage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 text-sm text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <Image
-              src="/logo-header-400.webp"
+              src="/logo-header.png"
               alt="KIKOST"
               width={48}
               height={48}

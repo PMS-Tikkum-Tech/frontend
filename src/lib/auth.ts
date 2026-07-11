@@ -62,8 +62,6 @@ type ChangePasswordRequest = {
 
 export type AuthResult = {
   user: SessionUser;
-  token: string;
-  refreshToken: string;
   expiresAt?: string | null;
   refreshTokenExpiresAt?: string | null;
 };
@@ -106,8 +104,6 @@ const mapUser = (user: BackendUser): SessionUser => ({
 
 const mapAuthPayload = (payload: AuthPayload): AuthResult => ({
   user: mapUser(payload.user),
-  token: payload.token,
-  refreshToken: payload.refresh_token,
   expiresAt: payload.expires_at,
   refreshTokenExpiresAt: payload.refresh_token_expires_at,
 });
@@ -166,12 +162,10 @@ export const loginWithGoogle = async (
   return mapAuthPayload(res.data.data);
 };
 
-export const refreshAuthSession = async (refreshToken: string): Promise<AuthResult> => {
+export const refreshAuthSession = async (): Promise<AuthResult> => {
   const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
     "/api/v1/auth/refresh",
-    {
-      refresh_token: refreshToken,
-    }
+    {}
   );
 
   return mapAuthPayload(res.data.data);

@@ -48,6 +48,7 @@ import {
   type PublicPropertySummary,
   type PublicPropertyUnitSummary,
 } from "@/lib/dashboard/tenant.api";
+import SafeImage from "@/components/ui/SafeImage";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import {
   NIK_LENGTH,
@@ -289,7 +290,7 @@ const toDateInput = (date: Date) => {
 const resolveMediaUrl = (path?: string | null) => {
   const normalized = path?.trim();
   if (!normalized) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^https?:\/\//i.test(normalized)) {
@@ -303,7 +304,7 @@ const resolveMediaUrl = (path?: string | null) => {
 
 const getPropertyHero = (property: PublicPropertySummary | null) => {
   if (!property) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   const primary = property.photo_url || property.photo_urls?.[0];
@@ -1423,11 +1424,10 @@ function TenantCreatePaymentPageContent() {
         <aside className="space-y-4">
           <section className="sticky top-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:top-24">
             <div className="relative h-40 sm:h-44">
-              <Image
+              <SafeImage
                 src={getPropertyHero(property)}
                 alt={property.name}
                 fill
-                unoptimized
                 className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />

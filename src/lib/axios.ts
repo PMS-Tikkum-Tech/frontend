@@ -1,9 +1,5 @@
-import axios, { AxiosHeaders } from "axios";
-import {
-  clearClientAuthCookies,
-  isSessionExpired,
-  syncClientAuthCookies,
-} from "@/lib/auth-cookies";
+import axios from "axios";
+import { clearClientAuthCookies, isSessionExpired } from "@/lib/auth-cookies";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
 
 export const AUTH_SESSION_STORAGE_KEY = "kyra.auth.session";
@@ -18,8 +14,6 @@ type StoredSession = {
     role: "admin" | "finance" | "owner" | "tenant";
     avatar?: string | null;
   };
-  accessToken?: string;
-  refreshToken?: string;
   expiresAt?: string | null;
   refreshTokenExpiresAt?: string | null;
 };
@@ -94,13 +88,6 @@ const persistClientSession = (session: StoredSession) => {
   }
 
   setStoredSession(session);
-  syncClientAuthCookies({
-    role: session.user.role,
-    accessToken: session.accessToken,
-    expiresAt: session.expiresAt,
-    refreshToken: session.refreshToken,
-    refreshTokenExpiresAt: session.refreshTokenExpiresAt,
-  });
 };
 
 const isProtectedPath = (pathname: string) =>
@@ -158,24 +145,18 @@ const isRefreshEndpoint = (url?: string | null) =>
 
 const refreshClient = axios.create({
   baseURL: resolveApiBaseUrl(),
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 const canRefreshSession = (session: StoredSession | null) =>
-  Boolean(
-    session?.refreshToken &&
-      !isSessionExpired(session.refreshTokenExpiresAt)
-  );
+  !session?.refreshTokenExpiresAt ||
+  !isSessionExpired(session.refreshTokenExpiresAt);
 
 const mapRefreshSession = (payload?: RefreshResponsePayload["data"] | null): StoredSession | null => {
-  if (
-    !payload?.user ||
-    !payload.token ||
-    !payload.refresh_token
-  ) {
+  if (!payload?.user) {
     return null;
   }
 
@@ -187,8 +168,6 @@ const mapRefreshSession = (payload?: RefreshResponsePayload["data"] | null): Sto
       role: payload.user.role,
       avatar: payload.user.profile_picture_url ?? null,
     },
-    accessToken: payload.token,
-    refreshToken: payload.refresh_token,
     expiresAt: payload.expires_at ?? null,
     refreshTokenExpiresAt: payload.refresh_token_expires_at ?? null,
   };
@@ -213,9 +192,7 @@ const refreshClientSession = async () => {
   }
 
   refreshSessionPromise = refreshClient
-    .post<RefreshResponsePayload>("/api/v1/auth/refresh", {
-      refresh_token: currentSession?.refreshToken,
-    })
+    .post<RefreshResponsePayload>("/api/v1/auth/refresh", {})
     .then((response) => {
       const nextSession = mapRefreshSession(response.data.data);
       if (!nextSession) {
@@ -240,7 +217,7 @@ const refreshClientSession = async () => {
 
 const axiosInstance = axios.create({
   baseURL: resolveApiBaseUrl(),
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -260,18 +237,13 @@ axiosInstance.interceptors.request.use(async (config) => {
     return config;
   }
 
-  if (isSessionExpired(session.expiresAt) || !session.accessToken) {
+  if (isSessionExpired(session.expiresAt)) {
     session = await refreshClientSession();
-    if (!session?.accessToken) {
+    if (!session?.user) {
       clearClientSession();
       redirectToAuth();
-      return config;
     }
   }
-
-  const headers = AxiosHeaders.from(config.headers);
-  headers.set("Authorization", `Bearer ${session.accessToken}`);
-  config.headers = headers;
 
   return config;
 });
@@ -288,12 +260,9 @@ axiosInstance.interceptors.response.use(
     ) {
       const refreshedSession = await refreshClientSession();
 
-      if (refreshedSession?.accessToken) {
+      if (refreshedSession?.user) {
         const retryConfig = error.config;
         (retryConfig as { _retry?: boolean })._retry = true;
-        const headers = AxiosHeaders.from(retryConfig.headers);
-        headers.set("Authorization", `Bearer ${refreshedSession.accessToken}`);
-        retryConfig.headers = headers;
         return axiosInstance.request(retryConfig);
       }
     }

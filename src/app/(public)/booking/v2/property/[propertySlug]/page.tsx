@@ -118,7 +118,7 @@ const buildRoomTypeOptions = (
 
     map.set(key, {
       name: key,
-      imageUrl: current?.imageUrl || room.imageUrl || property?.imageUrl || "/bg-1200.webp",
+      imageUrl: current?.imageUrl || room.imageUrl || property?.imageUrl || "/bg.jpg",
       minPrice:
         current?.minPrice && current.minPrice > 0
           ? Math.min(current.minPrice, room.monthlyPrice || current.minPrice)

@@ -44,7 +44,7 @@ const dedupeImages = (property: PublicPropertySummary) => {
   const uniqueCandidates = Array.from(new Set(candidates));
   const images = uniqueCandidates.map((path) => firstBookingMediaUrl(path));
 
-  return images.length > 0 ? images : ["/bg-1200.webp"];
+  return images.length > 0 ? images : ["/bg.jpg"];
 };
 
 const extractLocation = (address?: string | null) => {

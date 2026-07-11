@@ -1290,7 +1290,7 @@ export const mapPropertyToCard = (
   const image =
     toAbsoluteAssetUrl(property.photo_urls?.[0]) ||
     toAbsoluteAssetUrl(property.roomphoto_urls?.[0]) ||
-    "/bg-1200.webp";
+    "/bg.jpg";
 
   return {
     id: property.id,

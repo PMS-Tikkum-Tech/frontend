@@ -136,8 +136,6 @@ export default function LoginForm() {
     (result: AuthResult) => {
       setSession({
         user: result.user,
-        accessToken: result.token,
-        refreshToken: result.refreshToken,
         expiresAt: result.expiresAt,
         refreshTokenExpiresAt: result.refreshTokenExpiresAt,
       });

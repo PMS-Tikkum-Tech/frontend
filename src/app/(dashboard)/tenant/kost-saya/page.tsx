@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -23,6 +22,7 @@ import {
   type TenantStaySummary,
 } from "@/lib/dashboard/tenant.api";
 import DeadlineCountdown from "@/components/ui/DeadlineCountdown";
+import SafeImage from "@/components/ui/SafeImage";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import { formatDueDate, isDueDateReached } from "@/lib/due-date";
 
@@ -766,16 +766,15 @@ function ActiveStayCard({
       className: "border-slate-200 bg-slate-100 text-slate-700",
     },
   };
-  const heroImage = stay.roomphoto_urls?.[0] || "/bg-1200.webp";
+  const heroImage = stay.roomphoto_urls?.[0] || "/bg.jpg";
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg">
       <div className="relative h-36 overflow-hidden sm:h-40">
-        <Image
+        <SafeImage
           src={heroImage}
           alt={stay.property_name || "Hunian aktif"}
           fill
-          unoptimized
           className="object-cover"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/15 to-transparent" />

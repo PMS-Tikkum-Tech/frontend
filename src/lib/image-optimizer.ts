@@ -2,6 +2,7 @@ export const RESPONSIVE_IMAGE_WIDTHS = [400, 800, 1200] as const;
 
 const WEBP_MIME_TYPE = "image/webp";
 const JPEG_MIME_TYPE = "image/jpeg";
+const DEFAULT_UPLOAD_MIME_TYPE = JPEG_MIME_TYPE;
 const OPTIMIZABLE_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -223,7 +224,7 @@ export const optimizeImageFileToVariants = async (
     }
 
     const outputMimeType = await getSupportedOutputMimeType(
-      options.mimeType || WEBP_MIME_TYPE
+      options.mimeType || DEFAULT_UPLOAD_MIME_TYPE
     );
     const extension = getExtensionForMimeType(outputMimeType);
     const baseName = getSafeBaseName(file.name);

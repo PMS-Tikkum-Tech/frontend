@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   Suspense,
   useEffect,
@@ -31,6 +30,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import ProfileImageCropDialog from "@/components/ui/ProfileImageCropDialog";
+import SafeImage from "@/components/ui/SafeImage";
 import {
   getApiErrorMessage,
   getIncompleteTenantProfileFields,
@@ -58,7 +58,7 @@ import type { BackendUser } from "@/types/auth";
 
 const resolveAvatarUrl = (path?: string | null) => {
   if (!path) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^https?:\/\//i.test(path)) {
@@ -687,12 +687,11 @@ function TenantAccountPageContent() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           <section className="rounded-2xl border bg-white p-4 text-center shadow-sm sm:p-5">
-            <Image
+            <SafeImage
               src={avatarUrl}
               alt="Foto Profil"
               width={180}
               height={180}
-              unoptimized
               className="mx-auto h-36 w-36 rounded-full border object-cover sm:h-[180px] sm:w-[180px]"
             />
             <p className="mt-4 text-base font-semibold text-slate-800">

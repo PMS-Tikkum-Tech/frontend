@@ -3,7 +3,7 @@ import { resolveApiBaseUrl } from "@/lib/api-base-url";
 export const resolveBookingMediaUrl = (path?: string | null) => {
   const normalized = path?.trim();
   if (!normalized) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^data:image\//i.test(normalized) || /^https?:\/\//i.test(normalized)) {
@@ -32,5 +32,5 @@ export const firstBookingMediaUrl = (
     }
   }
 
-  return "/bg-1200.webp";
+  return "/bg.jpg";
 };

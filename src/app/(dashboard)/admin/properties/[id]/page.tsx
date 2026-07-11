@@ -246,10 +246,10 @@ const getUnitDisplayPrice = (unit: Pick<
 
 const resolveMediaImageUrl = (path?: string | null) => {
   if (!path) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
-  if (path === "/bg-1200.webp") {
+  if (path === "/bg.jpg") {
     return path;
   }
 
@@ -541,7 +541,7 @@ export default function DetailPropertiPage() {
 
   const images = useMemo(() => {
     if (propertyPhotoUrls.length === 0) {
-      return ["/bg-1200.webp"];
+      return ["/bg.jpg"];
     }
 
     return propertyPhotoUrls.map((item) => resolveMediaImageUrl(item));
@@ -551,7 +551,7 @@ export default function DetailPropertiPage() {
     setActiveImageIndex(0);
   }, [propertyDetail?.property.id, images.length]);
 
-  const selectedImage = images[Math.min(activeImageIndex, images.length - 1)] || "/bg-1200.webp";
+  const selectedImage = images[Math.min(activeImageIndex, images.length - 1)] || "/bg.jpg";
 
   const videos = useMemo(() => {
     const source = propertyDetail?.property.video_urls || [];
@@ -1690,7 +1690,7 @@ export default function DetailPropertiPage() {
                 <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
                   <div className="relative aspect-[16/9] w-full">
                     <SafeBookingImage
-                      src={selectedImage || "/bg-1200.webp"}
+                      src={selectedImage || "/bg.jpg"}
                       alt={propertyDetail.property.name}
                       className="object-cover"
                       sizes="(max-width: 1280px) 100vw, 66vw"
@@ -1738,7 +1738,7 @@ export default function DetailPropertiPage() {
                           >
                             <div className="relative h-full w-full">
                               <SafeBookingImage
-                                src={image || "/bg-1200.webp"}
+                                src={image || "/bg.jpg"}
                                 alt={`${propertyDetail.property.name} ${index + 1}`}
                                 className="object-cover"
                                 sizes="(max-width: 1024px) 50vw, 20vw"
@@ -1855,7 +1855,7 @@ export default function DetailPropertiPage() {
                       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                         <div className="relative h-52 w-full">
                           <SafeBookingImage
-                            src={photo360Url || "/bg-1200.webp"}
+                            src={photo360Url || "/bg.jpg"}
                             alt={`Foto 360 ${propertyDetail.property.name}`}
                             className="object-cover"
                             sizes="100vw"
@@ -3285,7 +3285,7 @@ function PropertyMappingSection({
                       >
                         <div className="relative h-28 w-full">
                           <SafeBookingImage
-                            src={resolveMediaImageUrl(photoUrl) || "/bg-1200.webp"}
+                            src={resolveMediaImageUrl(photoUrl) || "/bg.jpg"}
                             alt={`${block.name} ${photoIndex + 1}`}
                             className="object-cover"
                             sizes="(max-width: 1024px) 33vw, 25vw"

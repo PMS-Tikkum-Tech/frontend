@@ -85,8 +85,6 @@ export default function RegisterForm() {
 
       setSession({
         user: authResult.user,
-        accessToken: authResult.token,
-        refreshToken: authResult.refreshToken,
         expiresAt: authResult.expiresAt,
         refreshTokenExpiresAt: authResult.refreshTokenExpiresAt,
       });

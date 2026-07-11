@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Heart, MapPin, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -12,6 +11,7 @@ import {
   type TenantFavoriteProperty,
 } from "@/lib/dashboard/tenant.api";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
+import SafeImage from "@/components/ui/SafeImage";
 import { formatFilterLabel } from "@/lib/filter-options";
 import {
   getTenantFavoritesCache,
@@ -57,7 +57,7 @@ const extractDistrict = (address?: string | null) => {
 const resolvePropertyImage = (path?: string | null) => {
   const normalizedPath = path?.trim();
   if (!normalizedPath) {
-    return "/bg-1200.webp";
+    return "/bg.jpg";
   }
 
   if (/^data:image\//i.test(normalizedPath)) {
@@ -383,11 +383,10 @@ function PropertyCard({
   return (
     <article className="overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
       <div className="relative h-40 w-full sm:h-44">
-        <Image
+        <SafeImage
           src={resolvePropertyImage(property.photo_url)}
           alt={property.name}
           fill
-          unoptimized
           className="object-cover"
         />
 

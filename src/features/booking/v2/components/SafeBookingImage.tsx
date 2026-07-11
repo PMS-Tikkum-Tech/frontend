@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
+import SafeImage from "@/components/ui/SafeImage";
 
-const DEFAULT_FALLBACK_SRC = "/bg-1200.webp";
+const DEFAULT_FALLBACK_SRC = "/bg.jpg";
 
 type SafeBookingImageProps = {
   src?: string | null;
@@ -27,11 +27,10 @@ export default function SafeBookingImage({
   const imageSrc = failedSrc === normalizedSrc ? fallbackSrc : normalizedSrc;
 
   return (
-    <Image
+    <SafeImage
       src={imageSrc}
       alt={alt}
       fill
-      unoptimized
       sizes={sizes}
       priority={priority}
       className={className}

@@ -140,7 +140,25 @@ const buildHostRedirect = (req: NextRequest, hostname: string, pathname: string)
   return redirectUrl;
 };
 
-const clearSessionCookies = (response: NextResponse) => {
+const getSessionCookieDomain = (req: NextRequest) => {
+  const hostname = req.nextUrl.hostname.toLowerCase();
+  if (hostname === "kikost.com" || hostname.endsWith(".kikost.com")) {
+    return ".kikost.com";
+  }
+
+  return undefined;
+};
+
+const getSessionCookieOptions = (req: NextRequest, maxAge: number) => ({
+  path: "/",
+  maxAge,
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: req.nextUrl.protocol === "https:" || process.env.NODE_ENV === "production",
+  domain: getSessionCookieDomain(req),
+});
+
+const clearSessionCookies = (response: NextResponse, req: NextRequest) => {
   [
     AUTH_COOKIE_KEY,
     AUTH_ROLE_COOKIE_KEY,
@@ -152,8 +170,7 @@ const clearSessionCookies = (response: NextResponse) => {
     response.cookies.set({
       name,
       value: "",
-      path: "/",
-      maxAge: 0,
+      ...getSessionCookieOptions(req, 0),
     });
   });
 };
@@ -163,14 +180,15 @@ const buildAuthRedirect = (req: NextRequest, nextPath: string) => {
   loginUrl.searchParams.set("next", nextPath);
 
   const response = NextResponse.redirect(loginUrl);
-  clearSessionCookies(response);
+  clearSessionCookies(response, req);
   return response;
 };
 
 const applySessionCookies = (
   response: NextResponse,
   payload: NonNullable<AuthRefreshResponse["data"]>,
-  role: SessionRole
+  role: SessionRole,
+  req: NextRequest
 ) => {
   const accessMaxAge = getCookieMaxAgeSeconds(payload.expires_at);
   const refreshMaxAge = getCookieMaxAgeSeconds(
@@ -181,52 +199,44 @@ const applySessionCookies = (
   response.cookies.set({
     name: AUTH_COOKIE_KEY,
     value: "1",
-    path: "/",
-    maxAge: refreshMaxAge,
+    ...getSessionCookieOptions(req, refreshMaxAge),
   });
   response.cookies.set({
     name: AUTH_ROLE_COOKIE_KEY,
     value: role,
-    path: "/",
-    maxAge: refreshMaxAge,
+    ...getSessionCookieOptions(req, refreshMaxAge),
   });
   response.cookies.set({
     name: AUTH_TOKEN_COOKIE_KEY,
     value: payload.token || "",
-    path: "/",
-    maxAge: accessMaxAge,
+    ...getSessionCookieOptions(req, accessMaxAge),
   });
   response.cookies.set({
     name: AUTH_EXPIRES_COOKIE_KEY,
     value: payload.expires_at || "",
-    path: "/",
-    maxAge: accessMaxAge,
+    ...getSessionCookieOptions(req, accessMaxAge),
   });
   response.cookies.set({
     name: AUTH_REFRESH_TOKEN_COOKIE_KEY,
     value: payload.refresh_token || "",
-    path: "/",
-    maxAge: refreshMaxAge,
+    ...getSessionCookieOptions(req, refreshMaxAge),
   });
   response.cookies.set({
     name: AUTH_REFRESH_EXPIRES_COOKIE_KEY,
     value: payload.refresh_token_expires_at || "",
-    path: "/",
-    maxAge: refreshMaxAge,
+    ...getSessionCookieOptions(req, refreshMaxAge),
   });
 };
 
 const refreshValidatedSession = async (
   req: NextRequest
 ): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
-  const refreshToken = decodeCookieValue(
-    req.cookies.get(AUTH_REFRESH_TOKEN_COOKIE_KEY)?.value
-  );
+  const hasRefreshCookie = Boolean(req.cookies.get(AUTH_REFRESH_TOKEN_COOKIE_KEY)?.value);
   const refreshExpiresAt = decodeCookieValue(
     req.cookies.get(AUTH_REFRESH_EXPIRES_COOKIE_KEY)?.value
   );
 
-  if (!refreshToken || isSessionExpired(refreshExpiresAt)) {
+  if (!hasRefreshCookie || isSessionExpired(refreshExpiresAt)) {
     return { role: null };
   }
 
@@ -236,10 +246,9 @@ const refreshValidatedSession = async (
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
+        Cookie: req.headers.get("cookie") ?? "",
       },
-      body: JSON.stringify({
-        refresh_token: refreshToken,
-      }),
+      body: JSON.stringify({}),
       cache: "no-store",
     });
 
@@ -267,10 +276,10 @@ const refreshValidatedSession = async (
 const getValidatedSession = async (
   req: NextRequest
 ): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
-  const accessToken = decodeCookieValue(req.cookies.get(AUTH_TOKEN_COOKIE_KEY)?.value);
+  const hasAccessCookie = Boolean(req.cookies.get(AUTH_TOKEN_COOKIE_KEY)?.value);
   const expiresAt = decodeCookieValue(req.cookies.get(AUTH_EXPIRES_COOKIE_KEY)?.value);
 
-  if (!accessToken || isSessionExpired(expiresAt)) {
+  if (!hasAccessCookie || isSessionExpired(expiresAt)) {
     return refreshValidatedSession(req);
   }
 
@@ -278,7 +287,7 @@ const getValidatedSession = async (
     const response = await fetch(`${getApiBaseUrl(req)}/api/v1/auth/me`, {
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Cookie: req.headers.get("cookie") ?? "",
       },
       cache: "no-store",
     });
@@ -370,7 +379,7 @@ export async function middleware(req: NextRequest) {
         new URL(getDefaultRouteByRole(validatedRole), req.url)
       );
       if (validatedSession.refreshed) {
-        applySessionCookies(response, validatedSession.refreshed, validatedRole);
+        applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
       }
       return response;
     }
@@ -379,7 +388,7 @@ export async function middleware(req: NextRequest) {
   if (pathname === "/auth") {
     if (!validatedRole) {
       const response = NextResponse.next();
-      clearSessionCookies(response);
+      clearSessionCookies(response, req);
       return response;
     }
 
@@ -390,14 +399,14 @@ export async function middleware(req: NextRequest) {
       )
     );
     if (validatedSession.refreshed) {
-      applySessionCookies(response, validatedSession.refreshed, validatedRole);
+      applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
     }
     return response;
   }
 
   const response = NextResponse.next();
   if (validatedRole && validatedSession.refreshed) {
-    applySessionCookies(response, validatedSession.refreshed, validatedRole);
+    applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
   }
   return response;
 }

@@ -13,7 +13,7 @@ export default function ImageCarousel({
   alt: string;
   className?: string;
 }) {
-  const safeImages = images.length > 0 ? images : ["/bg-1200.webp"];
+  const safeImages = images.length > 0 ? images : ["/bg.jpg"];
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const activeImage = safeImages[activeIndex] || safeImages[0];

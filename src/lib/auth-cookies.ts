@@ -33,20 +33,6 @@ const getClientCookieAttributes = (maxAge: number) => {
   return attributes.join("; ");
 };
 
-const setClientCookie = (
-  name: string,
-  value: string,
-  maxAge = DEFAULT_SESSION_MAX_AGE_SECONDS
-) => {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.cookie = `${name}=${encodeURIComponent(
-    value
-  )}; ${getClientCookieAttributes(maxAge)}`;
-};
-
 const clearClientCookie = (name: string) => {
   if (typeof document === "undefined") {
     return;
@@ -68,39 +54,11 @@ export const syncClientAuthCookies = ({
   refreshToken?: string | null;
   refreshTokenExpiresAt?: string | null;
 }) => {
-  const accessMaxAge = getCookieMaxAgeSeconds(expiresAt);
-  const refreshMaxAge = getCookieMaxAgeSeconds(refreshTokenExpiresAt, accessMaxAge);
-
-  setClientCookie(AUTH_COOKIE_KEY, "1", refreshMaxAge);
-  setClientCookie(AUTH_ROLE_COOKIE_KEY, role, refreshMaxAge);
-
-  if (accessToken) {
-    setClientCookie(AUTH_TOKEN_COOKIE_KEY, accessToken, accessMaxAge);
-  } else {
-    clearClientCookie(AUTH_TOKEN_COOKIE_KEY);
-  }
-
-  if (expiresAt) {
-    setClientCookie(AUTH_EXPIRES_COOKIE_KEY, expiresAt, accessMaxAge);
-  } else {
-    clearClientCookie(AUTH_EXPIRES_COOKIE_KEY);
-  }
-
-  if (refreshToken) {
-    setClientCookie(AUTH_REFRESH_TOKEN_COOKIE_KEY, refreshToken, refreshMaxAge);
-  } else {
-    clearClientCookie(AUTH_REFRESH_TOKEN_COOKIE_KEY);
-  }
-
-  if (refreshTokenExpiresAt) {
-    setClientCookie(
-      AUTH_REFRESH_EXPIRES_COOKIE_KEY,
-      refreshTokenExpiresAt,
-      refreshMaxAge
-    );
-  } else {
-    clearClientCookie(AUTH_REFRESH_EXPIRES_COOKIE_KEY);
-  }
+  void role;
+  void accessToken;
+  void expiresAt;
+  void refreshToken;
+  void refreshTokenExpiresAt;
 };
 
 export const clearClientAuthCookies = () => {
