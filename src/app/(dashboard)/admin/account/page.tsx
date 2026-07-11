@@ -16,7 +16,7 @@ import {
 import {
   createAdminUser,
   deleteAdminUser,
-  getAdminUsers,
+  getAllAdminUsers,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
   updateAdminUser,
@@ -79,13 +79,11 @@ const roleStyleMap: Record<string, string> = {
 const statusLabelMap: Record<string, string> = {
   active: "Aktif",
   inactive: "Nonaktif",
-  pending_verification: "Menunggu Verifikasi",
 };
 
 const statusStyleMap: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   inactive: "bg-red-100 text-red-700",
-  pending_verification: "bg-amber-100 text-amber-700",
 };
 
 type Notice = {
@@ -113,7 +111,7 @@ type UserFormState = {
   bankName: string;
   bankAccountNumber: string;
   role: UserRole;
-  accountStatus: "active" | "inactive" | "pending_verification";
+  accountStatus: "active" | "inactive";
   password: string;
 };
 
@@ -258,10 +256,7 @@ export default function AdminAccountPage() {
       setError(null);
 
       try {
-        const response = await getAdminUsers({
-          page: 1,
-          per_page: 100,
-        });
+        const response = await getAllAdminUsers();
 
         if (!active) {
           return;
@@ -500,9 +495,6 @@ export default function AdminAccountPage() {
     const activeCount = users.filter(
       (user) => user.account_status === "active",
     ).length;
-    const pendingCount = users.filter(
-      (user) => user.account_status === "pending_verification",
-    ).length;
     const inactiveCount = users.filter(
       (user) => user.account_status === "inactive",
     ).length;
@@ -523,7 +515,6 @@ export default function AdminAccountPage() {
     return {
       total: users.length,
       activeCount,
-      pendingCount,
       inactiveCount,
       adminCount,
       csCount,
@@ -628,7 +619,7 @@ export default function AdminAccountPage() {
         <SummaryCard
           title="Akun Aktif"
           value={summary.activeCount}
-          caption={`${summary.pendingCount} menunggu verifikasi • ${summary.inactiveCount} nonaktif`}
+          caption={`${summary.inactiveCount} nonaktif`}
           tone="success"
         />
         <SummaryCard
@@ -658,7 +649,7 @@ export default function AdminAccountPage() {
         <SummaryCard
           title="Penyewa"
           value={summary.tenantCount}
-          caption="Akun tenant"
+          caption="Tampil juga di modul Penyewa"
           tone="warning"
         />
         <SummaryCard
@@ -961,6 +952,11 @@ export default function AdminAccountPage() {
                   <option value="housekeeper">Petugas Kebersihan</option>
                   <option value="technician">Teknisi</option>
                 </select>
+                {form.role === "tenant" ? (
+                  <p className="mt-2 text-xs leading-5 text-amber-700">
+                    Akun dengan peran Penyewa otomatis masuk ke modul Penyewa.
+                  </p>
+                ) : null}
               </div>
 
               {formIsOperationalRole ? (
@@ -1043,18 +1039,12 @@ export default function AdminAccountPage() {
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      accountStatus: event.target.value as
-                        | "active"
-                        | "inactive"
-                        | "pending_verification",
+                      accountStatus: event.target.value as "active" | "inactive",
                     }))
                   }
                   className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                 >
                   <option value="active">Aktif</option>
-                  <option value="pending_verification">
-                    Menunggu Verifikasi
-                  </option>
                   <option value="inactive">Nonaktif</option>
                 </select>
               </div>
@@ -1245,7 +1235,7 @@ function RoleBadge({ role }: { role: UserRole }) {
 function StatusBadge({
   status,
 }: {
-  status: "active" | "inactive" | "pending_verification";
+  status: "active" | "inactive";
 }) {
   return (
     <span

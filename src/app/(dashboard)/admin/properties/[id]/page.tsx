@@ -36,9 +36,9 @@ import {
   getAllAdminPropertyMaintenance,
   getAllAdminPropertyTenants,
   getAllAdminPropertyUnits,
+  getAllAdminTenants,
   getAdminOwners,
   getAdminPropertyDetail,
-  getAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
   type AdminPropertyDetailPayload,
@@ -431,7 +431,7 @@ export default function DetailPropertiPage() {
           getAllAdminPropertyUnits(propertyId),
           getAllAdminPropertyMaintenance(propertyId),
           getAdminOwners({ page: 1, per_page: 100 }),
-          getAdminTenants({ page: 1, per_page: 100 }),
+          getAllAdminTenants(),
         ]);
 
         if (!active) {

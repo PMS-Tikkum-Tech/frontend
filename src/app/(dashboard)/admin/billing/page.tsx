@@ -18,12 +18,12 @@ import {
   approveAdminManualRentalBooking,
   createAdminFinancialTransaction,
   createAdminPayment,
+  getAllAdminTenants,
+  getAllAdminUsers,
   getAdminManualRentalBookings,
   getAdminPayments,
   getAdminProperties,
   getAdminPropertyUnits,
-  getAdminTenants,
-  getAdminUsers,
   getApiErrorMessage,
   updateAdminPayment,
   type AdminPayment,
@@ -572,14 +572,8 @@ export default function AdminBillingPage() {
             page: 1,
             per_page: 100,
           }),
-          getAdminTenants({
-            page: 1,
-            per_page: 100,
-          }),
-          getAdminUsers({
-            page: 1,
-            per_page: 100,
-          }),
+          getAllAdminTenants(),
+          getAllAdminUsers(),
         ]);
 
         if (!active) {

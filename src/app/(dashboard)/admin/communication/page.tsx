@@ -16,9 +16,9 @@ import {
 import {
   createAdminCommunication,
   deleteAdminCommunication,
+  getAllAdminTenants,
   getAdminCommunications,
   getAdminProperties,
-  getAdminTenants,
   getApiErrorMessage,
   updateAdminCommunication,
   type AdminCommunication,
@@ -373,10 +373,7 @@ export default function AdminCommunicationPage() {
               page: 1,
               per_page: 100,
             }),
-            getAdminTenants({
-              page: 1,
-              per_page: 100,
-            }),
+            getAllAdminTenants(),
           ]);
 
         if (!active) {

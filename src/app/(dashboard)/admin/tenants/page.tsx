@@ -26,7 +26,7 @@ import {
 import {
   createAdminUser,
   deleteAdminUser,
-  getAdminTenants,
+  getAllAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
   updateAdminUser,
@@ -66,7 +66,7 @@ type TenantFormState = {
   fullName: string;
   email: string;
   phoneNumber: string;
-  accountStatus: "active" | "inactive" | "pending_verification";
+  accountStatus: "active" | "inactive";
   password: string;
   nik: string;
   emergencyContactName: string;
@@ -86,7 +86,6 @@ const PAGE_SIZE = 10;
 const statusLabelMap: Record<string, string> = {
   active: "Aktif",
   inactive: "Nonaktif",
-  pending_verification: "Menunggu Verifikasi",
 };
 
 const getInitialTenantForm = (): TenantFormState => ({
@@ -213,10 +212,7 @@ export default function AdminTenantsPage() {
       setError(null);
 
       try {
-        const response = await getAdminTenants({
-          page: 1,
-          per_page: 100,
-        });
+        const response = await getAllAdminTenants();
 
         if (!active) {
           return;
@@ -294,9 +290,6 @@ export default function AdminTenantsPage() {
     const activeCount = tenants.filter(
       (tenant) => tenant.account_status === "active"
     ).length;
-    const pendingCount = tenants.filter(
-      (tenant) => tenant.account_status === "pending_verification"
-    ).length;
     const inactiveCount = tenants.filter(
       (tenant) => tenant.account_status === "inactive"
     ).length;
@@ -304,7 +297,6 @@ export default function AdminTenantsPage() {
     return {
       total: tenants.length,
       active: activeCount,
-      pending: pendingCount,
       inactive: inactiveCount,
     };
   }, [tenants]);
@@ -490,7 +482,7 @@ export default function AdminTenantsPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <SummaryCard
           icon={<Users size={18} />}
           label="Total Penyewa"
@@ -501,12 +493,6 @@ export default function AdminTenantsPage() {
           label="Akun Aktif"
           value={String(stats.active)}
           tone="success"
-        />
-        <SummaryCard
-          icon={<UserCheck size={18} />}
-          label="Menunggu Verifikasi"
-          value={String(stats.pending)}
-          tone="warning"
         />
         <SummaryCard
           icon={<UserX size={18} />}
@@ -853,16 +839,12 @@ export default function AdminTenantsPage() {
                     onChange={(event) =>
                       setForm((prev) => ({
                         ...prev,
-                        accountStatus: event.target.value as
-                          | "active"
-                          | "inactive"
-                          | "pending_verification",
+                        accountStatus: event.target.value as "active" | "inactive",
                       }))
                     }
                     className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                   >
                     <option value="active">Aktif</option>
-                    <option value="pending_verification">Menunggu Verifikasi</option>
                     <option value="inactive">Nonaktif</option>
                   </select>
                 </div>
@@ -1072,14 +1054,12 @@ function SummaryCard({
 function StatusBadge({
   status,
 }: {
-  status: "active" | "inactive" | "pending_verification";
+  status: "active" | "inactive";
 }) {
   const styles =
     status === "active"
       ? "border border-green-200 bg-green-50 text-green-700"
-      : status === "pending_verification"
-        ? "border border-amber-200 bg-amber-50 text-amber-700"
-        : "border border-red-200 bg-red-50 text-red-600";
+      : "border border-red-200 bg-red-50 text-red-600";
 
   const label = statusLabelMap[status] || status;
 

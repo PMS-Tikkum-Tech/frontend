@@ -313,7 +313,7 @@ export interface AdminUser {
     | "tenant"
     | "housekeeper"
     | "technician";
-  account_status: "active" | "inactive" | "pending_verification";
+  account_status: "active" | "inactive";
   occupation?: string | null;
   profile_picture_url?: string | null;
   bank_name?: string | null;
@@ -341,7 +341,7 @@ export interface AdminUserCreatePayload {
     | "tenant"
     | "housekeeper"
     | "technician";
-  account_status?: "active" | "inactive" | "pending_verification";
+  account_status?: "active" | "inactive";
 }
 
 export interface AdminUserUpdatePayload {
@@ -363,7 +363,7 @@ export interface AdminUserUpdatePayload {
     | "tenant"
     | "housekeeper"
     | "technician";
-  account_status?: "active" | "inactive" | "pending_verification";
+  account_status?: "active" | "inactive";
 }
 
 export interface AdminMaintenanceRequest {
@@ -1645,11 +1645,17 @@ export const getAllAdminPropertyMaintenance = (
 export const getAdminTenants = (params?: QueryParams) =>
   getList<AdminUser>("/api/v1/users/tenant", params);
 
+export const getAllAdminTenants = (params?: QueryParams) =>
+  getAllList<AdminUser>("/api/v1/users/tenant", params);
+
 export const getAdminOwners = (params?: QueryParams) =>
   getList<AdminUser>("/api/v1/users/owner", params);
 
 export const getAdminUsers = (params?: QueryParams) =>
   getList<AdminUser>("/api/v1/users", params);
+
+export const getAllAdminUsers = (params?: QueryParams) =>
+  getAllList<AdminUser>("/api/v1/users", params);
 
 export const getAdminUser = (id: number | string) =>
   getItem<AdminUser>(`/api/v1/users/${id}`);

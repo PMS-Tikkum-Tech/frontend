@@ -29,7 +29,7 @@ export type BackendUser = {
   domicile_address?: string | null;
   occupation?: string | null;
   institution_name?: string | null;
-  account_status?: "active" | "inactive" | "pending_verification";
+  account_status?: "active" | "inactive";
   tenant_status?: "unverified" | "verified" | "basic_completed" | "active" | null;
   verification_status?: "UNVERIFIED" | "VERIFIED" | string | null;
   basic_profile_completed?: boolean;

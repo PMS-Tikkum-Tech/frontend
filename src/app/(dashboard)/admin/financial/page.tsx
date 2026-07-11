@@ -41,7 +41,7 @@ import {
   getAdminCashflowEntries,
   getAllAdminProperties,
   getAllAdminPropertyUnits,
-  getAdminTenants,
+  getAllAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
   updateAdminFinancialTransaction,
@@ -506,10 +506,7 @@ export default function AdminFinancialPage() {
             page: 1,
             per_page: 100,
           }),
-          getAdminTenants({
-            page: 1,
-            per_page: 100,
-          }).catch(() => ({ data: [] as AdminUser[] })),
+          getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
         ]);
 
         if (!active) {
