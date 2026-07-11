@@ -248,18 +248,21 @@ export default function AdminPropertiesPage() {
           title="Total Properti"
           value={isLoading ? "..." : summary.totalProperty}
           icon={<Building2 size={20} />}
+          tone="blue"
         />
 
         <StatCard
           title="Unit Terisi"
           value={isLoading ? "..." : summary.occupiedUnit}
           icon={<Home size={20} />}
+          tone="emerald"
         />
 
         <StatCard
           title="Unit Kosong"
           value={isLoading ? "..." : summary.vacantUnit}
           icon={<DoorOpen size={20} />}
+          tone="amber"
         />
 
         <StatCard
@@ -270,6 +273,8 @@ export default function AdminPropertiesPage() {
               : `Rp ${summary.totalRevenue.toLocaleString("id-ID")}`
           }
           icon={<Wallet size={20} />}
+          tone="violet"
+          valueSize="compact"
         />
       </div>
 

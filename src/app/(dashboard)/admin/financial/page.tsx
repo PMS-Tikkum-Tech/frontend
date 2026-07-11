@@ -39,9 +39,8 @@ import {
   getAdminFinancialDashboard,
   getAdminFinancialTransactions,
   getAdminCashflowEntries,
+  getAllAdminProperties,
   getAllAdminPropertyUnits,
-  getAdminProperties,
-  getAdminPropertyUnits,
   getAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
@@ -54,6 +53,7 @@ import {
   type AdminUser,
 } from "@/lib/dashboard/admin.api";
 import { hasFilterOption, uniqueFilterOptions } from "@/lib/filter-options";
+import { parseUnitIdentity } from "@/lib/dashboard/property-structure";
 
 const COLORS = [
   "#1E2746",
@@ -130,6 +130,42 @@ const normalizeOptional = (value: string) => {
 
 const getAccountDisplayName = (user: AdminUser) =>
   user.full_name?.trim() || user.email || `Akun #${user.id}`;
+
+const getFinancialUnitLabel = (unit: AdminPropertyUnitRow) => {
+  const buildingName = unit.building_name || unit.block_name || "";
+  const parsedIdentity = parseUnitIdentity({
+    unitName: unit.unit_number || unit.unit_name,
+    buildingName,
+  });
+  const displayUnitName = parsedIdentity.unitName || unit.unit_name;
+
+  if (!buildingName.trim()) {
+    return displayUnitName;
+  }
+
+  return `${parsedIdentity.buildingName} / ${displayUnitName}`;
+};
+
+const getFinancialUnitSearchText = (unit: AdminPropertyUnitRow) => {
+  const label = getFinancialUnitLabel(unit);
+  const compactLabel = label.replace(/[\s/\\|•·:_-]+/g, "");
+
+  return [
+    label,
+    compactLabel,
+    unit.unit_name,
+    unit.unit_number,
+    unit.building_name,
+    unit.block_name,
+    unit.owner_name,
+    unit.building_owner_name,
+    unit.block_owner_name,
+    unit.tenant_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+};
 
 type ResolvedFinancialOwner = {
   id: number;
@@ -226,22 +262,8 @@ const loadAllOwnerCashflowsForSync = async () => {
 };
 
 const loadAllPropertiesForSync = async () => {
-  const rows: AdminPropertyListItem[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  while (page <= totalPages) {
-    const response = await getAdminProperties({
-      page,
-      per_page: 100,
-    });
-
-    rows.push(...response.data);
-    totalPages = Number(response.meta?.total_pages || 1);
-    page += 1;
-  }
-
-  return rows;
+  const response = await getAllAdminProperties({ per_page: 100 });
+  return response.data;
 };
 
 const loadUnitMapForSync = async (propertyIds: number[]) => {
@@ -448,6 +470,7 @@ export default function AdminFinancialPage() {
   >(null);
   const [form, setForm] = useState<TransactionFormState>(getInitialForm());
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+  const [unitOptionSearch, setUnitOptionSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -479,7 +502,7 @@ export default function AdminFinancialPage() {
             page: 1,
             per_page: 100,
           }),
-          getAdminProperties({
+          getAllAdminProperties({
             page: 1,
             per_page: 100,
           }),
@@ -628,6 +651,18 @@ export default function AdminFinancialPage() {
     [units, form.unitId],
   );
 
+  const filteredUnitOptions = useMemo(() => {
+    const normalizedSearch = unitOptionSearch.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return units;
+    }
+
+    return units.filter((unit) =>
+      getFinancialUnitSearchText(unit).includes(normalizedSearch),
+    );
+  }, [units, unitOptionSearch]);
+
   const resolvedOwner = resolveFinancialOwner(selectedUnit, selectedProperty);
 
   const viewTransactionDetails = viewTransaction
@@ -668,7 +703,7 @@ export default function AdminFinancialPage() {
 
     setIsLoadingUnits(true);
     try {
-      const response = await getAdminPropertyUnits(propertyId, {
+      const response = await getAllAdminPropertyUnits(propertyId, {
         page: 1,
         per_page: 100,
       });
@@ -721,6 +756,7 @@ export default function AdminFinancialPage() {
     setFormMode("create");
     setEditingTransactionId(null);
     setFormError(null);
+    setUnitOptionSearch("");
     const firstPropertyId = properties[0] ? String(properties[0].id) : "";
     setForm(getInitialForm(firstPropertyId));
     setUnits([]);
@@ -740,6 +776,7 @@ export default function AdminFinancialPage() {
       : "";
     const unitId = transaction.unit.id ? String(transaction.unit.id) : "";
     const transactionDetails = getTransactionDetails(transaction);
+    setUnitOptionSearch("");
     setForm({
       propertyId,
       unitId,
@@ -1694,6 +1731,7 @@ export default function AdminFinancialPage() {
                       checkInDate: "",
                       checkOutDate: "",
                     }));
+                    setUnitOptionSearch("");
                     void loadUnitsByProperty(nextPropertyId);
                   }}
                   className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
@@ -1711,6 +1749,15 @@ export default function AdminFinancialPage() {
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Unit (Opsional)
                 </label>
+                <div className="mb-2">
+                  <input
+                    value={unitOptionSearch}
+                    onChange={(event) => setUnitOptionSearch(event.target.value)}
+                    disabled={!form.propertyId || isLoadingUnits}
+                    className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                    placeholder="Cari unit, contoh: Aa1"
+                  />
+                </div>
                 <select
                   value={form.unitId}
                   onChange={(event) => handleUnitChange(event.target.value)}
@@ -1720,14 +1767,26 @@ export default function AdminFinancialPage() {
                   <option value="">
                     {isLoadingUnits ? "Memuat unit..." : "Tanpa unit spesifik"}
                   </option>
-                  {units.map((unit) => (
+                  {form.unitId &&
+                  !filteredUnitOptions.some(
+                    (unit) => String(unit.unit_id) === form.unitId,
+                  ) ? (
+                    <option value={form.unitId}>
+                      {selectedUnit
+                        ? getFinancialUnitLabel(selectedUnit)
+                        : `Unit #${form.unitId}`}
+                    </option>
+                  ) : null}
+                  {filteredUnitOptions.map((unit) => (
                     <option key={unit.unit_id} value={unit.unit_id}>
-                      {unit.unit_name}
+                      {getFinancialUnitLabel(unit)}
                     </option>
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
-                  Pemilik: {resolvedOwner?.name || "-"}
+                  {unitOptionSearch && filteredUnitOptions.length === 0
+                    ? "Unit tidak ditemukan dalam properti ini."
+                    : `Pemilik: ${resolvedOwner?.name || "-"}`}
                 </p>
               </div>
 

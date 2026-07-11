@@ -207,6 +207,7 @@ export interface AdminPropertyTenantUpdatePayload {
 export interface AdminPropertyUnitRow {
   unit_id: number;
   unit_name: string;
+  unit_number?: string | null;
   unit_type: string;
   people_allowed: number;
   tenant_name?: string | null;

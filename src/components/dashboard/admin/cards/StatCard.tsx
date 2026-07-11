@@ -6,23 +6,47 @@ interface Props {
   title: string;
   value: string | number;
   icon: ReactNode;
+  tone?: "slate" | "blue" | "emerald" | "amber" | "violet";
+  valueSize?: "default" | "compact";
 }
 
-export default function StatCard({ title, value, icon }: Props) {
+const toneClassMap: Record<NonNullable<Props["tone"]>, string> = {
+  slate: "border-slate-200 bg-slate-50 text-slate-700 ring-slate-100",
+  blue: "border-blue-200 bg-blue-50 text-blue-700 ring-blue-100",
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 ring-emerald-100",
+  amber: "border-amber-200 bg-amber-50 text-amber-700 ring-amber-100",
+  violet: "border-violet-200 bg-violet-50 text-violet-700 ring-violet-100",
+};
+
+export default function StatCard({
+  title,
+  value,
+  icon,
+  tone = "slate",
+  valueSize = "default",
+}: Props) {
+  const valueClassName =
+    valueSize === "compact"
+      ? "whitespace-nowrap text-lg leading-tight"
+      : "text-2xl leading-tight";
+
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5">
-      <div className="flex items-start justify-between gap-3 sm:items-center">
-        <div>
-          <p className="text-xs font-medium text-slate-500 sm:text-sm">{title}</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-800 sm:text-2xl">
-            {value}
-          </h3>
+    <div className="min-h-[118px] rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-5">
+      <div className="flex h-full flex-col justify-between gap-5">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm font-medium leading-5 text-slate-500">{title}</p>
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ring-4 ${toneClassMap[tone]}`}
+          >
+            {icon}
+          </div>
         </div>
 
-        {/* Icon */}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E2746]/10 text-[#1E2746] sm:h-11 sm:w-11">
-          {icon}
-        </div>
+        <p
+          className={`${valueClassName} break-words font-semibold tracking-normal text-slate-900 [overflow-wrap:anywhere] [font-variant-numeric:tabular-nums]`}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );

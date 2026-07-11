@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -337,6 +337,24 @@ const getBillingRemarks = (description?: string | null) => {
   const details = parseBillingDescription(description);
 
   return details.remarks || description?.trim() || "-";
+};
+
+const formatCurrency = (value: number | string) =>
+  `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
+
+const getInvoiceDescription = (payment: AdminPayment) => {
+  const details = parseBillingDescription(payment.description);
+  const duration = details.rentalDuration || "Periode sewa";
+  const checkIn = details.checkInDate ? formatDate(details.checkInDate) : null;
+  const checkOut = details.checkOutDate ? formatDate(details.checkOutDate) : null;
+
+  return [
+    "Tagihan sewa kamar",
+    duration,
+    checkIn && checkOut ? `${checkIn} - ${checkOut}` : null,
+  ]
+    .filter(Boolean)
+    .join(" / ");
 };
 
 const isPaymentAutoCancelledByDueDate = (
@@ -1576,153 +1594,230 @@ export default function AdminBillingPage() {
 
       {viewPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-800">
-                Detail Tagihan
-              </h2>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Faktur Pembayaran
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                  #{viewPayment.invoice_id}
+                </h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setViewPayment(null)}
                 className="rounded-lg p-2 hover:bg-slate-100"
+                title="Tutup"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 px-6 py-5 text-sm">
-              <div className="mb-1 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Faktur #{viewPayment.invoice_id}
-                </p>
-                <p className="mt-1 font-semibold text-slate-800">
-                  {viewPayment.property.name || "-"} •{" "}
-                  {viewPayment.unit.name || "-"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Nama penghuni: {viewPayment.tenant.full_name || "-"}
-                </p>
-              </div>
-              <DetailRow label="Faktur" value={`#${viewPayment.invoice_id}`} />
-              <DetailRow
-                label="Unit"
-                value={viewPayment.property.name || "-"}
-              />
-              <DetailRow
-                label="Nomor Kamar"
-                value={viewPayment.unit.name || "-"}
-              />
-              <DetailRow
-                label="Nama Penyewa"
-                value={viewPayment.tenant.full_name || "-"}
-              />
-              <DetailRow
-                label="Status"
-                value={
-                  paymentStatusLabel[getPaymentDisplayStatus(viewPayment)] ||
-                  getPaymentDisplayStatus(viewPayment)
-                }
-              />
-              {isPaymentAutoCancelledByDueDate(viewPayment) ? (
-                <DetailRow
-                  label="Catatan Pembatalan"
-                  value={`Pembayaran dibatalkan otomatis karena melewati batas pembayaran${
-                    viewPayment.due_date
-                      ? ` (${formatDueDate(viewPayment.due_date)}).`
-                      : "."
-                  }`}
-                />
-              ) : null}
-              <DetailRow
-                label="Status Pemesanan Penyewa"
-                value={viewPayment.booking_status_label || "-"}
-              />
-              <DetailRow
-                label="Total Harga"
-                value={`Rp ${viewPayment.amount.toLocaleString("id-ID")}`}
-              />
-              <DetailRow
-                label="Tanggal"
-                value={formatDueDate(viewPayment.due_date)}
-              />
-              {getBillingDescriptionRows(viewPayment.description).map((row) => (
-                <DetailRow
-                  key={row.label}
-                  label={row.label}
-                  value={row.value}
-                />
-              ))}
-              {getPaymentDisplayStatus(viewPayment) === "waiting" ? (
-                <DetailRow
-                  label="Sisa Waktu Pembayaran"
-                  value={<DeadlineCountdown value={viewPayment.due_date} />}
-                />
-              ) : null}
-              <DetailRow
-                label="Tanggal Bayar"
-                value={formatDateTime(viewPayment.paid_at)}
-              />
-              <DetailRow
-                label="Pembayaran"
-                value={viewPayment.payment_method || "-"}
-              />
-              <DetailRow
-                label="Nama Pengirim Transfer"
-                value={viewPayment.transfer_sender_name || "-"}
-              />
-              <DetailRow
-                label="Bank/Channel Pengirim"
-                value={viewPayment.transfer_bank_name || "-"}
-              />
-              <DetailRow
-                label="Waktu Pengiriman Bukti"
-                value={formatDateTime(viewPayment.payment_submitted_at)}
-              />
-              <DetailRow
-                label="Waktu Peninjauan Administrator"
-                value={formatDateTime(viewPayment.reviewed_at)}
-              />
-              <DetailRow
-                label="Bukti Transfer"
-                value={
-                  viewPayment.transfer_proof_url ? (
-                    <span className="inline-flex flex-wrap items-center gap-3">
-                      <a
-                        href={
-                          resolveAssetUrl(viewPayment.transfer_proof_url) || "#"
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium text-blue-600 underline-offset-2 hover:underline"
-                      >
-                        Lihat bukti transfer
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleDownloadProof(viewPayment);
-                        }}
-                        disabled={
-                          isDownloadingProofKey ===
+            <div className="space-y-6 px-6 py-5 text-sm">
+              <section className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1.4fr_1fr]">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Ditagihkan oleh
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">
+                    Kyra Stay
+                  </p>
+                  <p className="mt-1 max-w-md text-sm leading-6 text-slate-600">
+                    Pengelolaan hunian dan pembayaran sewa properti.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 rounded-lg bg-white p-4 shadow-sm">
+                  <InvoiceMetaRow label="Status">
+                    <StatusBadge status={getPaymentDisplayStatus(viewPayment)} />
+                  </InvoiceMetaRow>
+                  <InvoiceMetaRow
+                    label="Tanggal Faktur"
+                    value={formatDate(viewPayment.created_at)}
+                  />
+                  <InvoiceMetaRow
+                    label="Batas Bayar"
+                    value={formatDueDate(viewPayment.due_date)}
+                  />
+                  <InvoiceMetaRow
+                    label="Tanggal Lunas"
+                    value={formatDateTime(viewPayment.paid_at)}
+                  />
+                </div>
+              </section>
+
+              <section className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Ditagihkan kepada
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-slate-900">
+                    {viewPayment.tenant.full_name || "-"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    ID Penyewa: {viewPayment.tenant.id}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Detail hunian
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-slate-900">
+                    {viewPayment.property.name || "-"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Nomor kamar: {viewPayment.unit.name || "-"}
+                  </p>
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Deskripsi</th>
+                      <th className="px-4 py-3 text-right">Jumlah</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-slate-100">
+                      <td className="px-4 py-4">
+                        <p className="font-medium text-slate-900">
+                          {getInvoiceDescription(viewPayment)}
+                        </p>
+                        <div className="mt-2 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
+                          {getBillingDescriptionRows(viewPayment.description).map(
+                            (row) => (
+                              <p key={row.label}>
+                                <span className="font-medium text-slate-600">
+                                  {row.label}:
+                                </span>{" "}
+                                {row.value}
+                              </p>
+                            ),
+                          )}
+                          {viewPayment.booking_status_label ? (
+                            <p>
+                              <span className="font-medium text-slate-600">
+                                Status pemesanan:
+                              </span>{" "}
+                              {viewPayment.booking_status_label}
+                            </p>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-right font-semibold text-slate-900">
+                        {formatCurrency(viewPayment.amount)}
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="border-t border-slate-200 bg-slate-50">
+                    <tr>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-700">
+                        Total
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-lg font-semibold text-slate-900">
+                        {formatCurrency(viewPayment.amount)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </section>
+
+              <section className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <p className="font-semibold text-slate-900">
+                    Informasi pembayaran
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <InvoiceMetaRow
+                      label="Metode"
+                      value={viewPayment.payment_method || "-"}
+                    />
+                    <InvoiceMetaRow
+                      label="Pengirim"
+                      value={viewPayment.transfer_sender_name || "-"}
+                    />
+                    <InvoiceMetaRow
+                      label="Bank/Channel"
+                      value={viewPayment.transfer_bank_name || "-"}
+                    />
+                    <InvoiceMetaRow
+                      label="Bukti dikirim"
+                      value={formatDateTime(viewPayment.payment_submitted_at)}
+                    />
+                    <InvoiceMetaRow
+                      label="Direview"
+                      value={formatDateTime(viewPayment.reviewed_at)}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <p className="font-semibold text-slate-900">
+                    Dokumen & catatan
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {viewPayment.transfer_proof_url ? (
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href={
+                            resolveAssetUrl(viewPayment.transfer_proof_url) ||
+                            "#"
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-9 items-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        >
+                          Lihat bukti transfer
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleDownloadProof(viewPayment);
+                          }}
+                          disabled={
+                            isDownloadingProofKey ===
+                            getPaymentRowKey(viewPayment)
+                          }
+                          className="inline-flex h-9 items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <Download size={13} />
+                          {isDownloadingProofKey ===
                           getPaymentRowKey(viewPayment)
-                        }
-                        className="inline-flex items-center gap-1 font-medium text-emerald-700 underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-60"
-                      >
-                        <Download size={13} />
-                        {isDownloadingProofKey === getPaymentRowKey(viewPayment)
-                          ? "Mengunduh..."
-                          : "Unduh"}
-                      </button>
-                    </span>
-                  ) : (
-                    "-"
-                  )
-                }
-              />
-              <DetailRow
-                label="Keterangan"
-                value={getBillingRemarks(viewPayment.description)}
-              />
+                            ? "Mengunduh..."
+                            : "Unduh bukti"}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                        Bukti transfer belum tersedia.
+                      </p>
+                    )}
+                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-600">
+                      {getBillingRemarks(viewPayment.description)}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {getPaymentDisplayStatus(viewPayment) === "waiting" ? (
+                <section className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                  <span className="font-semibold">Sisa waktu pembayaran: </span>
+                  <DeadlineCountdown value={viewPayment.due_date} />
+                </section>
+              ) : null}
+
+              {isPaymentAutoCancelledByDueDate(viewPayment) ? (
+                <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
+                  Pembayaran dibatalkan otomatis karena melewati batas pembayaran
+                  {viewPayment.due_date
+                    ? ` (${formatDueDate(viewPayment.due_date)}).`
+                    : "."}
+                </section>
+              ) : null}
             </div>
 
             <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
@@ -2114,12 +2209,20 @@ function StatusBadge({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+function InvoiceMetaRow({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
-      <span className="font-medium text-slate-600">{label}</span>
-      <span className="max-w-[62%] break-words text-right text-slate-800">
-        {value}
+    <div className="flex items-start justify-between gap-4 text-sm">
+      <span className="text-slate-500">{label}</span>
+      <span className="max-w-[60%] break-words text-right font-medium text-slate-800">
+        {children || value || "-"}
       </span>
     </div>
   );
