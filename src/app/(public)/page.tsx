@@ -69,8 +69,8 @@ export default function PublicHomePage() {
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[42rem] bg-[radial-gradient(circle_at_18%_16%,rgba(52,35,184,0.08),transparent_32%),radial-gradient(circle_at_82%_20%,rgba(87,199,255,0.1),transparent_28%)]" />
 
         <div className="mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 lg:hidden">
-          <div className="mx-auto max-w-[20.5rem] overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)]">
-            <div className="relative aspect-[4/5]">
+          <div className="mx-auto w-full max-w-md overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)]">
+            <div className="relative aspect-[16/10]">
               <HomeHeroCarousel imageClassName="object-center" />
               <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-white/5" />
             </div>
@@ -216,7 +216,7 @@ export default function PublicHomePage() {
               </div>
             </div>
 
-            <div className="absolute -left-3 top-8 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-left-8 sm:top-16 sm:block sm:p-4">
+            <div className="absolute -left-3 top-8 z-50 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-left-8 sm:top-16 sm:block sm:p-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#ebe9ff] text-[#3423b8]">
                   <Building2 size={19} aria-hidden="true" />
@@ -229,7 +229,7 @@ export default function PublicHomePage() {
                 </div>
               </div>
             </div>
-            <div className="absolute -bottom-5 right-3 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-bottom-7 sm:right-8 sm:block sm:p-4">
+            <div className="absolute -bottom-5 right-3 z-50 hidden rounded-2xl border border-white/80 bg-white/90 p-3.5 shadow-xl backdrop-blur sm:-bottom-7 sm:right-8 sm:block sm:p-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
                   <Wifi size={19} aria-hidden="true" />
