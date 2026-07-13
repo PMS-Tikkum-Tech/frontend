@@ -130,9 +130,9 @@ export default function PublicHomePage() {
                     <Building2 size={19} aria-hidden="true" />
                   </span>
                   <div>
-                    <p className="text-xs text-slate-500">Hunian pilihan</p>
+                    <p className="text-xs text-slate-500">Kamar siap huni</p>
                     <p className="text-sm font-semibold text-slate-900">
-                      Siap kamu jelajahi
+                      Rapi dan nyaman
                     </p>
                   </div>
                 </div>
@@ -144,9 +144,9 @@ export default function PublicHomePage() {
                     <Wifi size={19} aria-hidden="true" />
                   </span>
                   <div>
-                    <p className="text-xs text-slate-500">Detail lengkap</p>
+                    <p className="text-xs text-slate-500">Fasilitas lengkap</p>
                     <p className="text-sm font-semibold text-slate-900">
-                      Fasilitas mudah dicek
+                      Kebutuhan harian tersedia
                     </p>
                   </div>
                 </div>
@@ -222,9 +222,9 @@ export default function PublicHomePage() {
                   <Building2 size={19} aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-xs text-slate-500">Hunian pilihan</p>
+                  <p className="text-xs text-slate-500">Kamar siap huni</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    Siap kamu jelajahi
+                    Rapi dan nyaman
                   </p>
                 </div>
               </div>
@@ -235,9 +235,9 @@ export default function PublicHomePage() {
                   <Wifi size={19} aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-xs text-slate-500">Detail lengkap</p>
+                  <p className="text-xs text-slate-500">Fasilitas lengkap</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    Fasilitas mudah dicek
+                    Kebutuhan harian tersedia
                   </p>
                 </div>
               </div>
