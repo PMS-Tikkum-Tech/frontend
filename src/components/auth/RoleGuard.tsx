@@ -38,6 +38,14 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     }
   }, [allowedRoles, isAuthenticated, isLoading, pathname, router, user]);
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-sm text-slate-600">Memeriksa sesi login...</p>
+      </div>
+    );
+  }
+
   if (!isLoading && (!isAuthenticated || !user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">

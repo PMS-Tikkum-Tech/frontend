@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { type AuthResult, login, loginWithGoogle, resolveRoleRoute, syncFirebaseUser } from "@/lib/auth";
 import { sanitizeEmailInput } from "@/lib/form-validation";
@@ -125,7 +125,6 @@ export default function LoginForm() {
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { setSession } = useAuth();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
@@ -139,10 +138,9 @@ export default function LoginForm() {
         expiresAt: result.expiresAt,
         refreshTokenExpiresAt: result.refreshTokenExpiresAt,
       });
-      router.push(resolveRoleRoute(result.user.role, searchParams.get("next")));
-      router.refresh();
+      window.location.replace(resolveRoleRoute(result.user.role, searchParams.get("next")));
     },
-    [router, searchParams, setSession]
+    [searchParams, setSession]
   );
 
   const handleLogin = async () => {
