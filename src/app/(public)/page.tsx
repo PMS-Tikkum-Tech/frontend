@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import HomeHeroCarousel from "@/components/public/HomeHeroCarousel";
 import {
   ArrowRight,
-  ArrowUpRight,
   Building2,
   Check,
   Clock3,
@@ -71,19 +71,8 @@ export default function PublicHomePage() {
         <div className="mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 lg:hidden">
           <div className="mx-auto max-w-[20.5rem] overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)]">
             <div className="relative aspect-[4/5]">
-              <picture>
-                <source media="(max-width: 639px)" srcSet="/bg-1200-mobile-center.jpg" />
-                <source media="(min-width: 640px)" srcSet="/bg.jpg" />
-                <img
-                  src="/bg-1200-mobile-center.jpg"
-                  alt="Hunian KIKOST dengan desain modern"
-                  loading="eager"
-                  fetchPriority="high"
-                  decoding="async"
-                  className="block h-full w-full object-cover object-center"
-                />
-              </picture>
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-white/5" />
+              <HomeHeroCarousel imageClassName="object-center" />
+              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-white/5" />
             </div>
           </div>
 
@@ -222,42 +211,8 @@ export default function PublicHomePage() {
 
             <div className="relative mx-auto overflow-hidden rounded-[2rem] bg-slate-900 shadow-[0_32px_80px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem]">
               <div className="relative aspect-[4/5] min-h-[30rem] sm:aspect-[5/4] lg:aspect-[4/3] lg:min-h-[35rem]">
-                <picture>
-                  <source
-                    media="(max-width: 639px)"
-                    srcSet="/bg-1200-mobile-center.jpg"
-                  />
-                  <source media="(min-width: 640px)" srcSet="/bg.jpg" />
-                  <img
-                    src="/bg.jpg"
-                    alt="Hunian KIKOST dengan desain modern"
-                    loading="eager"
-                    fetchPriority="high"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover object-center"
-                  />
-                </picture>
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-900/5 to-white/5" />
-
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:text-left">
-                    <div className="max-w-sm text-white">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d8ff3e]">
-                        Pilihan hunian
-                      </p>
-                      <p className="mt-2 text-xl font-semibold leading-snug sm:text-2xl">
-                        Nyaman untuk tinggal, dekat untuk beraktivitas.
-                      </p>
-                    </div>
-                    <Link
-                      href="/booking/v2"
-                      aria-label="Lihat pilihan kost"
-                      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-slate-900 transition hover:scale-105 hover:bg-blue-50"
-                    >
-                      <ArrowUpRight size={20} aria-hidden="true" />
-                    </Link>
-                  </div>
-                </div>
+                <HomeHeroCarousel imageClassName="object-center" />
+                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/65 via-slate-900/5 to-white/5" />
               </div>
             </div>
 
