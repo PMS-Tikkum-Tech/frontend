@@ -35,7 +35,7 @@ export default function HomeHeroCarousel({
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % slides.length);
-    }, 4500);
+    }, 2000);
 
     return () => window.clearInterval(timer);
   }, [isPaused]);
