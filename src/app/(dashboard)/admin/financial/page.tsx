@@ -83,10 +83,16 @@ const COLORS = [
 
 const PAGE_SIZE = 10;
 const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v1";
+const FINANCIAL_LEASE_DATE_RANGE_STORAGE_KEY =
+  "admin-financial-lease-date-range-v1";
 
 type FinancialDateRange = {
   startDate: string;
   endDate: string;
+};
+
+type FinancialLeaseDateRange = FinancialDateRange & {
+  isActive: boolean;
 };
 
 type QuickDateRangeKey = "today" | "thisWeek" | "thisMonth" | "lastMonth";
@@ -206,6 +212,45 @@ const getStoredFinancialDateRange = (): FinancialDateRange | null => {
   }
 };
 
+const getStoredFinancialLeaseDateRange = (): FinancialLeaseDateRange | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(
+      FINANCIAL_LEASE_DATE_RANGE_STORAGE_KEY,
+    );
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<FinancialLeaseDateRange>;
+    if (
+      typeof parsed.startDate !== "string" ||
+      typeof parsed.endDate !== "string"
+    ) {
+      return null;
+    }
+
+    const normalizedDateRange = normalizeFinancialDateRange(
+      parsed.startDate,
+      parsed.endDate,
+    );
+
+    if (!normalizedDateRange) {
+      return null;
+    }
+
+    return {
+      ...normalizedDateRange,
+      isActive: Boolean(parsed.isActive),
+    };
+  } catch {
+    return null;
+  }
+};
+
 const buildFinancialDateRangeParams = (
   startDate: string,
   endDate: string,
@@ -236,6 +281,36 @@ const buildCalendarDates = (month: Date) =>
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
   });
+
+const isLeasePeriodInRange = (
+  checkInDate: string,
+  checkOutDate: string,
+  filterStart: Date | null,
+  filterEnd: Date | null,
+) => {
+  if (!filterStart || !filterEnd) {
+    return true;
+  }
+
+  const leaseStart = parseFinancialDate(checkInDate);
+  const leaseEnd = parseFinancialDate(checkOutDate);
+
+  if (!leaseStart && !leaseEnd) {
+    return false;
+  }
+
+  const normalizedLeaseStart = leaseStart || leaseEnd;
+  const normalizedLeaseEnd = leaseEnd || leaseStart;
+
+  if (!normalizedLeaseStart || !normalizedLeaseEnd) {
+    return false;
+  }
+
+  return (
+    !isAfter(normalizedLeaseStart, filterEnd) &&
+    !isBefore(normalizedLeaseEnd, filterStart)
+  );
+};
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -579,14 +654,33 @@ export default function AdminFinancialPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
+  const [receiptFilter, setReceiptFilter] = useState<
+    "" | "with_receipt" | "without_receipt"
+  >("");
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
   const [startDate, setStartDate] = useState(defaultDateRange.startDate);
   const [endDate, setEndDate] = useState(defaultDateRange.endDate);
   const [tempStartDate, setTempStartDate] = useState(
     defaultDateRange.startDate,
   );
   const [tempEndDate, setTempEndDate] = useState(defaultDateRange.endDate);
+  const [leaseStartDate, setLeaseStartDate] = useState(
+    defaultDateRange.startDate,
+  );
+  const [leaseEndDate, setLeaseEndDate] = useState(defaultDateRange.endDate);
+  const [tempLeaseStartDate, setTempLeaseStartDate] = useState(
+    defaultDateRange.startDate,
+  );
+  const [tempLeaseEndDate, setTempLeaseEndDate] = useState(
+    defaultDateRange.endDate,
+  );
+  const [isLeasePeriodFilterActive, setIsLeasePeriodFilterActive] =
+    useState(false);
   const [isDateRangeReady, setIsDateRangeReady] = useState(false);
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const [sortBy, setSortBy] = useState<
+    "newest" | "oldest" | "amount_desc" | "amount_asc"
+  >("newest");
   const [summary, setSummary] = useState<AdminFinancialSummary>(initialSummary);
   const [monthlyData, setMonthlyData] = useState<
     Array<{ month: string; revenue: number; expense: number }>
@@ -629,11 +723,19 @@ export default function AdminFinancialPage() {
   useEffect(() => {
     const storedDateRange = getStoredFinancialDateRange();
     const initialDateRange = storedDateRange || getCurrentMonthDateRange();
+    const storedLeaseDateRange = getStoredFinancialLeaseDateRange();
+    const initialLeaseDateRange =
+      storedLeaseDateRange || getCurrentMonthDateRange();
 
     setStartDate(initialDateRange.startDate);
     setEndDate(initialDateRange.endDate);
     setTempStartDate(initialDateRange.startDate);
     setTempEndDate(initialDateRange.endDate);
+    setLeaseStartDate(initialLeaseDateRange.startDate);
+    setLeaseEndDate(initialLeaseDateRange.endDate);
+    setTempLeaseStartDate(initialLeaseDateRange.startDate);
+    setTempLeaseEndDate(initialLeaseDateRange.endDate);
+    setIsLeasePeriodFilterActive(Boolean(storedLeaseDateRange?.isActive));
     setIsDateRangeReady(true);
   }, []);
 
@@ -651,6 +753,31 @@ export default function AdminFinancialPage() {
       // Date filters should continue to work even when storage is unavailable.
     }
   }, [endDate, isDateRangeReady, startDate]);
+
+  useEffect(() => {
+    if (!isDateRangeReady) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        FINANCIAL_LEASE_DATE_RANGE_STORAGE_KEY,
+        JSON.stringify({
+          startDate: leaseStartDate,
+          endDate: leaseEndDate,
+          isActive: isLeasePeriodFilterActive,
+        }),
+      );
+    } catch {
+      // Lease period filters should remain usable even when storage is unavailable.
+    }
+  }, [
+    endDate,
+    isDateRangeReady,
+    isLeasePeriodFilterActive,
+    leaseEndDate,
+    leaseStartDate,
+  ]);
 
   useEffect(() => {
     if (!isDateRangeReady) {
@@ -760,18 +887,32 @@ export default function AdminFinancialPage() {
   );
 
   const filteredTransactions = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    const minimumAmount = amountMin ? parseRupiahInputValue(amountMin) : null;
+    const maximumAmount = amountMax ? parseRupiahInputValue(amountMax) : null;
+
     const filtered = transactions.filter((transaction) => {
       const details = getTransactionDetails(transaction);
+      const transactionAmount = Number(transaction.amount || 0);
       const searchable =
-        `${transaction.property_label} ${transaction.description} ${
-          details.tenantName
-        } ${details.notes}`.toLowerCase();
+        `${transaction.property_label} ${transaction.property.name || ""} ${
+          transaction.unit.name || ""
+        } ${transaction.description} ${details.tenantName} ${details.notes} ${
+          transaction.created_by.full_name || ""
+        }`.toLowerCase();
+
       return (
-        searchable.includes(search.toLowerCase()) &&
+        searchable.includes(normalizedSearch) &&
         (category ? transaction.category === category : true) &&
         (propertyFilter
           ? String(transaction.property.id || "") === propertyFilter
-          : true)
+          : true) &&
+        (receiptFilter === "with_receipt" ? Boolean(transaction.receipt_url) : true) &&
+        (receiptFilter === "without_receipt"
+          ? !transaction.receipt_url
+          : true) &&
+        (minimumAmount !== null ? transactionAmount >= minimumAmount : true) &&
+        (maximumAmount !== null ? transactionAmount <= maximumAmount : true)
       );
     });
 
@@ -779,13 +920,50 @@ export default function AdminFinancialPage() {
       const dateA = new Date(a.transaction_date || a.created_at || 0).getTime();
       const dateB = new Date(b.transaction_date || b.created_at || 0).getTime();
 
+      if (sortBy === "amount_desc") {
+        return Number(b.amount || 0) - Number(a.amount || 0);
+      }
+
+      if (sortBy === "amount_asc") {
+        return Number(a.amount || 0) - Number(b.amount || 0);
+      }
+
       if (sortBy === "oldest") {
         return dateA - dateB;
       }
 
       return dateB - dateA;
     });
-  }, [transactions, search, category, propertyFilter, sortBy]);
+  }, [
+    transactions,
+    search,
+    category,
+    propertyFilter,
+    receiptFilter,
+    amountMin,
+    amountMax,
+    sortBy,
+  ]);
+
+  const filteredTransactionSummary = useMemo(() => {
+    return filteredTransactions.reduce(
+      (summary, transaction) => {
+        const amount = Number(transaction.amount || 0);
+
+        if (transaction.category === "income") {
+          summary.revenue += amount;
+        } else {
+          summary.expense += amount;
+        }
+
+        return summary;
+      },
+      { revenue: 0, expense: 0 },
+    );
+  }, [filteredTransactions]);
+
+  const filteredNetAmount =
+    filteredTransactionSummary.revenue - filteredTransactionSummary.expense;
 
   const totalPages = Math.max(
     1,
@@ -842,7 +1020,15 @@ export default function AdminFinancialPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, category, propertyFilter, sortBy]);
+  }, [
+    amountMax,
+    amountMin,
+    category,
+    propertyFilter,
+    receiptFilter,
+    search,
+    sortBy,
+  ]);
 
   useEffect(() => {
     if (!hasFilterOption(categoryFilterOptions, category)) {
@@ -904,6 +1090,9 @@ export default function AdminFinancialPage() {
     setSearch("");
     setCategory("");
     setPropertyFilter("");
+    setReceiptFilter("");
+    setAmountMin("");
+    setAmountMax("");
     setStartDate(currentMonthDateRange.startDate);
     setEndDate(currentMonthDateRange.endDate);
     setTempStartDate(currentMonthDateRange.startDate);
@@ -1352,21 +1541,21 @@ export default function AdminFinancialPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
-          <div className="relative col-span-2 w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-12">
+          <div className="relative col-span-2 xl:col-span-4">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
-              placeholder="Cari properti atau deskripsi transaksi..."
+              placeholder="Cari transaksi, unit, penyewa, atau catatan..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             />
           </div>
 
-          <div className="relative w-full md:min-w-[170px]">
+          <div className="relative col-span-1 xl:col-span-2">
             <Filter
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1376,7 +1565,7 @@ export default function AdminFinancialPage() {
               onChange={(event) => setCategory(event.target.value)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
             >
-              <option value="">Semua Kategori</option>
+              <option value="">Semua Arus Kas</option>
               {categoryFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -1388,7 +1577,7 @@ export default function AdminFinancialPage() {
           <select
             value={propertyFilter}
             onChange={(event) => setPropertyFilter(event.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
+            className="col-span-1 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
           >
             <option value="">Semua Properti</option>
             {propertyFilterOptions.map((option) => (
@@ -1408,33 +1597,107 @@ export default function AdminFinancialPage() {
             onCancel={handleCancel}
           />
 
+          <div className="col-span-2 grid grid-cols-2 gap-3 xl:col-span-4">
+            <label className="flex h-11 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
+              <span className="inline-flex items-center border-r border-slate-200 px-3 text-xs font-semibold text-slate-500">
+                Min
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountMin}
+                onChange={(event) =>
+                  setAmountMin(formatRupiahInputValue(event.target.value))
+                }
+                placeholder="Rp 0"
+                className="min-w-0 flex-1 bg-transparent px-3 text-sm focus:outline-none"
+              />
+            </label>
+            <label className="flex h-11 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
+              <span className="inline-flex items-center border-r border-slate-200 px-3 text-xs font-semibold text-slate-500">
+                Max
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountMax}
+                onChange={(event) =>
+                  setAmountMax(formatRupiahInputValue(event.target.value))
+                }
+                placeholder="Rp"
+                className="min-w-0 flex-1 bg-transparent px-3 text-sm focus:outline-none"
+              />
+            </label>
+          </div>
+
+          <select
+            value={receiptFilter}
+            onChange={(event) =>
+              setReceiptFilter(
+                event.target.value as "" | "with_receipt" | "without_receipt",
+              )
+            }
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
+          >
+            <option value="">Semua Bukti</option>
+            <option value="with_receipt">Ada Bukti</option>
+            <option value="without_receipt">Tanpa Bukti</option>
+          </select>
+
           <select
             value={sortBy}
             onChange={(event) =>
-              setSortBy(event.target.value as "newest" | "oldest")
+              setSortBy(
+                event.target.value as
+                  | "newest"
+                  | "oldest"
+                  | "amount_desc"
+                  | "amount_asc",
+              )
             }
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
+            <option value="amount_desc">Nominal Tertinggi</option>
+            <option value="amount_asc">Nominal Terendah</option>
           </select>
 
           <button
             type="button"
             onClick={handleResetFilters}
-            className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1"
+            className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1 xl:col-span-2"
           >
             <RotateCcw size={14} />
             Atur Ulang
           </button>
         </div>
 
-        <p className="mt-3 text-xs text-slate-500">
-          Menampilkan{" "}
-          <span className="font-semibold">{filteredTransactions.length}</span>{" "}
-          dari <span className="font-semibold">{transactions.length}</span>{" "}
-          transaksi.
-        </p>
+        <div className="mt-3 flex flex-col gap-2 text-xs text-slate-500 lg:flex-row lg:items-center lg:justify-between">
+          <p>
+            Menampilkan{" "}
+            <span className="font-semibold">{filteredTransactions.length}</span>{" "}
+            dari <span className="font-semibold">{transactions.length}</span>{" "}
+            transaksi dalam periode.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+              In: {formatCurrency(filteredTransactionSummary.revenue)}
+            </span>
+            <span className="rounded-lg bg-red-50 px-2.5 py-1 font-medium text-red-700">
+              Out: {formatCurrency(filteredTransactionSummary.expense)}
+            </span>
+            <span
+              className={`rounded-lg px-2.5 py-1 font-medium ${
+                filteredNetAmount >= 0
+                  ? "bg-blue-50 text-blue-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              Net: {formatCurrency(filteredNetAmount)}
+            </span>
+          </div>
+        </div>
       </section>
 
       {notice && (
@@ -2379,7 +2642,7 @@ function FinancialDateRangePicker({
   );
 
   return (
-    <div ref={wrapperRef} className="relative col-span-2 w-full md:min-w-[320px]">
+    <div ref={wrapperRef} className="relative col-span-2 w-full xl:col-span-4">
       <button
         type="button"
         onClick={handleTogglePicker}
