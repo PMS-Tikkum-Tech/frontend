@@ -43,7 +43,7 @@ export default function PropertyCard({ data }: { data: Property }) {
     <Link href={`/admin/properties/${data.id}`} className="group block h-full">
       <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
         <div className="relative">
-          <div className="relative h-52 w-full overflow-hidden">
+          <div className="relative h-44 w-full overflow-hidden sm:h-52">
             <SafeImage
               src={data.image || "/bg.jpg"}
               alt={data.name}
@@ -65,7 +65,7 @@ export default function PropertyCard({ data }: { data: Property }) {
           </span>
         </div>
 
-        <div className="flex flex-1 flex-col justify-between p-5">
+        <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
           <div>
             <h3 className="line-clamp-1 text-base font-semibold text-slate-900">
               {data.name}
@@ -111,7 +111,7 @@ export default function PropertyCard({ data }: { data: Property }) {
             </div>
           </div>
 
-          <div className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#1E2746]">
+          <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#1E2746] sm:mt-5">
             Kelola Properti
             <ArrowRight
               size={15}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownCircle,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -29,9 +30,25 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isAfter,
+  isBefore,
+  isSameDay,
+  isSameMonth,
+  isWithinInterval,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+} from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import StatCard from "@/components/dashboard/admin/cards/StatCard";
 import {
-  buildPeriodParams,
   createAdminCashflowEntry,
   createAdminFinancialTransaction,
   deleteAdminFinancialTransaction,
@@ -65,11 +82,160 @@ const COLORS = [
 ];
 
 const PAGE_SIZE = 10;
+const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v1";
+
+type FinancialDateRange = {
+  startDate: string;
+  endDate: string;
+};
+
+type QuickDateRangeKey = "today" | "thisWeek" | "thisMonth" | "lastMonth";
+
+const quickDateRanges: Array<{ key: QuickDateRangeKey; label: string }> = [
+  { key: "today", label: "Today" },
+  { key: "thisWeek", label: "This Week" },
+  { key: "thisMonth", label: "This Month" },
+  { key: "lastMonth", label: "Last Month" },
+];
+
+const weekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 const categoryLabelMap: Record<string, string> = {
   income: "Pemasukan",
   expense: "Pengeluaran",
 };
+
+const toFinancialDateKey = (date: Date) => format(date, "yyyy-MM-dd");
+
+const parseFinancialDate = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = parseISO(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const normalizeFinancialDateRange = (
+  startDate: string,
+  endDate: string,
+): FinancialDateRange | null => {
+  const parsedStart = parseFinancialDate(startDate);
+  const parsedEnd = parseFinancialDate(endDate);
+
+  if (!parsedStart || !parsedEnd) {
+    return null;
+  }
+
+  if (isAfter(parsedStart, parsedEnd)) {
+    return {
+      startDate: toFinancialDateKey(parsedEnd),
+      endDate: toFinancialDateKey(parsedStart),
+    };
+  }
+
+  return {
+    startDate: toFinancialDateKey(parsedStart),
+    endDate: toFinancialDateKey(parsedEnd),
+  };
+};
+
+const getCurrentMonthDateRange = (): FinancialDateRange => {
+  const today = new Date();
+
+  return {
+    startDate: toFinancialDateKey(startOfMonth(today)),
+    endDate: toFinancialDateKey(endOfMonth(today)),
+  };
+};
+
+const getQuickDateRange = (rangeKey: QuickDateRangeKey): FinancialDateRange => {
+  const today = new Date();
+
+  switch (rangeKey) {
+    case "today":
+      return {
+        startDate: toFinancialDateKey(today),
+        endDate: toFinancialDateKey(today),
+      };
+    case "thisWeek":
+      return {
+        startDate: toFinancialDateKey(startOfWeek(today, { weekStartsOn: 1 })),
+        endDate: toFinancialDateKey(endOfWeek(today, { weekStartsOn: 1 })),
+      };
+    case "lastMonth": {
+      const lastMonth = subMonths(today, 1);
+
+      return {
+        startDate: toFinancialDateKey(startOfMonth(lastMonth)),
+        endDate: toFinancialDateKey(endOfMonth(lastMonth)),
+      };
+    }
+    case "thisMonth":
+    default:
+      return getCurrentMonthDateRange();
+  }
+};
+
+const getStoredFinancialDateRange = (): FinancialDateRange | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FINANCIAL_DATE_RANGE_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<FinancialDateRange>;
+    if (
+      typeof parsed.startDate !== "string" ||
+      typeof parsed.endDate !== "string"
+    ) {
+      return null;
+    }
+
+    return normalizeFinancialDateRange(parsed.startDate, parsed.endDate);
+  } catch {
+    return null;
+  }
+};
+
+const buildFinancialDateRangeParams = (
+  startDate: string,
+  endDate: string,
+) => ({
+  start_date: startDate,
+  end_date: endDate,
+  date_from: startDate,
+  date_to: endDate,
+});
+
+const formatFinancialDateLabel = (value: string) => {
+  const parsed = parseFinancialDate(value);
+
+  if (!parsed) {
+    return value;
+  }
+
+  return format(parsed, "dd MMM yyyy", { locale: idLocale });
+};
+
+const formatFinancialDateRangeLabel = (startDate: string, endDate: string) =>
+  `${formatFinancialDateLabel(startDate)} → ${formatFinancialDateLabel(
+    endDate,
+  )}`;
+
+const buildCalendarDates = (month: Date) =>
+  eachDayOfInterval({
+    start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
+  });
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -436,10 +602,17 @@ const getTransactionDetails = (transaction: AdminFinancialTransaction) => {
 };
 
 export default function AdminFinancialPage() {
+  const defaultDateRange = useMemo(() => getCurrentMonthDateRange(), []);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
-  const [period, setPeriod] = useState("year");
+  const [startDate, setStartDate] = useState(defaultDateRange.startDate);
+  const [endDate, setEndDate] = useState(defaultDateRange.endDate);
+  const [tempStartDate, setTempStartDate] = useState(
+    defaultDateRange.startDate,
+  );
+  const [tempEndDate, setTempEndDate] = useState(defaultDateRange.endDate);
+  const [isDateRangeReady, setIsDateRangeReady] = useState(false);
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
   const [summary, setSummary] = useState<AdminFinancialSummary>(initialSummary);
   const [monthlyData, setMonthlyData] = useState<
@@ -481,86 +654,121 @@ export default function AdminFinancialPage() {
   }, []);
 
   useEffect(() => {
+    const storedDateRange = getStoredFinancialDateRange();
+    const initialDateRange = storedDateRange || getCurrentMonthDateRange();
+
+    setStartDate(initialDateRange.startDate);
+    setEndDate(initialDateRange.endDate);
+    setTempStartDate(initialDateRange.startDate);
+    setTempEndDate(initialDateRange.endDate);
+    setIsDateRangeReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDateRangeReady) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        FINANCIAL_DATE_RANGE_STORAGE_KEY,
+        JSON.stringify({ startDate, endDate }),
+      );
+    } catch {
+      // Date filters should continue to work even when storage is unavailable.
+    }
+  }, [endDate, isDateRangeReady, startDate]);
+
+  useEffect(() => {
+    if (!isDateRangeReady) {
+      return undefined;
+    }
+
     let active = true;
+    const timeoutId = window.setTimeout(() => {
+      const loadFinancialData = async () => {
+        setIsLoading(true);
+        setError(null);
 
-    const loadFinancialData = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      const periodParams = buildPeriodParams(period);
-
-      try {
-        const [
-          dashboardResponse,
-          transactionResponse,
-          propertiesResponse,
-          tenantsResponse,
-        ] = await Promise.all([
-          getAdminFinancialDashboard(periodParams),
-          getAdminFinancialTransactions({
-            ...periodParams,
-            page: 1,
-            per_page: 100,
-          }),
-          getAllAdminProperties({
-            page: 1,
-            per_page: 100,
-          }),
-          getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setSummary(dashboardResponse.data.summary);
-        setMonthlyData(
-          dashboardResponse.data.charts.monthly_revenue_vs_expense,
+        const dateRangeParams = buildFinancialDateRangeParams(
+          startDate,
+          endDate,
         );
-        setCategoryData(
-          dashboardResponse.data.charts.revenue_breakdown_by_category.map(
-            (item) => ({
-              name: item.category,
-              value: item.amount,
+
+        try {
+          const [
+            dashboardResponse,
+            transactionResponse,
+            propertiesResponse,
+            tenantsResponse,
+          ] = await Promise.all([
+            getAdminFinancialDashboard(dateRangeParams),
+            getAdminFinancialTransactions({
+              ...dateRangeParams,
+              page: 1,
+              per_page: 100,
             }),
-          ),
-        );
-        setTransactions(transactionResponse.data);
-        setProperties(propertiesResponse.data);
-        setTenants(
-          tenantsResponse.data
-            .slice()
-            .sort((first, second) =>
-              getAccountDisplayName(first).localeCompare(
-                getAccountDisplayName(second),
-                "id-ID",
-              ),
+            getAllAdminProperties({
+              page: 1,
+              per_page: 100,
+            }),
+            getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
+          ]);
+
+          if (!active) {
+            return;
+          }
+
+          setSummary(dashboardResponse.data.summary);
+          setMonthlyData(
+            dashboardResponse.data.charts.monthly_revenue_vs_expense,
+          );
+          setCategoryData(
+            dashboardResponse.data.charts.revenue_breakdown_by_category.map(
+              (item) => ({
+                name: item.category,
+                value: item.amount,
+              }),
             ),
-        );
-      } catch (loadError) {
-        if (!active) {
-          return;
-        }
+          );
+          setTransactions(transactionResponse.data);
+          setProperties(propertiesResponse.data);
+          setTenants(
+            tenantsResponse.data
+              .slice()
+              .sort((first, second) =>
+                getAccountDisplayName(first).localeCompare(
+                  getAccountDisplayName(second),
+                  "id-ID",
+                ),
+              ),
+          );
+        } catch (loadError) {
+          if (!active) {
+            return;
+          }
 
-        setError(
-          getApiErrorMessage(
-            loadError,
-            "Laporan keuangan gagal dimuat. Silakan coba lagi.",
-          ),
-        );
-      } finally {
-        if (active) {
-          setIsLoading(false);
+          setError(
+            getApiErrorMessage(
+              loadError,
+              "Laporan keuangan gagal dimuat. Silakan coba lagi.",
+            ),
+          );
+        } finally {
+          if (active) {
+            setIsLoading(false);
+          }
         }
-      }
-    };
+      };
 
-    void loadFinancialData();
+      void loadFinancialData();
+    }, 300);
 
     return () => {
       active = false;
+      window.clearTimeout(timeoutId);
     };
-  }, [period, refreshKey]);
+  }, [endDate, isDateRangeReady, refreshKey, startDate]);
 
   const categoryFilterOptions = useMemo(
     () =>
@@ -687,6 +895,56 @@ export default function AdminFinancialPage() {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  const handleDateChange = (nextStartDate: string, nextEndDate: string) => {
+    const normalizedDateRange = normalizeFinancialDateRange(
+      nextStartDate,
+      nextEndDate,
+    );
+
+    if (!normalizedDateRange) {
+      return;
+    }
+
+    setTempStartDate(normalizedDateRange.startDate);
+    setTempEndDate(normalizedDateRange.endDate);
+  };
+
+  const handleApply = () => {
+    const normalizedDateRange = normalizeFinancialDateRange(
+      tempStartDate,
+      tempEndDate,
+    );
+
+    if (!normalizedDateRange) {
+      return;
+    }
+
+    setStartDate(normalizedDateRange.startDate);
+    setEndDate(normalizedDateRange.endDate);
+    setTempStartDate(normalizedDateRange.startDate);
+    setTempEndDate(normalizedDateRange.endDate);
+    setCurrentPage(1);
+  };
+
+  const handleCancel = () => {
+    setTempStartDate(startDate);
+    setTempEndDate(endDate);
+  };
+
+  const handleResetFilters = () => {
+    const currentMonthDateRange = getCurrentMonthDateRange();
+
+    setSearch("");
+    setCategory("");
+    setPropertyFilter("");
+    setStartDate(currentMonthDateRange.startDate);
+    setEndDate(currentMonthDateRange.endDate);
+    setTempStartDate(currentMonthDateRange.startDate);
+    setTempEndDate(currentMonthDateRange.endDate);
+    setSortBy("newest");
+    setCurrentPage(1);
+  };
 
   const loadUnitsByProperty = async (
     propertyId: string,
@@ -1046,7 +1304,7 @@ export default function AdminFinancialPage() {
 
     try {
       const result = await exportAdminFinancialTransactions({
-        ...buildPeriodParams(period),
+        ...buildFinancialDateRangeParams(startDate, endDate),
         search,
         category,
       });
@@ -1076,8 +1334,8 @@ export default function AdminFinancialPage() {
   };
 
   return (
-    <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-7">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -1086,7 +1344,7 @@ export default function AdminFinancialPage() {
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               Modul Keuangan
             </p>
-            <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Laporan Keuangan
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -1131,8 +1389,8 @@ export default function AdminFinancialPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <div className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <div className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1177,16 +1435,15 @@ export default function AdminFinancialPage() {
             ))}
           </select>
 
-          <select
-            value={period}
-            onChange={(event) => setPeriod(event.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-          >
-            <option value="year">Tahun Ini</option>
-            <option value="month">Bulan Ini</option>
-            <option value="quarter">3 Bulan Terakhir</option>
-            <option value="lastYear">Tahun Lalu</option>
-          </select>
+          <FinancialDateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            tempStartDate={tempStartDate}
+            tempEndDate={tempEndDate}
+            onDateChange={handleDateChange}
+            onApply={handleApply}
+            onCancel={handleCancel}
+          />
 
           <select
             value={sortBy}
@@ -1201,14 +1458,8 @@ export default function AdminFinancialPage() {
 
           <button
             type="button"
-            onClick={() => {
-              setSearch("");
-              setCategory("");
-              setPropertyFilter("");
-              setSortBy("newest");
-              setCurrentPage(1);
-            }}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={handleResetFilters}
+            className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1"
           >
             <RotateCcw size={14} />
             Atur Ulang
@@ -1241,7 +1492,7 @@ export default function AdminFinancialPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total Pemasukan"
           value={isLoading ? "..." : formatCurrency(summary.total_revenue)}
@@ -1277,7 +1528,7 @@ export default function AdminFinancialPage() {
             Pemasukan vs Pengeluaran Bulanan
           </h2>
           <p className="mb-4 text-xs text-slate-500">
-            Tren bulanan berdasarkan periode laporan yang dipilih.
+            Tren bulanan berdasarkan range tanggal yang dipilih.
           </p>
 
           {isChartReady ? (
@@ -1309,7 +1560,7 @@ export default function AdminFinancialPage() {
               </ResponsiveContainer>
             ) : (
               <div className="flex h-[84%] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
-                Belum ada data grafik untuk periode ini.
+                Belum ada data grafik untuk range ini.
               </div>
             )
           ) : (
@@ -1392,7 +1643,7 @@ export default function AdminFinancialPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -1409,13 +1660,13 @@ export default function AdminFinancialPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
                     Memuat data transaksi...
                   </td>
                 </tr>
               ) : pagedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
                     Tidak ada transaksi.
                   </td>
                 </tr>
@@ -1436,11 +1687,11 @@ export default function AdminFinancialPage() {
                       key={transaction.id}
                       className="border-t border-slate-100"
                     >
-                      <td className="p-3 text-slate-700">
+                      <td data-label="Tanggal" data-mobile-primary="true" className="p-3 text-slate-700">
                         {formatDate(transaction.transaction_date)}
                       </td>
 
-                      <td className="p-3">
+                      <td data-label="Properti" className="p-3">
                         <p className="font-medium text-slate-700">
                           {transaction.property_label || "-"}
                         </p>
@@ -1449,7 +1700,7 @@ export default function AdminFinancialPage() {
                         </p>
                       </td>
 
-                      <td className="p-3">
+                      <td data-label="Deskripsi" className="p-3">
                         <p className="max-w-[300px] truncate text-slate-700">
                           {transaction.description}
                         </p>
@@ -1470,15 +1721,15 @@ export default function AdminFinancialPage() {
                         ) : null}
                       </td>
 
-                      <td className="p-3 font-semibold text-slate-800">
+                      <td data-label="Jumlah" className="p-3 font-semibold text-slate-800">
                         {formatCurrency(transaction.amount)}
                       </td>
 
-                      <td className="p-3">
+                      <td data-label="Kategori" className="p-3">
                         <CategoryBadge category={transaction.category} />
                       </td>
 
-                      <td className="p-3">
+                      <td data-label="Lampiran" className="p-3">
                         {transaction.receipt_url ? (
                           <a
                             href={
@@ -1496,7 +1747,7 @@ export default function AdminFinancialPage() {
                         )}
                       </td>
 
-                      <td className="p-3">
+                      <td data-label="Aksi" data-mobile-actions="true" className="p-3">
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -1552,7 +1803,7 @@ export default function AdminFinancialPage() {
             transaksi
           </p>
 
-          <div className="inline-flex items-center gap-2 self-start">
+          <div className="admin-pagination inline-flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -1581,8 +1832,8 @@ export default function AdminFinancialPage() {
       </section>
 
       {viewTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
                 Detail Transaksi
@@ -1694,8 +1945,8 @@ export default function AdminFinancialPage() {
       )}
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Transaksi" : "Ubah Transaksi"}
@@ -1965,12 +2216,12 @@ export default function AdminFinancialPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t bg-slate-50 px-6 py-4">
+            <div className="flex flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={closeFormModal}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl border px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-11 w-full rounded-xl border px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Batal
               </button>
@@ -1980,11 +2231,289 @@ export default function AdminFinancialPage() {
                   void handleSaveTransaction();
                 }}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {isSubmitting ? "Menyimpan..." : "Simpan"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type FinancialDateRangePickerProps = {
+  startDate: string;
+  endDate: string;
+  tempStartDate: string;
+  tempEndDate: string;
+  onDateChange: (startDate: string, endDate: string) => void;
+  onApply: () => void;
+  onCancel: () => void;
+};
+
+function FinancialDateRangePicker({
+  startDate,
+  endDate,
+  tempStartDate,
+  tempEndDate,
+  onDateChange,
+  onApply,
+  onCancel,
+}: FinancialDateRangePickerProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    startOfMonth(parseFinancialDate(tempStartDate) || new Date()),
+  );
+  const [isSelectingRangeEnd, setIsSelectingRangeEnd] = useState(false);
+
+  const selectedStart = parseFinancialDate(tempStartDate);
+  const selectedEnd = parseFinancialDate(tempEndDate);
+  const rangeStart =
+    selectedStart && selectedEnd && isAfter(selectedStart, selectedEnd)
+      ? selectedEnd
+      : selectedStart;
+  const rangeEnd =
+    selectedStart && selectedEnd && isAfter(selectedStart, selectedEnd)
+      ? selectedStart
+      : selectedEnd;
+  const leftMonth = startOfMonth(visibleMonth);
+  const rightMonth = addMonths(leftMonth, 1);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) {
+        onCancel();
+        setIsOpen(false);
+        setIsSelectingRangeEnd(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [isOpen, onCancel]);
+
+  const handleTogglePicker = () => {
+    if (isOpen) {
+      onCancel();
+      setIsOpen(false);
+      setIsSelectingRangeEnd(false);
+      return;
+    }
+
+    if (!isOpen) {
+      setVisibleMonth(
+        startOfMonth(
+          parseFinancialDate(tempStartDate) ||
+            parseFinancialDate(startDate) ||
+            new Date(),
+        ),
+      );
+      setIsSelectingRangeEnd(false);
+    }
+
+    setIsOpen(true);
+  };
+
+  const handleDayClick = (date: Date) => {
+    const selectedDateKey = toFinancialDateKey(date);
+
+    if (!isSelectingRangeEnd) {
+      onDateChange(selectedDateKey, selectedDateKey);
+      setIsSelectingRangeEnd(true);
+      return;
+    }
+
+    const anchorDate = parseFinancialDate(tempStartDate) || date;
+    const nextStartDate = isBefore(date, anchorDate) ? date : anchorDate;
+    const nextEndDate = isBefore(date, anchorDate) ? anchorDate : date;
+
+    onDateChange(toFinancialDateKey(nextStartDate), toFinancialDateKey(nextEndDate));
+    setIsSelectingRangeEnd(false);
+  };
+
+  const handleQuickSelect = (rangeKey: QuickDateRangeKey) => {
+    const nextRange = getQuickDateRange(rangeKey);
+
+    onDateChange(nextRange.startDate, nextRange.endDate);
+    setVisibleMonth(startOfMonth(parseFinancialDate(nextRange.startDate) || new Date()));
+    setIsSelectingRangeEnd(false);
+  };
+
+  const handleApplyClick = () => {
+    onApply();
+    setIsOpen(false);
+    setIsSelectingRangeEnd(false);
+  };
+
+  const handleCancelClick = () => {
+    onCancel();
+    setIsOpen(false);
+    setIsSelectingRangeEnd(false);
+  };
+
+  const renderMonth = (month: Date) => (
+    <div className="min-w-0">
+      <div className="mb-3 text-center text-sm font-semibold text-slate-800">
+        {format(month, "MMMM yyyy", { locale: idLocale })}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-slate-400">
+        {weekdayLabels.map((weekday) => (
+          <span key={weekday} className="py-1">
+            {weekday}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {buildCalendarDates(month).map((date) => {
+          const dateKey = toFinancialDateKey(date);
+          const isOutsideMonth = !isSameMonth(date, month);
+          const isStart = Boolean(rangeStart && isSameDay(date, rangeStart));
+          const isEnd = Boolean(rangeEnd && isSameDay(date, rangeEnd));
+          const isRangeEdge = isStart || isEnd;
+          const isInRange = Boolean(
+            rangeStart &&
+              rangeEnd &&
+              isWithinInterval(date, { start: rangeStart, end: rangeEnd }),
+          );
+
+          const dayClassName = [
+            "h-9 w-full rounded-lg text-sm transition",
+            isOutsideMonth ? "text-slate-300" : "text-slate-700",
+            isInRange ? "bg-blue-50 text-blue-700" : "hover:bg-slate-100",
+            isRangeEdge
+              ? "bg-[#1E2746] font-semibold text-white hover:bg-[#1E2746]"
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          return (
+            <button
+              key={dateKey}
+              type="button"
+              onClick={() => handleDayClick(date)}
+              aria-pressed={isRangeEdge}
+              className={dayClassName}
+            >
+              {format(date, "d")}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative col-span-2 w-full md:min-w-[320px]">
+      <button
+        type="button"
+        onClick={handleTogglePicker}
+        className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-left text-sm text-slate-700 shadow-sm hover:bg-white focus:border-blue-400 focus:bg-white focus:outline-none"
+      >
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <CalendarDays size={16} className="shrink-0 text-slate-400" />
+          <span className="truncate">
+            {formatFinancialDateRangeLabel(startDate, endDate)}
+          </span>
+        </span>
+        <ChevronRight
+          size={16}
+          className={`shrink-0 text-slate-400 transition ${
+            isOpen ? "rotate-90" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-40 w-[min(720px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">
+                Pilih Periode
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {formatFinancialDateRangeLabel(tempStartDate, tempEndDate)}
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-2 self-start">
+              <button
+                type="button"
+                onClick={() => setVisibleMonth((month) => addMonths(month, -1))}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                title="Bulan sebelumnya"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibleMonth((month) => addMonths(month, 1))}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                title="Bulan berikutnya"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[160px_1fr]">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:content-start">
+              {quickDateRanges.map((range) => {
+                const quickRange = getQuickDateRange(range.key);
+                const isActive =
+                  tempStartDate === quickRange.startDate &&
+                  tempEndDate === quickRange.endDate;
+
+                return (
+                  <button
+                    key={range.key}
+                    type="button"
+                    onClick={() => handleQuickSelect(range.key)}
+                    className={`h-10 rounded-xl border px-3 text-left text-sm font-medium transition ${
+                      isActive
+                        ? "border-[#1E2746] bg-[#1E2746] text-white"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {renderMonth(leftMonth)}
+              {renderMonth(rightMonth)}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={handleCancelClick}
+              className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleApplyClick}
+              className="h-10 rounded-xl bg-[#1E2746] px-5 text-sm font-semibold text-white hover:bg-[#141B35]"
+            >
+              Apply
+            </button>
           </div>
         </div>
       )}
@@ -2013,9 +2542,9 @@ function CategoryBadge({ category }: { category: "income" | "expense" }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+    <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="font-medium text-slate-600">{label}</span>
-      <span className="max-w-[62%] break-words text-right text-slate-800">
+      <span className="break-words text-left text-slate-800 sm:max-w-[62%] sm:text-right">
         {value}
       </span>
     </div>

@@ -728,8 +728,8 @@ export default function AdminCommunicationPage() {
   };
 
   return (
-    <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-7">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -738,7 +738,7 @@ export default function AdminCommunicationPage() {
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               Modul Komunikasi
             </p>
-            <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Komunikasi Penyewa
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -758,7 +758,7 @@ export default function AdminCommunicationPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
         <SummaryCard label="Total Pesan" value={String(stats.total)} />
         <SummaryCard label="Terkirim" value={String(stats.sent)} tone="success" />
         <SummaryCard
@@ -771,8 +771,8 @@ export default function AdminCommunicationPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <div className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <div className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -884,7 +884,7 @@ export default function AdminCommunicationPage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="min-w-[1060px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -900,20 +900,20 @@ export default function AdminCommunicationPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={6} className="p-6 text-center text-slate-500">
                     Memuat data komunikasi...
                   </td>
                 </tr>
               ) : pagedMessages.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={6} className="p-6 text-center text-slate-500">
                     Tidak ada data komunikasi.
                   </td>
                 </tr>
               ) : (
                 pagedMessages.map((message) => (
                   <tr key={message.id} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="p-4">
+                    <td data-label="Tanggal & Waktu" data-mobile-primary="true" className="p-4">
                       <div className="font-medium text-slate-700">
                         {formatDate(message.scheduled_at || message.created_at)}
                       </div>
@@ -922,9 +922,9 @@ export default function AdminCommunicationPage() {
                       </div>
                     </td>
 
-                    <td className="p-4 text-slate-700">{message.target_property || "-"}</td>
+                    <td data-label="Target Properti" className="p-4 text-slate-700">{message.target_property || "-"}</td>
 
-                    <td className="p-4">
+                    <td data-label="Subjek" className="p-4">
                       <p className="font-medium text-slate-700">{message.subject}</p>
                       {isVisitRequestCommunication(message) ? (
                         <span className="mt-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
@@ -933,7 +933,7 @@ export default function AdminCommunicationPage() {
                       ) : null}
                     </td>
 
-                    <td className="p-4 text-slate-700">
+                    <td data-label="Audiens" className="p-4 text-slate-700">
                       {isVisitRequestCommunication(message)
                         ? (() => {
                             const tenantName = extractVisitRequestContext(message.message || "").tenantName;
@@ -942,11 +942,11 @@ export default function AdminCommunicationPage() {
                         : audienceLabelMap[message.audience_type] || message.audience_label}
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Status" className="p-4">
                       <StatusBadge status={message.status} />
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Aksi" data-mobile-actions="true" className="p-4">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -1000,7 +1000,7 @@ export default function AdminCommunicationPage() {
             komunikasi
           </p>
 
-          <div className="inline-flex items-center gap-2 self-start">
+          <div className="admin-pagination inline-flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -1029,8 +1029,8 @@ export default function AdminCommunicationPage() {
       </section>
 
       {viewMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">Detail Komunikasi</h2>
               <button
@@ -1128,9 +1128,9 @@ export default function AdminCommunicationPage() {
       )}
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4">
-          <div className="my-6 flex min-h-[calc(100vh-3rem)] items-center justify-center">
-            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4">
+          <div className="admin-mobile-dialog-wrapper my-6 flex min-h-[calc(100vh-3rem)] items-center justify-center">
+            <div className="admin-mobile-dialog-panel flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
               <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create"
@@ -1457,12 +1457,12 @@ export default function AdminCommunicationPage() {
               )}
             </div>
 
-              <div className="flex shrink-0 justify-end gap-3 border-t bg-slate-50 px-6 py-4">
+              <div className="flex shrink-0 flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={closeFormModal}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl border px-5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-11 w-full rounded-xl border px-5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Batal
               </button>
@@ -1472,7 +1472,7 @@ export default function AdminCommunicationPage() {
                   void handleSubmitForm();
                 }}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl bg-[#4F6EF7] px-5 text-sm font-medium text-white hover:bg-[#3E5BE0] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#4F6EF7] px-5 text-sm font-medium text-white hover:bg-[#3E5BE0] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {isSubmitting
                   ? "Menyimpan..."
@@ -1508,9 +1508,9 @@ function SummaryCard({
           : "text-slate-800";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm last:col-span-2 sm:p-4 xl:last:col-span-1">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${valueStyle}`}>{value}</p>
+      <p className={`mt-1 break-words text-xl font-semibold sm:text-2xl ${valueStyle}`}>{value}</p>
     </div>
   );
 }
@@ -1529,9 +1529,9 @@ function StatusBadge({ status }: { status: "sent" | "scheduled" | "failed" }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+    <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="font-medium text-slate-600">{label}</span>
-      <span className="max-w-[62%] break-words text-right text-slate-800">{value}</span>
+      <span className="break-words text-left text-slate-800 sm:max-w-[62%] sm:text-right">{value}</span>
     </div>
   );
 }

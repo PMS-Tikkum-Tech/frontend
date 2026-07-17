@@ -1099,8 +1099,8 @@ export default function AdminBillingPage() {
     : false;
 
   return (
-    <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-7">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -1109,7 +1109,7 @@ export default function AdminBillingPage() {
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               Modul Tagihan
             </p>
-            <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Tagihan & Pembayaran
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -1129,7 +1129,7 @@ export default function AdminBillingPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
         <SummaryCard label="Total Tagihan" value={String(stats.total)} />
         <SummaryCard
           label="Menunggu"
@@ -1149,8 +1149,8 @@ export default function AdminBillingPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <div className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <div className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1216,7 +1216,7 @@ export default function AdminBillingPage() {
               setSortBy("newest");
               setCurrentPage(1);
             }}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
+            className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1 md:w-auto"
           >
             <RotateCcw size={14} />
             Atur Ulang
@@ -1248,7 +1248,7 @@ export default function AdminBillingPage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="w-full min-w-[1160px] table-fixed text-sm leading-5">
             <colgroup>
               <col className="w-[190px]" />
@@ -1274,13 +1274,13 @@ export default function AdminBillingPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
                     Memuat data tagihan...
                   </td>
                 </tr>
               ) : pagedPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
                     Tidak ada data tagihan.
                   </td>
                 </tr>
@@ -1290,7 +1290,7 @@ export default function AdminBillingPage() {
                     key={getPaymentRowKey(payment)}
                     className="border-t border-slate-100 align-top hover:bg-slate-50"
                   >
-                    <td className="px-4 py-4">
+                    <td data-label="Faktur" data-mobile-primary="true" className="px-4 py-4">
                       <p
                         className="break-words font-mono text-xs font-semibold text-slate-800"
                         title={`#${payment.invoice_id}`}
@@ -1337,7 +1337,7 @@ export default function AdminBillingPage() {
                       )}
                     </td>
 
-                    <td className="px-4 py-4">
+                    <td data-label="Unit / Kamar" className="px-4 py-4">
                       <p
                         className="line-clamp-2 break-words font-medium text-slate-800"
                         title={payment.property.name || "-"}
@@ -1352,7 +1352,7 @@ export default function AdminBillingPage() {
                       </p>
                     </td>
 
-                    <td className="px-4 py-4 text-slate-700">
+                    <td data-label="Penyewa" className="px-4 py-4 text-slate-700">
                       <p
                         className="line-clamp-3 break-words"
                         title={payment.tenant.full_name || "-"}
@@ -1361,7 +1361,7 @@ export default function AdminBillingPage() {
                       </p>
                     </td>
 
-                    <td className="space-y-1 px-4 py-4">
+                    <td data-label="Tanggal" className="space-y-1 px-4 py-4">
                       <p className="font-medium text-slate-700">
                         {formatDueDate(payment.due_date)}
                       </p>
@@ -1377,11 +1377,11 @@ export default function AdminBillingPage() {
                       </p>
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">
+                    <td data-label="Total Harga" className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">
                       Rp {Number(payment.amount || 0).toLocaleString("id-ID")}
                     </td>
 
-                    <td className="space-y-2 px-4 py-4">
+                    <td data-label="Status" className="space-y-2 px-4 py-4">
                       <StatusBadge status={getPaymentDisplayStatus(payment)} />
                       {isPaymentAutoCancelledByDueDate(payment) ? (
                         <p
@@ -1401,7 +1401,7 @@ export default function AdminBillingPage() {
                       ) : null}
                     </td>
 
-                    <td className="px-4 py-4">
+                    <td data-label="Aksi" data-mobile-actions="true" className="px-4 py-4">
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
@@ -1466,7 +1466,7 @@ export default function AdminBillingPage() {
             tagihan
           </p>
 
-          <div className="inline-flex items-center gap-2 self-start">
+          <div className="admin-pagination inline-flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -1495,8 +1495,8 @@ export default function AdminBillingPage() {
       </section>
 
       {approveConfirmationPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="admin-mobile-dialog-panel w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="px-6 pb-5 pt-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
@@ -1587,8 +1587,8 @@ export default function AdminBillingPage() {
       )}
 
       {viewPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-mobile-dialog-panel max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -1828,8 +1828,8 @@ export default function AdminBillingPage() {
       )}
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Tagihan" : "Ubah Tagihan"}
@@ -2132,12 +2132,12 @@ export default function AdminBillingPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t bg-slate-50 px-6 py-4">
+            <div className="flex flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={closeFormModal}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl border px-5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-11 w-full rounded-xl border px-5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Batal
               </button>
@@ -2147,7 +2147,7 @@ export default function AdminBillingPage() {
                   void handleSavePayment();
                 }}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl bg-[#1E2746] px-5 text-sm font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-5 text-sm font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {isSubmitting
                   ? "Menyimpan..."
@@ -2180,9 +2180,9 @@ function SummaryCard({
         : "text-slate-800";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm last:col-span-2 sm:p-4 xl:last:col-span-1">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${valueStyle}`}>{value}</p>
+      <p className={`mt-1 break-words text-xl font-semibold sm:text-2xl ${valueStyle}`}>{value}</p>
     </div>
   );
 }

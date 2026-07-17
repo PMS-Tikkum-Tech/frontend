@@ -433,6 +433,19 @@ export default function AddPropertyModal({
     }));
   }, [open, initialValue?.rules]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   if (!open) {
     return null;
   }
@@ -653,21 +666,22 @@ export default function AddPropertyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
 
           <button
             onClick={onClose}
             className="rounded-lg p-2 hover:bg-slate-100"
             disabled={isSaving}
+            aria-label="Tutup formulir properti"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="space-y-6 p-6">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:space-y-6 sm:p-6">
           <SectionHeader
             title="1. Identitas Properti"
             description="Isi nama, tipe, dan kondisi properti terlebih dahulu."
@@ -763,7 +777,7 @@ export default function AddPropertyModal({
               onClick={() => {
                 void handleSyncCoordinatesClick();
               }}
-              className="mt-3 inline-flex h-10 items-center rounded-lg border border-[#1E2746] px-4 text-sm font-medium text-[#1E2746] transition hover:bg-[#1E2746] hover:text-white"
+              className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#1E2746] px-4 text-sm font-medium text-[#1E2746] transition hover:bg-[#1E2746] hover:text-white sm:w-auto"
               disabled={isSaving}
             >
               Ambil Koordinat dari Alamat
@@ -818,7 +832,7 @@ export default function AddPropertyModal({
             <p className="mb-2 block text-sm font-medium text-slate-700">
               Fasilitas Utama
             </p>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 md:grid-cols-3">
               {FACILITY_OPTIONS.map((facility) => (
                 <label
                   key={facility.value}
@@ -905,7 +919,7 @@ export default function AddPropertyModal({
               onChange={(event) =>
                 setPhotos(Array.from(event.target.files || []))
               }
-              className="text-sm"
+              className="block w-full min-w-0 text-xs sm:text-sm"
             />
             <p className="mt-1 text-xs text-slate-500">
               Maksimal 10 file. Gambar akan dikompres ke WebP max 1200px.
@@ -928,7 +942,7 @@ export default function AddPropertyModal({
               type="file"
               accept="video/mp4,video/webm,video/quicktime"
               onChange={(event) => setVideoFile(event.target.files?.[0] || null)}
-              className="text-sm"
+              className="block w-full min-w-0 text-xs sm:text-sm"
             />
             <p className="mt-1 text-xs text-slate-500">
               Unggah 1 file. Format: MP4, WEBM, MOV.
@@ -950,7 +964,7 @@ export default function AddPropertyModal({
               type="file"
               accept="video/mp4,video/webm,video/quicktime"
               onChange={(event) => setVideo360File(event.target.files?.[0] || null)}
-              className="text-sm"
+              className="block w-full min-w-0 text-xs sm:text-sm"
             />
             <p className="mt-1 text-xs text-slate-500">
               Unggah 1 file. Format: MP4, WEBM, MOV.
@@ -998,10 +1012,10 @@ export default function AddPropertyModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-3 rounded-b-2xl border-t bg-slate-50 px-6 py-4">
+        <div className="flex shrink-0 flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:rounded-b-2xl sm:px-6">
           <button
             onClick={onClose}
-            className="h-11 rounded-xl border px-5 font-medium hover:bg-slate-100"
+            className="h-11 w-full rounded-xl border px-5 font-medium hover:bg-slate-100 sm:w-auto"
             disabled={isSaving}
           >
             Batal
@@ -1011,7 +1025,7 @@ export default function AddPropertyModal({
             onClick={() => {
               void handleSubmit();
             }}
-            className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white shadow-sm hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white shadow-sm hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             disabled={isSaving}
           >
             {isSaving ? "Menyimpan..." : submitLabel}

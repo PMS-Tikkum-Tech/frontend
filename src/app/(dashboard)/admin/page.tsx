@@ -66,8 +66,8 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-[#0B3D91] via-[#0E4F94] to-[#0EA5E9] p-4 text-white shadow-[0_18px_40px_-20px_rgba(11,61,145,0.7)] sm:p-6">
+    <div className="space-y-4 sm:space-y-6">
+      <section className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-[#0B3D91] via-[#0E4F94] to-[#0EA5E9] p-4 text-white shadow-[0_18px_40px_-20px_rgba(11,61,145,0.7)] sm:rounded-3xl sm:p-6">
         <div className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-white/20 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-52 w-52 rounded-full bg-cyan-200/20 blur-3xl" />
 
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
               <BarChart3 size={14} />
               Dasbor Operasional
             </p>
-            <h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold leading-tight sm:text-3xl">
               Pantau Properti, Perawatan, dan Pembayaran dalam Satu Layar
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -85,7 +85,7 @@ export default function AdminDashboardPage() {
               perlu pindah halaman.
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="-mx-4 mt-5 grid snap-x snap-mandatory grid-flow-col auto-cols-[minmax(220px,80%)] gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid-flow-row sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
               <HeroChip
                 label="Okupansi Saat Ini"
                 value={`${occupancyRate}%`}
@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/35 bg-white/10 p-4 backdrop-blur-sm">
+          <div className="rounded-2xl border border-white/35 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-white/80">
               Kontrol Dasbor
             </p>
@@ -148,11 +148,11 @@ export default function AdminDashboardPage() {
       </section>
 
       {error && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-700">{error}</p>
           <button
             onClick={refresh}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 sm:py-1.5"
           >
             <RotateCcw size={14} />
             Coba Lagi
@@ -160,8 +160,8 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      <div id="dashboard-content" className="space-y-6">
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div id="dashboard-content" className="space-y-4 sm:space-y-6">
+        <section className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
           <MetricCard
             title="Total Properti"
             value={
@@ -207,8 +207,8 @@ export default function AdminDashboardPage() {
           />
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
             <h2 className="text-base font-semibold text-slate-900">
               Ringkasan Kinerja Periode
             </h2>
@@ -234,7 +234,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-5 text-white shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-4 text-white shadow-sm sm:rounded-3xl sm:p-5">
             <h2 className="text-base font-semibold">Prioritas Hari Ini</h2>
             <div className="mt-3 space-y-2.5 text-sm">
               <PriorityLine
@@ -256,17 +256,17 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
           <RevenueChart data={data.revenueData} />
           <PaymentChart data={data.paymentData} />
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
           <OccupancyChart data={data.occupancyData} />
           <MaintenanceChart data={data.maintenanceData} />
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
           <SourceChart data={data.sourceData} />
           <ActivityList activities={data.activities} isLoading={isLoading} />
         </section>
@@ -291,7 +291,7 @@ function HeroChip({
   trend?: "up" | "down" | "neutral";
 }) {
   return (
-    <div className="rounded-xl border border-white/35 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
+    <div className="snap-start rounded-xl border border-white/35 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
       <p className="text-[11px] uppercase tracking-wide text-white/80">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
       <p className="mt-1 inline-flex items-center gap-1 text-xs text-white/85">
@@ -318,8 +318,8 @@ function QuickLine({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
-      <p className="inline-flex items-center gap-2 text-white/85">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
+      <p className="inline-flex min-w-0 items-center gap-2 text-white/85">
         {icon}
         <span>{label}</span>
       </p>
@@ -349,15 +349,15 @@ function MetricCard({
   };
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <h3 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{value}</h3>
+    <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium leading-5 text-slate-500 sm:text-sm">{title}</p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900 sm:text-2xl">{value}</h3>
           <p className="mt-1 text-xs text-slate-500">{note}</p>
         </div>
         <div
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br sm:h-11 sm:w-11 ${accentClassMap[accent]}`}
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br sm:h-11 sm:w-11 ${accentClassMap[accent]}`}
         >
           {icon}
         </div>
@@ -403,7 +403,7 @@ function PriorityLine({
   ok: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-white/20 bg-white/10 px-3 py-2.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5">
       <span className="text-white/90">{label}</span>
       <span className="inline-flex items-center gap-1 font-semibold">
         <CheckCircle2

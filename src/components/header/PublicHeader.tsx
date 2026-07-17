@@ -9,7 +9,7 @@ import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import { getTenantNotifications } from "@/lib/dashboard/tenant.api";
 import { hasUnreadTenantNotifications } from "@/lib/dashboard/tenant-notification-state";
 import ProfilePanel from "./ProfilePanel";
-import { Bell, Menu, User, X } from "lucide-react";
+import { Bell, LayoutDashboard, Menu, User, X } from "lucide-react";
 
 export default function PublicHeader() {
   const pathname = usePathname();
@@ -158,9 +158,12 @@ export default function PublicHeader() {
               {dashboardHref ? (
                 <Link
                   href={dashboardHref}
-                  className="hidden rounded-full bg-[#3423b8] px-3 py-2 text-xs font-medium text-white transition hover:bg-[#261786] sm:inline-flex md:px-4 md:text-sm"
+                  aria-label="Masuk Dasbor"
+                  title="Masuk Dasbor"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3423b8] text-xs font-medium text-white transition hover:bg-[#261786] sm:h-auto sm:w-auto sm:rounded-full sm:px-3 sm:py-2 md:px-4 md:text-sm"
                 >
-                  Masuk Dasbor
+                  <LayoutDashboard size={17} className="sm:hidden" />
+                  <span className="hidden sm:inline">Masuk Dasbor</span>
                 </Link>
               ) : null}
               {user.role === "tenant" ? (

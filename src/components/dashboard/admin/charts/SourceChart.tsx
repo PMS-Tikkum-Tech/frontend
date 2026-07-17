@@ -22,17 +22,18 @@ const COLORS = ["#1E2746", "#C7A84A", "#16A34A", "#94A3B8"];
 
 export default function SourceChart({ data }: Props) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      <h2 className="text-base font-semibold text-slate-800 mb-6">
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+      <h2 className="mb-3 text-base font-semibold text-slate-800 sm:mb-6">
         Sumber Penyewa
       </h2>
 
-      <ResponsiveContainer width="100%" height={300}>
+      <div className="h-[250px] sm:h-[300px]">
+      <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
-            innerRadius={70}
-            outerRadius={100}
+            innerRadius="42%"
+            outerRadius="65%"
             paddingAngle={3}
             dataKey="value"
           >
@@ -57,6 +58,7 @@ export default function SourceChart({ data }: Props) {
           />
         </PieChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

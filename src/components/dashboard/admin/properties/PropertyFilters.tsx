@@ -37,8 +37,8 @@ export default function PropertyFilters({
 
   return (
     <div className="w-full space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1fr)_210px_220px_auto] lg:items-center">
+        <div className="relative col-span-2 lg:col-span-1">
           <Search
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -93,7 +93,7 @@ export default function PropertyFilters({
           type="button"
           onClick={onReset}
           disabled={!hasActiveFilter}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+          className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 lg:col-span-1 lg:w-auto"
         >
           <RotateCcw size={14} />
           Atur Ulang

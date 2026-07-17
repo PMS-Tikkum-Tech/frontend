@@ -571,11 +571,11 @@ export default function AdminAccountPage() {
   const formIsOwnerRole = isOwnerRole(form.role);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-6">
+      <section className="rounded-2xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Manajemen Akun</h1>
+            <h1 className="text-xl font-semibold sm:text-2xl">Manajemen Akun</h1>
             <p className="text-sm text-blue-100">
               Kelola akses administrator, pemilik, penyewa, dan data petugas
               operasional.
@@ -610,7 +610,7 @@ export default function AdminAccountPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-9">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 2xl:grid-cols-9">
         <SummaryCard
           title="Total Akun"
           value={summary.total}
@@ -672,8 +672,8 @@ export default function AdminAccountPage() {
           Filter Akun
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <label className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <label className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -752,7 +752,7 @@ export default function AdminAccountPage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="min-w-[960px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
@@ -768,13 +768,13 @@ export default function AdminAccountPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={6} className="p-6 text-center text-slate-500">
                     Memuat data akun...
                   </td>
                 </tr>
               ) : pagedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={6} className="p-6 text-center text-slate-500">
                     Tidak ada data akun yang cocok dengan filter.
                   </td>
                 </tr>
@@ -784,7 +784,7 @@ export default function AdminAccountPage() {
                     key={user.id}
                     className="border-t border-slate-100 align-top hover:bg-slate-50"
                   >
-                    <td className="p-4">
+                    <td data-label="Nama" data-mobile-primary="true" className="p-4">
                       <div className="flex items-center gap-3">
                         <SafeImage
                           src={
@@ -811,21 +811,21 @@ export default function AdminAccountPage() {
                       </div>
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Peran" className="p-4">
                       <RoleBadge role={getAccountRole(user)} />
                     </td>
 
-                    <td className="p-4 text-slate-700">
+                    <td data-label="Telepon" className="p-4 text-slate-700">
                       {user.phone_number || "-"}
                     </td>
-                    <td className="p-4 text-slate-700">
+                    <td data-label="Tanggal Dibuat" className="p-4 text-slate-700">
                       {formatDate(user.created_at)}
                     </td>
-                    <td className="p-4">
+                    <td data-label="Status" className="p-4">
                       <StatusBadge status={user.account_status} />
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Aksi" data-mobile-actions="true" className="p-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           type="button"
@@ -871,7 +871,7 @@ export default function AdminAccountPage() {
             akun
           </p>
 
-          <div className="flex items-center gap-2 self-start">
+          <div className="admin-pagination flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -902,8 +902,8 @@ export default function AdminAccountPage() {
       </section>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
-          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
+          <div className="admin-mobile-dialog-panel flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Akun" : "Ubah Akun"}
@@ -1079,12 +1079,12 @@ export default function AdminAccountPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={closeFormModal}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl border border-slate-200 px-5 font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-11 w-full rounded-xl border border-slate-200 px-5 font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Batal
               </button>
@@ -1095,7 +1095,7 @@ export default function AdminAccountPage() {
                   void handleSubmitForm();
                 }}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {isSubmitting ? "Menyimpan..." : "Simpan"}
               </button>
@@ -1105,8 +1105,8 @@ export default function AdminAccountPage() {
       )}
 
       {viewUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
-          <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
+          <div className="admin-mobile-dialog-panel flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 Detail Akun
@@ -1210,11 +1210,11 @@ function SummaryCard({
             : "border-slate-200 bg-slate-50/70";
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+    <div className={`h-full rounded-2xl border p-3 last:col-span-2 sm:p-4 lg:last:col-span-1 ${toneClass}`}>
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {title}
       </p>
-      <p className="mt-2 text-2xl font-semibold text-slate-800">{value}</p>
+      <p className="mt-2 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs text-slate-600">{caption}</p>
     </div>
   );
@@ -1296,9 +1296,9 @@ function FormField({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 px-3 py-2">
+    <div className="flex flex-col gap-1 rounded-lg border border-slate-200 px-3 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="text-sm font-medium text-slate-600">{label}</span>
-      <span className="max-w-[65%] break-words text-right text-sm text-slate-800">
+      <span className="break-words text-left text-sm text-slate-800 sm:max-w-[65%] sm:text-right">
         {value}
       </span>
     </div>

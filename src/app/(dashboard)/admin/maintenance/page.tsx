@@ -285,6 +285,19 @@ export default function AdminMaintenancePage() {
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    if (!completeConfirmationIssue && !viewIssue && !editIssue) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [completeConfirmationIssue, editIssue, viewIssue]);
+
   const openEditModal = (issue: AdminMaintenanceRequest) => {
     setNotice(null);
     setEditIssue(issue);
@@ -445,8 +458,8 @@ export default function AdminMaintenancePage() {
   };
 
   return (
-    <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-7">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -455,7 +468,7 @@ export default function AdminMaintenancePage() {
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               Modul Perawatan
             </p>
-            <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Tiket Perawatan
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -478,7 +491,7 @@ export default function AdminMaintenancePage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <SummaryCard
           label="Belum Ditugaskan"
           value={summary.unassigned}
@@ -504,8 +517,8 @@ export default function AdminMaintenancePage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <div className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <div className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -576,7 +589,7 @@ export default function AdminMaintenancePage() {
               setSortBy("newest");
               setCurrentPage(1);
             }}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto md:px-4"
           >
             <RotateCcw size={14} />
             Atur Ulang
@@ -609,7 +622,7 @@ export default function AdminMaintenancePage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="min-w-[1120px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -627,13 +640,13 @@ export default function AdminMaintenancePage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={8} className="p-6 text-center text-slate-500">
                     Memuat data perawatan...
                   </td>
                 </tr>
               ) : pagedIssues.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={8} className="p-6 text-center text-slate-500">
                     Tidak ada data perawatan.
                   </td>
                 </tr>
@@ -643,7 +656,7 @@ export default function AdminMaintenancePage() {
                     key={issue.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
-                    <td className="p-4">
+                    <td data-label="Tiket" data-mobile-primary="true" className="p-4">
                       <div className="space-y-1">
                         <p className="font-semibold text-slate-800">{issue.issue}</p>
                         <p className="text-xs text-slate-500">
@@ -653,9 +666,9 @@ export default function AdminMaintenancePage() {
                       </div>
                     </td>
 
-                    <td className="p-4 text-slate-700">{issue.property.name || "-"}</td>
+                    <td data-label="Properti" className="p-4 text-slate-700">{issue.property.name || "-"}</td>
 
-                    <td className="p-4">
+                    <td data-label="Penyewa" className="p-4">
                       <div>
                         <p className="text-slate-700">{issue.tenant.full_name || "-"}</p>
                         <p className="text-xs text-slate-500">
@@ -664,19 +677,19 @@ export default function AdminMaintenancePage() {
                       </div>
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Prioritas" className="p-4">
                       <PriorityBadge type={issue.priority} />
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Status" className="p-4">
                       <StatusBadge type={issue.status} />
                     </td>
 
-                    <td className="p-4 text-slate-700">
+                    <td data-label="Petugas" className="p-4 text-slate-700">
                       {issue.assigned_to.full_name || "-"}
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Jadwal" className="p-4">
                       <div className="text-slate-700">
                         <p>{formatDate(issue.repair_date)}</p>
                         <p className="text-xs text-slate-500">
@@ -685,7 +698,7 @@ export default function AdminMaintenancePage() {
                       </div>
                     </td>
 
-                    <td className="p-4">
+                    <td data-label="Aksi" data-mobile-actions="true" className="p-4">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -756,7 +769,7 @@ export default function AdminMaintenancePage() {
             tiket perawatan
           </p>
 
-          <div className="inline-flex items-center gap-2 self-start">
+          <div className="admin-pagination inline-flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -785,9 +798,9 @@ export default function AdminMaintenancePage() {
       </section>
 
       {completeConfirmationIssue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="px-6 pb-5 pt-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi tiket selesai">
+          <div className="max-h-[100dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-3xl">
+            <div className="px-4 pb-5 pt-5 sm:px-6 sm:pt-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
                   <AlertTriangle size={24} />
@@ -807,31 +820,31 @@ export default function AdminMaintenancePage() {
               </div>
 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <span className="text-slate-500">Tiket</span>
                   <span className="text-right font-semibold text-slate-900">
                     TKT-{completeConfirmationIssue.id}
                   </span>
                 </div>
-                <div className="mt-3 flex items-start justify-between gap-4">
+                <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <span className="text-slate-500">Keluhan</span>
                   <span className="text-right font-medium text-slate-800">
                     {completeConfirmationIssue.issue || "-"}
                   </span>
                 </div>
-                <div className="mt-3 flex items-start justify-between gap-4">
+                <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <span className="text-slate-500">Properti</span>
                   <span className="text-right font-medium text-slate-800">
                     {completeConfirmationIssue.property.name || "-"}
                   </span>
                 </div>
-                <div className="mt-3 flex items-start justify-between gap-4">
+                <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <span className="text-slate-500">Unit</span>
                   <span className="text-right font-medium text-slate-800">
                     {completeConfirmationIssue.unit.name || "-"}
                   </span>
                 </div>
-                <div className="mt-3 flex items-start justify-between gap-4">
+                <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <span className="text-slate-500">Penyewa</span>
                   <span className="text-right font-medium text-slate-800">
                     {completeConfirmationIssue.tenant.full_name || "-"}
@@ -844,7 +857,7 @@ export default function AdminMaintenancePage() {
               </p>
             </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={() => setCompleteConfirmationIssue(null)}
@@ -872,9 +885,9 @@ export default function AdminMaintenancePage() {
       )}
 
       {viewIssue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Detail Perawatan">
+          <div className="flex max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-h-[90vh] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 Detail Perawatan
               </h2>
@@ -882,12 +895,13 @@ export default function AdminMaintenancePage() {
                 type="button"
                 onClick={() => setViewIssue(null)}
                 className="rounded-lg p-2 hover:bg-slate-100"
+                aria-label="Tutup detail perawatan"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 px-6 py-5 text-sm">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-5 text-sm sm:px-6">
               <div className="mb-1 rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
                   Tiket #{viewIssue.id}
@@ -927,11 +941,11 @@ export default function AdminMaintenancePage() {
               />
             </div>
 
-            <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
+            <div className="flex shrink-0 justify-end border-t bg-slate-50 px-4 py-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => setViewIssue(null)}
-                className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35]"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] sm:w-auto"
               >
                 Tutup
               </button>
@@ -941,21 +955,22 @@ export default function AdminMaintenancePage() {
       )}
 
       {editIssue && editForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Ubah Perawatan">
+          <div className="flex h-[100dvh] max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">Ubah Perawatan</h2>
               <button
                 type="button"
                 onClick={closeEditModal}
                 disabled={isSavingEdit}
                 className="rounded-lg p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Tutup formulir perawatan"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-4 px-6 py-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
                   Tiket #{editIssue.id}
@@ -1084,12 +1099,12 @@ export default function AdminMaintenancePage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t bg-slate-50 px-6 py-4">
+            <div className="flex shrink-0 flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={closeEditModal}
                 disabled={isSavingEdit}
-                className="h-11 rounded-xl border border-slate-200 px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-11 w-full rounded-xl border border-slate-200 px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Batal
               </button>
@@ -1099,7 +1114,7 @@ export default function AdminMaintenancePage() {
                   void handleSaveEdit();
                 }}
                 disabled={isSavingEdit}
-                className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {isSavingEdit ? "Menyimpan..." : "Simpan"}
               </button>
@@ -1130,14 +1145,14 @@ function SummaryCard({
         : "border-slate-200 bg-white text-[#1E2746]";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-slate-500">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-800">{value}</p>
+          <p className="mt-1 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
         </div>
         <div
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${styles}`}
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border sm:h-10 sm:w-10 ${styles}`}
         >
           {icon}
         </div>
@@ -1200,9 +1215,9 @@ function StatusBadge({ type }: { type: string }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+    <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="font-medium text-slate-600">{label}</span>
-      <span className="max-w-[62%] break-words text-right text-slate-800">{value}</span>
+      <span className="break-words text-left text-slate-800 sm:max-w-[62%] sm:text-right">{value}</span>
     </div>
   );
 }

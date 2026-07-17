@@ -116,6 +116,146 @@
   border-color: #6f63d7;
 }
 
+/* Compact admin layout and readable data lists on phone-sized screens. */
+@media (max-width: 639px) {
+  .admin-shell {
+    min-height: 100dvh;
+  }
+
+  .admin-shell-sidebar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .admin-shell-header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .admin-shell-main {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .admin-shell-main h1,
+  .admin-shell-main h2,
+  .admin-shell-main p {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-mobile-dialog {
+    align-items: flex-end !important;
+    overflow: hidden;
+    padding: 0 !important;
+  }
+
+  .admin-mobile-dialog-wrapper {
+    min-height: 100dvh !important;
+    align-items: flex-end !important;
+    margin: 0 !important;
+  }
+
+  .admin-mobile-dialog-panel {
+    max-height: 100dvh !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    overscroll-behavior: contain;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .admin-responsive-table {
+    overflow: visible;
+  }
+
+  .admin-responsive-table table {
+    min-width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  .admin-responsive-table colgroup,
+  .admin-responsive-table thead {
+    display: none;
+  }
+
+  .admin-responsive-table tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f8fafc;
+  }
+
+  .admin-responsive-table tbody tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .admin-responsive-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+    border-top: 1px solid #f1f5f9;
+    padding: 0.65rem 0.75rem !important;
+    white-space: normal !important;
+    text-align: left !important;
+  }
+
+  .admin-responsive-table tbody td:first-child {
+    border-top: 0;
+  }
+
+  .admin-responsive-table tbody td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.25rem;
+    text-transform: uppercase;
+  }
+
+  .admin-responsive-table tbody td[data-mobile-primary="true"] {
+    display: block;
+    background: #f8fafc;
+  }
+
+  .admin-responsive-table tbody td[data-mobile-primary="true"]::before {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-responsive-table tbody td[data-mobile-actions="true"] > * {
+    justify-content: flex-end;
+  }
+
+  .admin-responsive-table tbody td[data-label=""] {
+    display: block;
+    padding: 1.25rem !important;
+    text-align: center !important;
+  }
+
+  .admin-responsive-table tbody td[data-label=""]::before {
+    display: none;
+  }
+
+  .admin-pagination {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .admin-pagination > button {
+    min-width: 0;
+    justify-content: center;
+    padding-inline: 0.65rem;
+  }
+
+  .admin-pagination > span {
+    min-width: 0 !important;
+    white-space: nowrap;
+  }
+}
+
 @keyframes companyFloat {
   0%,
   100% {

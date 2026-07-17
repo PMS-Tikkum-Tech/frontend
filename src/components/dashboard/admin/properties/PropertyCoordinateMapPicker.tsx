@@ -83,7 +83,7 @@ function MapController({
   const map = useMap();
 
   useEffect(() => {
-    map.setView([coordinate.lat, coordinate.lng], coordinate ? 16 : 12);
+    map.setView([coordinate.lat, coordinate.lng], 16);
   }, [coordinate.lat, coordinate.lng, map]);
 
   useMapEvents({
@@ -178,7 +178,7 @@ export default function PropertyCoordinateMapPicker({
           ) : null}
         </div>
 
-        <div className="h-[280px] overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-[340px]">
+        <div className="h-[240px] overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-[340px]">
           <MapContainer
             center={center}
             zoom={currentCoordinate ? 16 : 12}

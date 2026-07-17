@@ -1507,7 +1507,7 @@ export default function DetailPropertiPage() {
     unitSort !== defaultUnitSort;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {deleteTenantTarget ? (
         <DeleteTenantDialog
           tenant={deleteTenantTarget}
@@ -1538,13 +1538,13 @@ export default function DetailPropertiPage() {
         />
       ) : null}
 
-      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:p-6">
+      <section className="rounded-2xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-blue-100">
               Modul Properti
             </p>
-            <h1 className="text-2xl font-semibold">
+            <h1 className="text-xl font-semibold sm:text-2xl">
               {propertyDetail?.property.name || "Detail Properti"}
             </h1>
             <p className="max-w-3xl text-sm text-blue-100">
@@ -1624,7 +1624,7 @@ export default function DetailPropertiPage() {
         </div>
       ) : (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
             <StatCard
               icon={<Building2 size={16} />}
               label="Blok"
@@ -1677,7 +1677,7 @@ export default function DetailPropertiPage() {
             </div>
           ) : null}
 
-          <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+          <section className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-3">
             <div className="space-y-5 xl:col-span-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-4 flex items-center gap-2">
@@ -2115,19 +2115,19 @@ export default function DetailPropertiPage() {
                     className="h-11 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
                   />
 
-                  <div className="flex items-center justify-end md:col-span-2">
+                  <div className="grid gap-2 sm:grid-cols-2 md:col-span-2 md:flex md:items-center md:justify-end">
                     <button
                       type="button"
                       onClick={closeTenantForm}
                       disabled={isSavingTenant}
-                      className="mr-2 inline-flex h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
                       disabled={isSavingTenant}
-                      className="inline-flex h-11 items-center rounded-xl bg-[#1E2746] px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#1E2746] px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                     >
                       {isSavingTenant
                         ? editingTenantRow
@@ -2164,7 +2164,7 @@ export default function DetailPropertiPage() {
               </select>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="admin-responsive-table overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-[1180px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
@@ -2183,7 +2183,7 @@ export default function DetailPropertiPage() {
                 <tbody>
                   {tenantFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-3 text-center text-slate-500 sm:p-4">
+                      <td data-label="" colSpan={9} className="p-3 text-center text-slate-500 sm:p-4">
                         Tidak ada data penghuni.
                       </td>
                     </tr>
@@ -2196,33 +2196,33 @@ export default function DetailPropertiPage() {
                           key={tenant.lease_id}
                           className="border-t border-slate-100 hover:bg-slate-50"
                         >
-                          <td className="p-2.5 font-medium text-slate-800 sm:p-3">
+                          <td data-label="Nama" data-mobile-primary="true" className="p-2.5 font-medium text-slate-800 sm:p-3">
                             {tenant.tenant_name}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Blok / Unit" className="p-2.5 text-slate-700 sm:p-3">
                             {structuredUnit
                               ? `${structuredUnit.buildingName} / ${structuredUnit.displayName}`
                               : tenant.unit_name}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Check-in" className="p-2.5 text-slate-700 sm:p-3">
                             {formatDate(tenant.lease_start)}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Nomor Telepon" className="p-2.5 text-slate-700 sm:p-3">
                             {tenant.mobile_phone || tenant.tenant_phone || "-"}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Check-out" className="p-2.5 text-slate-700 sm:p-3">
                             {formatDate(tenant.lease_end)}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Lama Sewa" className="p-2.5 text-slate-700 sm:p-3">
                             {structuredUnit?.leaseDurationLabel || "-"}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Keterangan" className="p-2.5 text-slate-700 sm:p-3">
                             {tenant.notes ||
                               tenant.description ||
                               structuredUnit?.note ||
                               "-"}
                           </td>
-                          <td className="p-2.5 sm:p-3">
+                          <td data-label="Status Pembayaran" className="p-2.5 sm:p-3">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                                 paymentBadgeClassMap[tenant.payment_status || ""] ||
@@ -2234,7 +2234,7 @@ export default function DetailPropertiPage() {
                                 "-"}
                             </span>
                           </td>
-                          <td className="p-2.5 sm:p-3">
+                          <td data-label="Aksi" data-mobile-actions="true" className="p-2.5 sm:p-3">
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
@@ -2533,19 +2533,19 @@ export default function DetailPropertiPage() {
                   </p>
                 )}
 
-                <div className="flex items-center justify-end md:col-span-2">
+                <div className="grid gap-2 sm:grid-cols-2 md:col-span-2 md:flex md:items-center md:justify-end">
                   <button
                     type="button"
                     onClick={closeUnitForm}
                     disabled={isSavingUnit}
-                    className="mr-2 inline-flex h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingUnit}
-                    className="inline-flex h-11 items-center rounded-xl bg-[#1E2746] px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#1E2746] px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                   >
                     {isSavingUnit
                       ? editingUnitId
@@ -2560,8 +2560,8 @@ export default function DetailPropertiPage() {
             )}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_190px_170px_190px_auto]">
-                <div className="relative">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_190px_170px_190px_auto]">
+                <div className="relative col-span-2 lg:col-span-1">
                   <Search
                     size={15}
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -2647,7 +2647,7 @@ export default function DetailPropertiPage() {
                     setUnitSort(defaultUnitSort);
                   }}
                   disabled={!hasActiveUnitFilter}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 lg:col-span-1 lg:w-auto"
                 >
                   <RotateCcw size={14} />
                   Reset
@@ -2667,7 +2667,7 @@ export default function DetailPropertiPage() {
               </p>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="admin-responsive-table overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-[1240px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
@@ -2687,7 +2687,7 @@ export default function DetailPropertiPage() {
                 <tbody>
                   {unitFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="p-3 text-center text-slate-500 sm:p-4">
+                      <td data-label="" colSpan={10} className="p-3 text-center text-slate-500 sm:p-4">
                         Tidak ada data unit.
                       </td>
                     </tr>
@@ -2702,26 +2702,26 @@ export default function DetailPropertiPage() {
                           key={unit.unit_id}
                           className="border-t border-slate-100 hover:bg-slate-50"
                         >
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Blok" className="p-2.5 text-slate-700 sm:p-3">
                             {structuredUnit?.buildingName || "-"}
                           </td>
-                          <td className="p-2.5 font-medium text-slate-800 sm:p-3">
+                          <td data-label="Nomor Unit" data-mobile-primary="true" className="p-2.5 font-medium text-slate-800 sm:p-3">
                             {structuredUnit?.displayName || unit.unit_name}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Tipe" className="p-2.5 text-slate-700 sm:p-3">
                             {formatReadableText(unit.unit_type)}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Owner" className="p-2.5 text-slate-700 sm:p-3">
                             {unit.owner_name ||
                               propertyStructure.blocks.find((block) =>
                                 block.units.some((item) => item.id === unit.unit_id)
                               )?.ownerName ||
                               "-"}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Kapasitas" className="p-2.5 text-slate-700 sm:p-3">
                             {Number(unit.people_allowed || 0)} orang
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Harga / Bulan" className="p-2.5 text-slate-700 sm:p-3">
                             {(() => {
                               const priceInfo = getUnitDisplayPrice(unit);
                               return priceInfo.hasPromo ? (
@@ -2740,7 +2740,7 @@ export default function DetailPropertiPage() {
                               );
                             })()}
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">
+                          <td data-label="Media" className="p-2.5 text-slate-700 sm:p-3">
                             <div className="space-y-1 text-xs">
                               <span className="inline-flex items-center gap-1">
                                 <ImageIcon size={13} className="text-slate-500" />
@@ -2754,8 +2754,8 @@ export default function DetailPropertiPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="p-2.5 text-slate-700 sm:p-3">{unit.tenant_name || "-"}</td>
-                          <td className="p-2.5 sm:p-3">
+                          <td data-label="Penyewa" className="p-2.5 text-slate-700 sm:p-3">{unit.tenant_name || "-"}</td>
+                          <td data-label="Status" className="p-2.5 sm:p-3">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                                 unitBadgeClassMap[unit.status] ||
@@ -2765,7 +2765,7 @@ export default function DetailPropertiPage() {
                               {unitStatusLabelMap[unit.status] || formatReadableText(unit.status)}
                             </span>
                           </td>
-                          <td className="p-2.5 sm:p-3">
+                          <td data-label="Aksi" data-mobile-actions="true" className="p-2.5 sm:p-3">
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
@@ -2804,7 +2804,7 @@ export default function DetailPropertiPage() {
               Riwayat Perawatan ({maintenanceRows.length})
             </h2>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="admin-responsive-table overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-[980px] w-full text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr>
@@ -2821,7 +2821,7 @@ export default function DetailPropertiPage() {
                 <tbody>
                   {maintenanceSorted.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-3 text-center text-slate-500 sm:p-4">
+                      <td data-label="" colSpan={7} className="p-3 text-center text-slate-500 sm:p-4">
                         Tidak ada data perawatan.
                       </td>
                     </tr>
@@ -2831,15 +2831,15 @@ export default function DetailPropertiPage() {
                         key={item.id}
                         className="border-t border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="p-2.5 text-slate-700 sm:p-3">{formatDate(item.date)}</td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">{item.unit_name}</td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">{item.tenant_name || "-"}</td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Tanggal" data-mobile-primary="true" className="p-2.5 text-slate-700 sm:p-3">{formatDate(item.date)}</td>
+                        <td data-label="Unit" className="p-2.5 text-slate-700 sm:p-3">{item.unit_name}</td>
+                        <td data-label="Penghuni" className="p-2.5 text-slate-700 sm:p-3">{item.tenant_name || "-"}</td>
+                        <td data-label="Keluhan" className="p-2.5 text-slate-700 sm:p-3">
                           <p className="max-w-[280px] break-words">
                             {item.issue || item.category || "-"}
                           </p>
                         </td>
-                        <td className="p-2.5 sm:p-3">
+                        <td data-label="Prioritas" className="p-2.5 sm:p-3">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                               maintenancePriorityClassMap[item.priority] ||
@@ -2850,7 +2850,7 @@ export default function DetailPropertiPage() {
                               formatReadableText(item.priority)}
                           </span>
                         </td>
-                        <td className="p-2.5 sm:p-3">
+                        <td data-label="Status" className="p-2.5 sm:p-3">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                               maintenanceStatusClassMap[item.status] ||
@@ -2861,7 +2861,7 @@ export default function DetailPropertiPage() {
                               formatReadableText(item.status)}
                           </span>
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Teknisi" className="p-2.5 text-slate-700 sm:p-3">
                           {item.technician_name || "-"}
                         </td>
                       </tr>
@@ -2900,8 +2900,8 @@ function DeleteTenantDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <div className="admin-mobile-dialog-panel w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
@@ -2985,8 +2985,8 @@ function DeleteUnitDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <div className="admin-mobile-dialog-panel w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
@@ -3342,7 +3342,7 @@ function PropertyMappingSection({
                 ) : null}
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="admin-responsive-table overflow-x-auto">
                 <table className="w-full min-w-[1080px] text-sm">
                   <thead className="bg-white text-slate-700">
                     <tr>
@@ -3364,13 +3364,13 @@ function PropertyMappingSection({
                         key={unit.id}
                         className="border-t border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="p-2.5 font-medium text-slate-900 sm:p-3">
+                        <td data-label="Unit" data-mobile-primary="true" className="p-2.5 font-medium text-slate-900 sm:p-3">
                           {unit.displayName}
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Tipe" className="p-2.5 text-slate-700 sm:p-3">
                           {formatReadableText(unit.unitType)}
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Harga" className="p-2.5 text-slate-700 sm:p-3">
                           {(() => {
                             const priceInfo = getUnitDisplayPrice(unit);
                             return priceInfo.hasPromo ? (
@@ -3389,7 +3389,7 @@ function PropertyMappingSection({
                             );
                           })()}
                         </td>
-                        <td className="p-2.5 sm:p-3">
+                        <td data-label="Status" className="p-2.5 sm:p-3">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
                               unitBadgeClassMap[unit.status] ||
@@ -3400,22 +3400,22 @@ function PropertyMappingSection({
                               formatReadableText(unit.status)}
                           </span>
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Penyewa" className="p-2.5 text-slate-700 sm:p-3">
                           {unit.tenantName || "-"}
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Nomor Telepon" className="p-2.5 text-slate-700 sm:p-3">
                           {unit.tenantPhone || "-"}
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Check-in" className="p-2.5 text-slate-700 sm:p-3">
                           {formatDate(unit.leaseStart)}
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Check-out" className="p-2.5 text-slate-700 sm:p-3">
                           {formatDate(unit.leaseEnd)}
                         </td>
-                        <td className="p-2.5 text-slate-700 sm:p-3">
+                        <td data-label="Lama Sewa" className="p-2.5 text-slate-700 sm:p-3">
                           {unit.leaseDurationLabel}
                         </td>
-                        <td className="p-3 text-slate-700">{unit.note || "-"}</td>
+                        <td data-label="Keterangan" className="p-3 text-slate-700">{unit.note || "-"}</td>
                       </tr>
                     ))}
                   </tbody>

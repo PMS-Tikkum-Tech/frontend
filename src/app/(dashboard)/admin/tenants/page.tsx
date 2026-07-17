@@ -286,6 +286,19 @@ export default function AdminTenantsPage() {
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    if (!isFormOpen && !viewTenant) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFormOpen, viewTenant]);
+
   const stats = useMemo(() => {
     const activeCount = tenants.filter(
       (tenant) => tenant.account_status === "active"
@@ -452,8 +465,8 @@ export default function AdminTenantsPage() {
   };
 
   return (
-    <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-7">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#1E2746] via-[#273965] to-[#2C62A5] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="pointer-events-none absolute -left-12 top-0 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
 
@@ -462,7 +475,7 @@ export default function AdminTenantsPage() {
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
               Modul Penyewa
             </p>
-            <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+            <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Data Penyewa
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -482,12 +495,14 @@ export default function AdminTenantsPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+        <div className="col-span-2 xl:col-span-1">
         <SummaryCard
           icon={<Users size={18} />}
           label="Total Penyewa"
           value={String(stats.total)}
         />
+        </div>
         <SummaryCard
           icon={<UserCheck size={18} />}
           label="Akun Aktif"
@@ -502,8 +517,8 @@ export default function AdminTenantsPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <div className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <div className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -542,7 +557,7 @@ export default function AdminTenantsPage() {
               setStatus("");
               setCurrentPage(1);
             }}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto md:px-4"
           >
             <RotateCcw size={14} />
             Atur Ulang
@@ -574,7 +589,7 @@ export default function AdminTenantsPage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="min-w-[920px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -589,13 +604,13 @@ export default function AdminTenantsPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={5} className="p-6 text-center text-slate-500">
                     Memuat data penyewa...
                   </td>
                 </tr>
               ) : pagedTenants.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={5} className="p-6 text-center text-slate-500">
                     Tidak ada data penyewa.
                   </td>
                 </tr>
@@ -605,35 +620,35 @@ export default function AdminTenantsPage() {
                     key={tenant.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
-                    <td className="p-3 sm:p-4">
-                      <div className="flex items-center gap-3">
+                    <td data-label="Penyewa" data-mobile-primary="true" className="p-3 sm:p-4">
+                      <div className="flex min-w-0 items-center gap-3">
                         <TenantAvatar
                           src={tenant.profile_picture_url}
                           name={tenant.full_name || tenant.email || ""}
                         />
 
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-semibold text-slate-800">
                             {tenant.full_name || <span className="italic text-slate-400">Belum diisi</span>}
                           </p>
-                          <p className="text-xs text-slate-500">{tenant.email}</p>
+                          <p className="break-all text-xs text-slate-500">{tenant.email}</p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="p-3 text-slate-700 sm:p-4">
+                    <td data-label="Telepon" className="p-3 text-slate-700 sm:p-4">
                       {tenant.phone_number || "-"}
                     </td>
 
-                    <td className="p-3 sm:p-4">
+                    <td data-label="Status Akun" className="p-3 sm:p-4">
                       <StatusBadge status={tenant.account_status} />
                     </td>
 
-                    <td className="p-3 text-slate-700 sm:p-4">
+                    <td data-label="Tanggal Daftar" className="p-3 text-slate-700 sm:p-4">
                       {formatDate(tenant.created_at)}
                     </td>
 
-                    <td className="p-3 sm:p-4">
+                    <td data-label="Aksi" data-mobile-actions="true" className="p-3 sm:p-4">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -688,7 +703,7 @@ export default function AdminTenantsPage() {
             data penyewa
           </p>
 
-          <div className="inline-flex items-center gap-2 self-start">
+          <div className="admin-pagination inline-flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -717,9 +732,9 @@ export default function AdminTenantsPage() {
       </section>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-4 py-4 sm:px-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={formMode === "create" ? "Tambah Penyewa" : "Ubah Penyewa"}>
+          <div className="flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 {formMode === "create" ? "Tambah Penyewa" : "Ubah Penyewa"}
               </h2>
@@ -729,12 +744,13 @@ export default function AdminTenantsPage() {
                 onClick={closeFormModal}
                 disabled={isSubmitting}
                 className="rounded-lg p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Tutup formulir penyewa"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   label="Nama Lengkap"
@@ -878,12 +894,12 @@ export default function AdminTenantsPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 rounded-b-2xl border-t bg-slate-50 px-6 py-4">
+            <div className="flex shrink-0 flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:rounded-b-2xl sm:px-6">
               <button
                 type="button"
                 onClick={closeFormModal}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl border border-slate-200 px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-11 w-full rounded-xl border border-slate-200 px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Batal
               </button>
@@ -894,7 +910,7 @@ export default function AdminTenantsPage() {
                   void handleSubmitForm();
                 }}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {isSubmitting ? "Menyimpan..." : "Simpan"}
               </button>
@@ -904,9 +920,9 @@ export default function AdminTenantsPage() {
       )}
 
       {viewTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Detail Penyewa">
+          <div className="flex max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-h-[90vh] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 Detail Penyewa
               </h2>
@@ -915,21 +931,22 @@ export default function AdminTenantsPage() {
                 type="button"
                 onClick={() => setViewTenant(null)}
                 className="rounded-lg p-2 hover:bg-slate-100"
+                aria-label="Tutup detail penyewa"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 px-6 py-5 text-sm">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-5 text-sm sm:px-6">
               <div className="mb-1 flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <TenantAvatar
                   src={viewTenant.profile_picture_url}
                   name={viewTenant.full_name || viewTenant.email || ""}
                   size={48}
                 />
-                <div>
+                <div className="min-w-0">
                   <p className="font-semibold text-slate-800">{viewTenant.full_name || <span className="italic text-slate-400">Belum diisi</span>}</p>
-                  <p className="text-xs text-slate-500">{viewTenant.email}</p>
+                  <p className="break-all text-xs text-slate-500">{viewTenant.email}</p>
                 </div>
               </div>
               <DetailRow label="Nama" value={viewTenant.full_name || "-"} />
@@ -958,11 +975,11 @@ export default function AdminTenantsPage() {
               />
             </div>
 
-            <div className="flex justify-end rounded-b-2xl border-t bg-slate-50 px-6 py-4">
+            <div className="flex shrink-0 justify-end border-t bg-slate-50 px-4 py-4 sm:rounded-b-2xl sm:px-6">
               <button
                 type="button"
                 onClick={() => setViewTenant(null)}
-                className="h-11 rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35]"
+                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] sm:w-auto"
               >
                 Tutup
               </button>
@@ -1035,14 +1052,14 @@ function SummaryCard({
         : "border-slate-200 bg-white text-[#1E2746]";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-slate-500">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-800">{value}</p>
+          <p className="mt-1 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
         </div>
         <div
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${styles}`}
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border sm:h-10 sm:w-10 ${styles}`}
         >
           {icon}
         </div>
@@ -1118,9 +1135,9 @@ function FormField({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+    <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="font-medium text-slate-600">{label}</span>
-      <span className="text-right text-slate-800">{value}</span>
+      <span className="break-words text-left text-slate-800 sm:max-w-[62%] sm:text-right">{value}</span>
     </div>
   );
 }

@@ -342,11 +342,11 @@ export default function AdminLogActivityPage() {
   const canGoNext = currentPage < pagination.totalPages;
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:p-6">
+    <div className="space-y-4 sm:space-y-6">
+      <section className="rounded-2xl bg-gradient-to-r from-[#1E2746] to-[#2A3B78] p-4 text-white shadow-sm sm:rounded-3xl sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Catatan Aktivitas</h1>
+            <h1 className="text-xl font-semibold sm:text-2xl">Catatan Aktivitas</h1>
             <p className="text-sm text-blue-100">
               Pantau jejak perubahan seluruh modul administrator secara langsung.
             </p>
@@ -366,7 +366,7 @@ export default function AdminLogActivityPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <SummaryCard
           title="Total Catatan"
           value={summary.total}
@@ -398,8 +398,8 @@ export default function AdminLogActivityPage() {
           Filter Log Aktivitas
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-          <label className="relative w-full min-w-0 flex-1">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
+          <label className="relative col-span-2 w-full min-w-0 flex-1">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -458,7 +458,7 @@ export default function AdminLogActivityPage() {
           </select>
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600">Dari</label>
             <input
@@ -486,7 +486,7 @@ export default function AdminLogActivityPage() {
           <button
             type="button"
             onClick={clearFilters}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto"
+            className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1 md:w-auto"
           >
             Atur Ulang
           </button>
@@ -513,7 +513,7 @@ export default function AdminLogActivityPage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="admin-responsive-table overflow-x-auto">
           <table className="min-w-[1020px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
@@ -529,30 +529,30 @@ export default function AdminLogActivityPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={6} className="p-6 text-center text-slate-500">
                     Memuat catatan aktivitas...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={6} className="p-6 text-center text-slate-500">
                     Tidak ada catatan aktivitas.
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="border-t border-slate-100 align-top hover:bg-slate-50">
-                    <td className="p-4 text-slate-700">
+                    <td data-label="Waktu" data-mobile-primary="true" className="p-4 text-slate-700">
                       {formatTimestamp(log.created_at || log.timestamp)}
                     </td>
-                    <td className="p-4 text-slate-700">{log.admin_name || "-"}</td>
-                    <td className="p-4 text-slate-700">{toModuleLabel(log.module_name)}</td>
-                    <td className="p-4 text-slate-700">
+                    <td data-label="Administrator" className="p-4 text-slate-700">{log.admin_name || "-"}</td>
+                    <td data-label="Modul" className="p-4 text-slate-700">{toModuleLabel(log.module_name)}</td>
+                    <td data-label="Deskripsi" className="p-4 text-slate-700">
                       <p className="max-w-[380px] whitespace-normal break-words">
                         {log.description || "-"}
                       </p>
                     </td>
-                    <td className="p-4">
+                    <td data-label="Aksi" className="p-4">
                       <ActionBadge
                         action={actionLabelMap[log.action] || log.action_label}
                         colorClass={
@@ -561,7 +561,7 @@ export default function AdminLogActivityPage() {
                         }
                       />
                     </td>
-                    <td className="p-4 text-center">
+                    <td data-label="Detail" data-mobile-actions="true" className="p-4 text-center">
                       <button
                         type="button"
                         onClick={() => {
@@ -586,7 +586,7 @@ export default function AdminLogActivityPage() {
             {pagination.totalCount} catatan
           </p>
 
-          <div className="flex items-center gap-2 self-start">
+          <div className="admin-pagination flex items-center gap-2 self-start">
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
@@ -617,8 +617,8 @@ export default function AdminLogActivityPage() {
       </section>
 
       {viewLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
+          <div className="admin-mobile-dialog-panel flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
               <h2 className="text-lg font-semibold text-slate-800">
                 Detail Catatan Aktivitas
@@ -712,11 +712,11 @@ function SummaryCard({
           : "border-slate-200 bg-slate-50/70";
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+    <div className={`h-full rounded-2xl border p-3 sm:p-4 ${toneClass}`}>
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {title}
       </p>
-      <p className="mt-2 text-2xl font-semibold text-slate-800">{value}</p>
+      <p className="mt-2 text-xl font-semibold text-slate-800 sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs text-slate-600">{caption}</p>
     </div>
   );
@@ -734,9 +734,9 @@ function ActionBadge({ action, colorClass }: { action: string; colorClass: strin
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 px-3 py-2">
+    <div className="flex flex-col gap-1 rounded-lg border border-slate-200 px-3 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="text-sm font-medium text-slate-600">{label}</span>
-      <span className="max-w-[65%] break-words text-right text-sm text-slate-800">
+      <span className="break-words text-left text-sm text-slate-800 sm:max-w-[65%] sm:text-right">
         {value}
       </span>
     </div>

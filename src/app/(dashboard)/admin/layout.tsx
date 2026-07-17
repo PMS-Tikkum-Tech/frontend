@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ import {
   Bell,
   Shield,
   History,
+  House,
   LogOut,
   Menu,
   Search,
@@ -139,9 +140,37 @@ export default function AdminDashboardLayout({
     { label: "Catatan Aktivitas", href: "/admin/log-activity", icon: History },
   ];
 
+  const activeMenuLabel =
+    menuItems.find((item) =>
+      item.href === "/admin"
+        ? pathname === item.href
+        : pathname.startsWith(item.href),
+    )?.label || "Admin";
+
+  useEffect(() => {
+    if (!isSidebarOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isSidebarOpen]);
+
   return (
     <RoleGuard allowedRoles={["admin", "finance"]}>
-      <div className="min-h-screen overflow-x-hidden bg-[#f8f8ff] lg:flex">
+      <div className="admin-shell min-h-screen overflow-x-hidden bg-[#f8f8ff] lg:flex">
         {isSidebarOpen ? (
           <button
             type="button"
@@ -153,14 +182,15 @@ export default function AdminDashboardLayout({
 
         {/* ================= SIDEBAR ================= */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1d1269] text-white shadow-[8px_0_30px_rgba(29,18,105,0.18)] transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 ${
+          aria-label="Navigasi admin"
+          className={`admin-shell-sidebar fixed inset-y-0 left-0 z-50 w-[min(18rem,88vw)] overflow-hidden bg-[#1d1269] text-white shadow-[8px_0_30px_rgba(29,18,105,0.18)] transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex h-full flex-col justify-between py-6">
-          <div>
+          <div className="flex h-full flex-col py-4 sm:py-6">
+          <div className="flex min-h-0 flex-1 flex-col">
             {/* Logo */}
-            <div className="mb-8 flex items-center justify-between px-4 lg:mb-12 lg:justify-center lg:px-0">
+            <div className="mb-4 flex shrink-0 items-center justify-between px-4 sm:mb-8 lg:mb-10 lg:justify-center lg:px-0">
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(false)}
@@ -181,10 +211,13 @@ export default function AdminDashboardLayout({
             </div>
 
             {/* Menu */}
-            <nav className="flex flex-col gap-1 px-3 text-sm">
+            <nav className="flex min-h-0 flex-col gap-1 overflow-y-auto overscroll-contain px-3 text-sm">
               {menuItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive =
+                  item.href === "/admin"
+                    ? pathname === item.href
+                    : pathname.startsWith(item.href);
 
                 return (
                   <Link
@@ -207,7 +240,7 @@ export default function AdminDashboardLayout({
           </div>
 
           {/* Logout */}
-          <div className="px-3">
+          <div className="shrink-0 border-t border-white/10 px-3 pt-3">
             <button
               type="button"
               onClick={() => {
@@ -225,8 +258,8 @@ export default function AdminDashboardLayout({
         {/* ================= MAIN AREA ================= */}
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           {/* HEADER */}
-          <header className="min-h-[72px] border-b border-[#e4e1ff] border-t-[3px] border-t-[#3423b8] bg-white px-3 shadow-sm sm:px-4 md:px-6 lg:px-8">
-            <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 py-3 sm:flex-nowrap sm:py-0">
+          <header className="admin-shell-header sticky top-0 z-30 min-h-[64px] border-b border-[#e4e1ff] border-t-[3px] border-t-[#3423b8] bg-white/95 px-3 shadow-sm backdrop-blur sm:min-h-[72px] sm:px-4 md:px-6 lg:px-8">
+            <div className="flex min-h-[64px] items-center justify-between gap-3 sm:min-h-[72px]">
             {/* Search */}
               <div className="flex min-w-0 items-center gap-3">
                 <button
@@ -237,6 +270,10 @@ export default function AdminDashboardLayout({
                 >
                   <Menu size={18} />
                 </button>
+
+                <p className="max-w-[34vw] truncate text-sm font-semibold text-slate-800 max-[420px]:hidden md:hidden">
+                  {activeMenuLabel}
+                </p>
 
                 <div className="relative hidden w-full max-w-md min-w-0 md:block">
                   <Search
@@ -253,6 +290,15 @@ export default function AdminDashboardLayout({
 
               {/* Profile */}
               <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-6">
+                <Link
+                  href="/"
+                  aria-label="Buka Beranda KIKOST"
+                  title="Beranda KIKOST"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 md:hidden"
+                >
+                  <House size={18} />
+                </Link>
+
                 <Link
                   href="/"
                   className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 md:inline-flex"
@@ -315,7 +361,7 @@ export default function AdminDashboardLayout({
           </header>
 
           {/* CONTENT */}
-          <main className="flex-1 overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8">
+          <main className="admin-shell-main min-w-0 flex-1 overflow-x-hidden p-3 pb-6 sm:p-4 md:p-6 lg:p-8">
             {children}
           </main>
         </div>

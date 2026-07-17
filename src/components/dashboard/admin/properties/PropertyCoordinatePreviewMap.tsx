@@ -9,8 +9,6 @@ type PropertyCoordinatePreviewMapProps = {
   longitude?: number | null;
 };
 
-const DEFAULT_CENTER: [number, number] = [-6.5667, 106.7283];
-
 const isValidCoordinate = (lat: number, lng: number) =>
   Number.isFinite(lat) &&
   Number.isFinite(lng) &&
@@ -60,7 +58,7 @@ export default function PropertyCoordinatePreviewMap({
   }
 
   return (
-    <div className="h-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-[340px]">
+    <div className="h-[240px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-[340px]">
       <MapContainer
         center={[coordinate.lat, coordinate.lng]}
         zoom={16}
