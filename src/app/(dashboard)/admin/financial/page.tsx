@@ -274,6 +274,9 @@ const formatDate = (value?: string | null) => {
   });
 };
 
+const getTransactionInputDate = (transaction: AdminFinancialTransaction) =>
+  transaction.created_at || transaction.transaction_date || null;
+
 const toDateInput = (value?: string | null) => {
   if (!value) {
     return "";
@@ -820,8 +823,8 @@ export default function AdminFinancialPage() {
     });
 
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.transaction_date || a.created_at || 0).getTime();
-      const dateB = new Date(b.transaction_date || b.created_at || 0).getTime();
+      const dateA = new Date(getTransactionInputDate(a) || 0).getTime();
+      const dateB = new Date(getTransactionInputDate(b) || 0).getTime();
 
       if (sortBy === "amount_desc") {
         return Number(b.amount || 0) - Number(a.amount || 0);
@@ -1563,8 +1566,8 @@ export default function AdminFinancialPage() {
             }
             className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
           >
-            <option value="newest">Terbaru</option>
-            <option value="oldest">Terlama</option>
+            <option value="newest">Input Terbaru</option>
+            <option value="oldest">Input Terlama</option>
             <option value="amount_desc">Nominal Tertinggi</option>
             <option value="amount_asc">Nominal Terendah</option>
           </select>
@@ -1778,10 +1781,11 @@ export default function AdminFinancialPage() {
         </div>
 
         <div className="admin-responsive-table overflow-x-auto">
-          <table className="min-w-[980px] w-full text-sm">
+          <table className="min-w-[1120px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="p-3 text-left">Tanggal</th>
+                <th className="p-3 text-left">Tanggal Input Data</th>
+                <th className="p-3 text-left">Masa Sewa</th>
                 <th className="p-3 text-left">Properti</th>
                 <th className="p-3 text-left">Deskripsi</th>
                 <th className="p-3 text-left">Jumlah</th>
@@ -1794,13 +1798,13 @@ export default function AdminFinancialPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={8} className="p-6 text-center text-slate-500">
                     Memuat data transaksi...
                   </td>
                 </tr>
               ) : pagedTransactions.length === 0 ? (
                 <tr>
-                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
+                  <td data-label="" colSpan={8} className="p-6 text-center text-slate-500">
                     Tidak ada transaksi.
                   </td>
                 </tr>
@@ -1821,8 +1825,21 @@ export default function AdminFinancialPage() {
                       key={transaction.id}
                       className="border-t border-slate-100"
                     >
-                      <td data-label="Tanggal" data-mobile-primary="true" className="p-3 text-slate-700">
-                        {formatDate(transaction.transaction_date)}
+                      <td data-label="Tanggal Input Data" data-mobile-primary="true" className="p-3 text-slate-700">
+                        <p className="font-medium">
+                          {formatDate(getTransactionInputDate(transaction))}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Data dibuat/admin input
+                        </p>
+                      </td>
+
+                      <td data-label="Masa Sewa" className="p-3 text-slate-700">
+                        {stayPeriod ? (
+                          <p className="max-w-[190px] text-sm">{stayPeriod}</p>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </td>
 
                       <td data-label="Properti" className="p-3">
@@ -1841,11 +1858,6 @@ export default function AdminFinancialPage() {
                         {details.tenantName ? (
                           <p className="max-w-[300px] truncate text-xs text-slate-500">
                             Penyewa: {details.tenantName}
-                          </p>
-                        ) : null}
-                        {stayPeriod ? (
-                          <p className="max-w-[300px] truncate text-xs text-slate-500">
-                            Masa sewa: {stayPeriod}
                           </p>
                         ) : null}
                         {details.notes ? (
@@ -1995,7 +2007,11 @@ export default function AdminFinancialPage() {
                 </p>
               </div>
               <DetailRow
-                label="Tanggal"
+                label="Tanggal Input Data"
+                value={formatDate(getTransactionInputDate(viewTransaction))}
+              />
+              <DetailRow
+                label="Tanggal Transaksi"
                 value={formatDate(viewTransaction.transaction_date)}
               />
               <DetailRow
