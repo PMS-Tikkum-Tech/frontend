@@ -53,9 +53,9 @@ import {
   createAdminFinancialTransaction,
   deleteAdminFinancialTransaction,
   exportAdminFinancialTransactions,
+  getAllAdminCashflowEntries,
+  getAllAdminFinancialTransactions,
   getAdminFinancialDashboard,
-  getAdminFinancialTransactions,
-  getAdminCashflowEntries,
   getAllAdminProperties,
   getAllAdminPropertyUnits,
   getAllAdminTenants,
@@ -389,46 +389,19 @@ const hasOwnerCashflowForTransaction = (
 };
 
 const loadAllFinancialTransactionsForSync = async () => {
-  const rows: AdminFinancialTransaction[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  while (page <= totalPages) {
-    const response = await getAdminFinancialTransactions({
-      page,
-      per_page: 100,
-    });
-
-    rows.push(...response.data);
-    totalPages = Number(response.meta?.total_pages || 1);
-    page += 1;
-  }
-
-  return rows;
+  const response = await getAllAdminFinancialTransactions();
+  return response.data;
 };
 
 const loadAllOwnerCashflowsForSync = async () => {
-  const rows: AdminCashflowEntry[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  while (page <= totalPages) {
-    const response = await getAdminCashflowEntries({
-      page,
-      per_page: 100,
-      account_scope: "owner",
-    });
-
-    rows.push(...response.data);
-    totalPages = Number(response.meta?.total_pages || 1);
-    page += 1;
-  }
-
-  return rows;
+  const response = await getAllAdminCashflowEntries({
+    account_scope: "owner",
+  });
+  return response.data;
 };
 
 const loadAllPropertiesForSync = async () => {
-  const response = await getAllAdminProperties({ per_page: 100 });
+  const response = await getAllAdminProperties();
   return response.data;
 };
 
@@ -703,15 +676,8 @@ export default function AdminFinancialPage() {
             tenantsResponse,
           ] = await Promise.all([
             getAdminFinancialDashboard(dateRangeParams),
-            getAdminFinancialTransactions({
-              ...dateRangeParams,
-              page: 1,
-              per_page: 100,
-            }),
-            getAllAdminProperties({
-              page: 1,
-              per_page: 100,
-            }),
+            getAllAdminFinancialTransactions(dateRangeParams),
+            getAllAdminProperties(),
             getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
           ]);
 
@@ -958,10 +924,7 @@ export default function AdminFinancialPage() {
 
     setIsLoadingUnits(true);
     try {
-      const response = await getAllAdminPropertyUnits(propertyId, {
-        page: 1,
-        per_page: 100,
-      });
+      const response = await getAllAdminPropertyUnits(propertyId);
       setUnits(response.data);
       setForm((prev) => ({
         ...prev,

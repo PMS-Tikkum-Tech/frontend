@@ -21,8 +21,8 @@ import {
 import {
   deleteAdminMaintenanceRequest,
   exportAdminMaintenanceRequests,
-  getAdminMaintenanceRequests,
-  getAdminUsers,
+  getAllAdminMaintenanceRequests,
+  getAllAdminUsers,
   getApiErrorMessage,
   updateAdminMaintenanceRequest,
   type AdminMaintenanceRequest,
@@ -158,14 +158,8 @@ export default function AdminMaintenancePage() {
 
       try {
         const [issuesResponse, usersResponse] = await Promise.all([
-          getAdminMaintenanceRequests({
-            page: 1,
-            per_page: 100,
-          }),
-          getAdminUsers({
-            page: 1,
-            per_page: 100,
-          }),
+          getAllAdminMaintenanceRequests(),
+          getAllAdminUsers(),
         ]);
 
         if (!active) {

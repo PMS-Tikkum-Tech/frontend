@@ -16,9 +16,9 @@ import {
 import {
   createAdminCommunication,
   deleteAdminCommunication,
+  getAllAdminCommunications,
+  getAllAdminProperties,
   getAllAdminTenants,
-  getAdminCommunications,
-  getAdminProperties,
   getApiErrorMessage,
   updateAdminCommunication,
   type AdminCommunication,
@@ -365,14 +365,8 @@ export default function AdminCommunicationPage() {
       try {
         const [communicationResponse, propertiesResponse, tenantsResponse] =
           await Promise.all([
-            getAdminCommunications({
-              page: 1,
-              per_page: 100,
-            }),
-            getAdminProperties({
-              page: 1,
-              per_page: 100,
-            }),
+            getAllAdminCommunications(),
+            getAllAdminProperties(),
             getAllAdminTenants(),
           ]);
 

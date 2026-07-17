@@ -1651,6 +1651,9 @@ export const getAllAdminTenants = (params?: QueryParams) =>
 export const getAdminOwners = (params?: QueryParams) =>
   getList<AdminUser>("/api/v1/users/owner", params);
 
+export const getAllAdminOwners = (params?: QueryParams) =>
+  getAllList<AdminUser>("/api/v1/users/owner", params);
+
 export const getAdminUsers = (params?: QueryParams) =>
   getList<AdminUser>("/api/v1/users", params);
 
@@ -1704,6 +1707,9 @@ export const deleteAdminUser = async (id: number | string) => {
 export const getAdminMaintenanceRequests = (params?: QueryParams) =>
   getList<AdminMaintenanceRequest>("/api/v1/maintenance_requests", params);
 
+export const getAllAdminMaintenanceRequests = (params?: QueryParams) =>
+  getAllList<AdminMaintenanceRequest>("/api/v1/maintenance_requests", params);
+
 export const getAdminMaintenanceRequest = (id: number | string) =>
   getItem<AdminMaintenanceRequest>(`/api/v1/maintenance_requests/${id}`);
 
@@ -1750,6 +1756,20 @@ export const exportAdminMaintenanceRequests = async (params?: QueryParams) => {
 
 export const getAdminFinancialTransactions = async (params?: QueryParams) => {
   const result = await getList<AdminFinancialTransaction>(
+    "/api/v1/financial_transactions",
+    params,
+  );
+
+  return {
+    ...result,
+    data: result.data.map(normalizeFinancialTransaction),
+  };
+};
+
+export const getAllAdminFinancialTransactions = async (
+  params?: QueryParams,
+) => {
+  const result = await getAllList<AdminFinancialTransaction>(
     "/api/v1/financial_transactions",
     params,
   );
@@ -1838,6 +1858,9 @@ export const createAdminCashflowEntry = async (
 
 export const getAdminCashflowEntries = (params?: QueryParams) =>
   getList<AdminCashflowEntry>("/api/v1/cashflow_entries", params);
+
+export const getAllAdminCashflowEntries = (params?: QueryParams) =>
+  getAllList<AdminCashflowEntry>("/api/v1/cashflow_entries", params);
 
 export const exportAdminFinancialTransactions = async (
   params?: QueryParams,
@@ -1928,8 +1951,26 @@ export const mapAdminManualRentalBookingToPayment = (
 export const getAdminPayments = (params?: QueryParams) =>
   getList<AdminPayment>("/api/v1/payments", params);
 
+export const getAllAdminPayments = (params?: QueryParams) =>
+  getAllList<AdminPayment>("/api/v1/payments", params);
+
 export const getAdminManualRentalBookings = async (params?: QueryParams) => {
   const response = await getList<AdminManualRentalBooking>(
+    "/api/v1/manual_rentals/admin/bookings",
+    params,
+  );
+
+  return {
+    data: response.data.map(mapAdminManualRentalBookingToPayment),
+    meta: response.meta,
+    message: response.message,
+  };
+};
+
+export const getAllAdminManualRentalBookings = async (
+  params?: QueryParams,
+) => {
+  const response = await getAllList<AdminManualRentalBooking>(
     "/api/v1/manual_rentals/admin/bookings",
     params,
   );
@@ -2035,6 +2076,9 @@ export const pushAdminPaymentInvoice = async (id: number | string) => {
 
 export const getAdminCommunications = (params?: QueryParams) =>
   getList<AdminCommunication>("/api/v1/communications", params);
+
+export const getAllAdminCommunications = (params?: QueryParams) =>
+  getAllList<AdminCommunication>("/api/v1/communications", params);
 
 export const getAdminCommunication = (id: number | string) =>
   getItem<AdminCommunication>(`/api/v1/communications/${id}`);

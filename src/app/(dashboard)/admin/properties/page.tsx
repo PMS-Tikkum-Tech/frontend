@@ -11,7 +11,7 @@ import {
   createAdminProperty,
   getAdminFinancialDashboard,
   getAllAdminProperties,
-  getAdminOwners,
+  getAllAdminOwners,
   getApiErrorMessage,
   mapPropertyToCard,
   type AdminPropertyUpsertPayload,
@@ -109,10 +109,7 @@ export default function AdminPropertiesPage() {
         const [propertiesResponse, dashboardResponse, ownersResponse] = await Promise.all([
           getAllAdminProperties(),
           getAdminFinancialDashboard(buildPeriodParams("year")),
-          getAdminOwners({
-            page: 1,
-            per_page: 100,
-          }),
+          getAllAdminOwners(),
         ]);
 
         if (!active) {

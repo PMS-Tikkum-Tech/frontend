@@ -37,7 +37,7 @@ import {
   getAllAdminPropertyTenants,
   getAllAdminPropertyUnits,
   getAllAdminTenants,
-  getAdminOwners,
+  getAllAdminOwners,
   getAdminPropertyDetail,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
@@ -430,7 +430,7 @@ export default function DetailPropertiPage() {
           getAllAdminPropertyTenants(propertyId),
           getAllAdminPropertyUnits(propertyId),
           getAllAdminPropertyMaintenance(propertyId),
-          getAdminOwners({ page: 1, per_page: 100 }),
+          getAllAdminOwners(),
           getAllAdminTenants(),
         ]);
 
