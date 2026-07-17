@@ -83,16 +83,10 @@ const COLORS = [
 
 const PAGE_SIZE = 10;
 const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v1";
-const FINANCIAL_LEASE_DATE_RANGE_STORAGE_KEY =
-  "admin-financial-lease-date-range-v1";
 
 type FinancialDateRange = {
   startDate: string;
   endDate: string;
-};
-
-type FinancialLeaseDateRange = FinancialDateRange & {
-  isActive: boolean;
 };
 
 type QuickDateRangeKey = "today" | "thisWeek" | "thisMonth" | "lastMonth";
@@ -211,55 +205,6 @@ const getStoredFinancialDateRange = (): FinancialDateRange | null => {
     return null;
   }
 };
-
-const getStoredFinancialLeaseDateRange = (): FinancialLeaseDateRange | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(
-      FINANCIAL_LEASE_DATE_RANGE_STORAGE_KEY,
-    );
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<FinancialLeaseDateRange>;
-    if (
-      typeof parsed.startDate !== "string" ||
-      typeof parsed.endDate !== "string"
-    ) {
-      return null;
-    }
-
-    const normalizedDateRange = normalizeFinancialDateRange(
-      parsed.startDate,
-      parsed.endDate,
-    );
-
-    if (!normalizedDateRange) {
-      return null;
-    }
-
-    return {
-      ...normalizedDateRange,
-      isActive: Boolean(parsed.isActive),
-    };
-  } catch {
-    return null;
-  }
-};
-
-const buildFinancialDateRangeParams = (
-  startDate: string,
-  endDate: string,
-) => ({
-  start_date: startDate,
-  end_date: endDate,
-  date_from: startDate,
-  date_to: endDate,
-});
 
 const formatFinancialDateLabel = (value: string) => {
   const parsed = parseFinancialDate(value);
@@ -665,18 +610,6 @@ export default function AdminFinancialPage() {
     defaultDateRange.startDate,
   );
   const [tempEndDate, setTempEndDate] = useState(defaultDateRange.endDate);
-  const [leaseStartDate, setLeaseStartDate] = useState(
-    defaultDateRange.startDate,
-  );
-  const [leaseEndDate, setLeaseEndDate] = useState(defaultDateRange.endDate);
-  const [tempLeaseStartDate, setTempLeaseStartDate] = useState(
-    defaultDateRange.startDate,
-  );
-  const [tempLeaseEndDate, setTempLeaseEndDate] = useState(
-    defaultDateRange.endDate,
-  );
-  const [isLeasePeriodFilterActive, setIsLeasePeriodFilterActive] =
-    useState(false);
   const [isDateRangeReady, setIsDateRangeReady] = useState(false);
   const [sortBy, setSortBy] = useState<
     "newest" | "oldest" | "amount_desc" | "amount_asc"
@@ -723,19 +656,11 @@ export default function AdminFinancialPage() {
   useEffect(() => {
     const storedDateRange = getStoredFinancialDateRange();
     const initialDateRange = storedDateRange || getCurrentMonthDateRange();
-    const storedLeaseDateRange = getStoredFinancialLeaseDateRange();
-    const initialLeaseDateRange =
-      storedLeaseDateRange || getCurrentMonthDateRange();
 
     setStartDate(initialDateRange.startDate);
     setEndDate(initialDateRange.endDate);
     setTempStartDate(initialDateRange.startDate);
     setTempEndDate(initialDateRange.endDate);
-    setLeaseStartDate(initialLeaseDateRange.startDate);
-    setLeaseEndDate(initialLeaseDateRange.endDate);
-    setTempLeaseStartDate(initialLeaseDateRange.startDate);
-    setTempLeaseEndDate(initialLeaseDateRange.endDate);
-    setIsLeasePeriodFilterActive(Boolean(storedLeaseDateRange?.isActive));
     setIsDateRangeReady(true);
   }, []);
 
@@ -756,31 +681,6 @@ export default function AdminFinancialPage() {
 
   useEffect(() => {
     if (!isDateRangeReady) {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(
-        FINANCIAL_LEASE_DATE_RANGE_STORAGE_KEY,
-        JSON.stringify({
-          startDate: leaseStartDate,
-          endDate: leaseEndDate,
-          isActive: isLeasePeriodFilterActive,
-        }),
-      );
-    } catch {
-      // Lease period filters should remain usable even when storage is unavailable.
-    }
-  }, [
-    endDate,
-    isDateRangeReady,
-    isLeasePeriodFilterActive,
-    leaseEndDate,
-    leaseStartDate,
-  ]);
-
-  useEffect(() => {
-    if (!isDateRangeReady) {
       return undefined;
     }
 
@@ -790,11 +690,6 @@ export default function AdminFinancialPage() {
         setIsLoading(true);
         setError(null);
 
-        const dateRangeParams = buildFinancialDateRangeParams(
-          startDate,
-          endDate,
-        );
-
         try {
           const [
             dashboardResponse,
@@ -802,8 +697,8 @@ export default function AdminFinancialPage() {
             propertiesResponse,
             tenantsResponse,
           ] = await Promise.all([
-            getAdminFinancialDashboard(dateRangeParams),
-            getAllAdminFinancialTransactions(dateRangeParams),
+            getAdminFinancialDashboard(),
+            getAllAdminFinancialTransactions(),
             getAllAdminProperties(),
             getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
           ]);
@@ -861,7 +756,7 @@ export default function AdminFinancialPage() {
       active = false;
       window.clearTimeout(timeoutId);
     };
-  }, [endDate, isDateRangeReady, refreshKey, startDate]);
+  }, [isDateRangeReady, refreshKey]);
 
   const categoryFilterOptions = useMemo(
     () =>
@@ -890,6 +785,8 @@ export default function AdminFinancialPage() {
     const normalizedSearch = search.trim().toLowerCase();
     const minimumAmount = amountMin ? parseRupiahInputValue(amountMin) : null;
     const maximumAmount = amountMax ? parseRupiahInputValue(amountMax) : null;
+    const selectedStartDate = parseFinancialDate(startDate);
+    const selectedEndDate = parseFinancialDate(endDate);
 
     const filtered = transactions.filter((transaction) => {
       const details = getTransactionDetails(transaction);
@@ -903,6 +800,12 @@ export default function AdminFinancialPage() {
 
       return (
         searchable.includes(normalizedSearch) &&
+        isLeasePeriodInRange(
+          details.checkInDate,
+          details.checkOutDate,
+          selectedStartDate,
+          selectedEndDate,
+        ) &&
         (category ? transaction.category === category : true) &&
         (propertyFilter
           ? String(transaction.property.id || "") === propertyFilter
@@ -942,6 +845,8 @@ export default function AdminFinancialPage() {
     receiptFilter,
     amountMin,
     amountMax,
+    startDate,
+    endDate,
     sortBy,
   ]);
 
@@ -1028,6 +933,8 @@ export default function AdminFinancialPage() {
     receiptFilter,
     search,
     sortBy,
+    startDate,
+    endDate,
   ]);
 
   useEffect(() => {
@@ -1456,7 +1363,6 @@ export default function AdminFinancialPage() {
 
     try {
       const result = await exportAdminFinancialTransactions({
-        ...buildFinancialDateRangeParams(startDate, endDate),
         search,
         category,
       });
@@ -1678,7 +1584,7 @@ export default function AdminFinancialPage() {
             Menampilkan{" "}
             <span className="font-semibold">{filteredTransactions.length}</span>{" "}
             dari <span className="font-semibold">{transactions.length}</span>{" "}
-            transaksi dalam periode.
+            transaksi dalam masa sewa.
           </p>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
@@ -1721,21 +1627,23 @@ export default function AdminFinancialPage() {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Total Pemasukan"
-          value={isLoading ? "..." : formatCurrency(summary.total_revenue)}
+          value={
+            isLoading ? "..." : formatCurrency(filteredTransactionSummary.revenue)
+          }
           icon={<Wallet size={20} />}
         />
 
         <StatCard
           title="Total Pengeluaran"
-          value={isLoading ? "..." : formatCurrency(summary.total_expenses)}
+          value={
+            isLoading ? "..." : formatCurrency(filteredTransactionSummary.expense)
+          }
           icon={<ArrowDownCircle size={20} />}
         />
 
         <StatCard
           title="Pendapatan Bersih"
-          value={
-            isLoading ? "..." : formatCurrency(summary.net_operating_income)
-          }
+          value={isLoading ? "..." : formatCurrency(filteredNetAmount)}
           icon={<TrendingUp size={20} />}
         />
 
@@ -1754,7 +1662,7 @@ export default function AdminFinancialPage() {
             Pemasukan vs Pengeluaran Bulanan
           </h2>
           <p className="mb-4 text-xs text-slate-500">
-            Tren bulanan berdasarkan range tanggal yang dipilih.
+            Tren bulanan berdasarkan transaksi keuangan yang dimuat.
           </p>
 
           {isChartReady ? (
@@ -1786,7 +1694,7 @@ export default function AdminFinancialPage() {
               </ResponsiveContainer>
             ) : (
               <div className="flex h-[84%] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
-                Belum ada data grafik untuk range ini.
+                Belum ada data grafik transaksi.
               </div>
             )
           ) : (
@@ -2667,7 +2575,7 @@ function FinancialDateRangePicker({
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-800">
-                Pilih Periode
+                Periode Masa Sewa
               </p>
               <p className="mt-1 text-xs text-slate-500">
                 {formatFinancialDateRangeLabel(tempStartDate, tempEndDate)}
