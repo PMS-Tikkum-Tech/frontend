@@ -15,6 +15,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -40,6 +41,7 @@ import {
   cancelAdminManualRentalBookingToDeposit,
   createAdminFinancialTransaction,
   createAdminPayment,
+  deleteAdminPayment,
   getAllAdminManualRentalBookings,
   getAllAdminPayments,
   getAllAdminProperties,
@@ -730,6 +732,7 @@ export default function AdminBillingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
   const [isCancellingId, setIsCancellingId] = useState<number | null>(null);
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<
     string | null
   >(null);
@@ -1428,6 +1431,50 @@ export default function AdminBillingPage() {
     }
   };
 
+  const handleDeletePayment = async (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      setNotice({
+        variant: "error",
+        message:
+          "Data booking penyewa tidak bisa dihapus dari tombol hapus tagihan sementara.",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingId(payment.id);
+    setNotice(null);
+
+    try {
+      await deleteAdminPayment(payment.id);
+      setNotice({
+        variant: "success",
+        message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
+      });
+      if (
+        viewPayment?.id === payment.id &&
+        !isManualBookingRecord(viewPayment)
+      ) {
+        setViewPayment(null);
+      }
+      setRefreshKey((previous) => previous + 1);
+    } catch (deleteError) {
+      setNotice({
+        variant: "error",
+        message: getApiErrorMessage(deleteError, "Gagal menghapus tagihan."),
+      });
+    } finally {
+      setIsDeletingId(null);
+    }
+  };
+
   const approveConfirmationIsManual = approveConfirmationPayment
     ? isManualBookingRecord(approveConfirmationPayment)
     : false;
@@ -1792,7 +1839,8 @@ export default function AdminBillingPage() {
                             getPaymentDisplayStatus(payment) === "paid" ||
                             getPaymentDisplayStatus(payment) === "cancelled" ||
                             isApprovingId === payment.id ||
-                            isCancellingId === payment.id
+                            isCancellingId === payment.id ||
+                            isDeletingId === payment.id
                           }
                           className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
@@ -1805,6 +1853,23 @@ export default function AdminBillingPage() {
                         >
                           <CheckCircle2 size={16} />
                         </button>
+                        {!isManualBookingRecord(payment) ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDeletePayment(payment);
+                            }}
+                            disabled={
+                              isDeletingId === payment.id ||
+                              isApprovingId === payment.id ||
+                              isCancellingId === payment.id
+                            }
+                            className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-40"
+                            title="Hapus tagihan"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        ) : null}
                         {canCancelManualBooking(payment) ? (
                           <>
                             <button

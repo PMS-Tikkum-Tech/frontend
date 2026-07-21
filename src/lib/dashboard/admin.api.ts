@@ -576,7 +576,8 @@ export interface AdminDepositUsagePayload {
 }
 
 export interface AdminDepositCreatePayload {
-  customer_id: number;
+  customer_id?: number;
+  customer_name?: string;
   amount: number;
   transaction_date?: string;
   description?: string;
@@ -1320,6 +1321,12 @@ export const getApiErrorMessage = (
     const payload = error.response?.data as ApiErrorPayload | undefined;
     const firstError = normalizeApiMessage(payload?.errors?.[0]);
     const message = normalizeApiMessage(payload?.message);
+    const status = error.response?.status;
+
+    if (status && status >= 500) {
+      return firstError || message || fallback;
+    }
+
     const axiosMessage = normalizeApiMessage(error.message);
     return firstError || message || axiosMessage || fallback;
   }

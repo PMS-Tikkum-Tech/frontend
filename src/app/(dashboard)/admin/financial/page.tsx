@@ -1483,6 +1483,9 @@ export default function AdminFinancialPage() {
       useRentalFields || useNonUnitTenantField
         ? normalizeOptional(form.tenantName)
         : undefined;
+    const depositCustomerName = useDepositCustomerField
+      ? normalizeOptional(form.tenantName)
+      : undefined;
     const transactionNotes = normalizeOptional(buildTransactionNotes(form));
 
     if (usePropertyField && !propertyId) {
@@ -1495,8 +1498,8 @@ export default function AdminFinancialPage() {
       return;
     }
 
-    if (useDepositCustomerField && !form.tenantId) {
-      setFormError("Pilih penyewa terlebih dahulu.");
+    if (useDepositCustomerField && !form.tenantId && !depositCustomerName) {
+      setFormError("Pilih atau tulis nama penyewa terlebih dahulu.");
       return;
     }
 
@@ -1529,7 +1532,10 @@ export default function AdminFinancialPage() {
     try {
       if (form.category === "deposit") {
         const depositPayload = {
-          customer_id: Number(form.tenantId),
+          ...(form.tenantId ? { customer_id: Number(form.tenantId) } : {}),
+          ...(depositCustomerName
+            ? { customer_name: depositCustomerName }
+            : {}),
           amount,
           transaction_date: form.transactionDate,
           description,
@@ -2804,8 +2810,8 @@ export default function AdminFinancialPage() {
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    Pilih nama dari daftar agar deposit tersimpan ke penyewa
-                    yang benar.
+                    Pilih nama dari daftar atau ketik nama baru. Jika nama belum
+                    ada, akun penyewa akan dibuat otomatis.
                   </p>
                   <datalist id="financial-tenant-options">
                     {tenantOptions.map(({ tenant, label }) => (
