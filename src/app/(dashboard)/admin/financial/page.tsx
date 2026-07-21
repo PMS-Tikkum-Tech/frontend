@@ -50,6 +50,7 @@ import {
 import { id as idLocale } from "date-fns/locale";
 import StatCard from "@/components/dashboard/admin/cards/StatCard";
 import {
+  convertAdminDepositToIncome,
   createAdminDeposit,
   createAdminCashflowEntry,
   createAdminFinancialTransaction,
@@ -57,7 +58,6 @@ import {
   deleteAdminFinancialTransaction,
   exportAdminFinancialTransactions,
   getAllAdminCashflowEntries,
-  getAllAdminDeposits,
   getAllAdminFinancialTransactions,
   getAdminFinancialDashboard,
   getAllAdminProperties,
@@ -68,7 +68,6 @@ import {
   updateAdminDeposit,
   updateAdminFinancialTransaction,
   type AdminCashflowEntry,
-  type AdminDeposit,
   type AdminFinancialSummary,
   type AdminFinancialTransaction,
   type AdminPropertyListItem,
@@ -530,6 +529,10 @@ const incomeTransactionTypeOptions: Array<{
   label: string;
 }> = [
   { value: "unit_rental", label: incomeTransactionTypeLabels.unit_rental },
+  {
+    value: "cancelled_booking_non_refund",
+    label: incomeTransactionTypeLabels.cancelled_booking_non_refund,
+  },
   { value: "other_income", label: incomeTransactionTypeLabels.other_income },
 ];
 
@@ -833,7 +836,6 @@ export default function AdminFinancialPage() {
   const [transactions, setTransactions] = useState<AdminFinancialTransaction[]>(
     [],
   );
-  const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
   const [properties, setProperties] = useState<AdminPropertyListItem[]>([]);
   const [units, setUnits] = useState<AdminPropertyUnitRow[]>([]);
   const [tenants, setTenants] = useState<AdminUser[]>([]);
@@ -904,13 +906,11 @@ export default function AdminFinancialPage() {
           const [
             dashboardResponse,
             transactionResponse,
-            depositResponse,
             propertiesResponse,
             tenantsResponse,
           ] = await Promise.all([
             getAdminFinancialDashboard(),
             getAllAdminFinancialTransactions(),
-            getAllAdminDeposits(),
             getAllAdminProperties(),
             getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
           ]);
@@ -932,7 +932,6 @@ export default function AdminFinancialPage() {
             ),
           );
           setTransactions(transactionResponse.data);
-          setDeposits(depositResponse.data);
           setProperties(propertiesResponse.data);
           setTenants(
             tenantsResponse.data
@@ -974,11 +973,10 @@ export default function AdminFinancialPage() {
   const categoryFilterOptions = useMemo(
     () =>
       uniqueFilterOptions(
-        transactions.filter((transaction) =>
-          ["income", "expense"].includes(getTransactionType(transaction)),
-        ),
+        transactions,
         (transaction) => getTransactionType(transaction),
-        (value) => categoryLabelMap[value],
+        (value) =>
+          transactionTypeLabelMap[value as FinancialTransactionType] || value,
       ),
     [transactions],
   );
@@ -1095,15 +1093,21 @@ export default function AdminFinancialPage() {
 
   const depositSummary = useMemo(
     () =>
-      deposits.reduce(
+      filteredTransactions.reduce(
         (summary, deposit) => {
+          if (getTransactionType(deposit) !== "deposit") {
+            return summary;
+          }
+
           summary.total += Number(deposit.amount || 0);
-          summary.remaining += Number(deposit.remaining_balance || 0);
+          summary.remaining += Number(
+            deposit.deposit?.remaining_balance ?? deposit.amount ?? 0,
+          );
           return summary;
         },
         { total: 0, remaining: 0 },
       ),
-    [deposits],
+    [filteredTransactions],
   );
 
   const totalPages = Math.max(
@@ -1164,6 +1168,11 @@ export default function AdminFinancialPage() {
   const showPropertyField = shouldShowPropertyField(form);
   const showRentalFields = shouldShowRentalFields(form);
   const showDepositCustomerField = shouldShowDepositCustomerField(form);
+  const availableIncomeTransactionTypeOptions = form.depositId
+    ? incomeTransactionTypeOptions.filter(
+        (option) => option.value !== "unit_rental",
+      )
+    : incomeTransactionTypeOptions;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1311,13 +1320,28 @@ export default function AdminFinancialPage() {
     setForm((prev) => ({
       ...prev,
       category,
-      incomeType: category === "income" ? prev.incomeType : "unit_rental",
+      incomeType:
+        category === "income"
+          ? prev.category === "deposit"
+            ? "cancelled_booking_non_refund"
+            : prev.incomeType
+          : "unit_rental",
+      ...(category === "income" && prev.category === "deposit"
+        ? {
+            propertyId: "",
+            unitId: "",
+            checkInDate: "",
+            checkOutDate: "",
+            description:
+              prev.description || "Booking dibatalkan (non-refundable)",
+          }
+        : {}),
       ...(category === "deposit"
         ? {
             propertyId: "",
             unitId: "",
-            tenantId: "",
-            tenantName: "",
+            tenantId: prev.depositId ? prev.tenantId : "",
+            tenantName: prev.depositId ? prev.tenantName : "",
             checkInDate: "",
             checkOutDate: "",
             notes: "",
@@ -1533,6 +1557,13 @@ export default function AdminFinancialPage() {
         return;
       }
 
+      if (form.depositId && form.category !== "income") {
+        setFormError(
+          "Deposit hanya bisa diubah menjadi pemasukan non-refund dari form ini.",
+        );
+        return;
+      }
+
       const incomeCategory =
         form.category === "income"
           ? form.incomeType === "unit_rental"
@@ -1619,11 +1650,38 @@ export default function AdminFinancialPage() {
           throw new Error("Data transaksi tidak ditemukan.");
         }
 
-        await updateAdminFinancialTransaction(editingTransactionId, payload);
-        setNotice({
-          variant: "success",
-          message: "Transaksi berhasil diperbarui.",
-        });
+        if (form.depositId) {
+          const convertedTransaction = await convertAdminDepositToIncome(
+            form.depositId,
+            {
+              tenant_id: form.tenantId ? Number(form.tenantId) : undefined,
+              amount,
+              transaction_date: form.transactionDate,
+              description,
+              notes: transactionNotes,
+            },
+          );
+
+          if (form.receiptFile) {
+            await updateAdminFinancialTransaction(
+              convertedTransaction.data.id,
+              {
+                receipt: form.receiptFile,
+              },
+            );
+          }
+
+          setNotice({
+            variant: "success",
+            message: "Deposit berhasil diubah menjadi pemasukan.",
+          });
+        } else {
+          await updateAdminFinancialTransaction(editingTransactionId, payload);
+          setNotice({
+            variant: "success",
+            message: "Transaksi berhasil diperbarui.",
+          });
+        }
       }
 
       setIsFormOpen(false);
@@ -1783,9 +1841,22 @@ export default function AdminFinancialPage() {
     setNotice(null);
 
     try {
+      const selectedTransactionType = [
+        "income",
+        "expense",
+        "deposit",
+        "deposit_usage",
+      ].includes(category)
+        ? category
+        : undefined;
       const result = await exportAdminFinancialTransactions({
         search,
-        category,
+        ...(category === "income" || category === "expense"
+          ? { category }
+          : {}),
+        ...(selectedTransactionType
+          ? { transaction_type: selectedTransactionType }
+          : {}),
       });
 
       const fileName = parseFilenameFromDisposition(result.contentDisposition);
@@ -2009,10 +2080,10 @@ export default function AdminFinancialPage() {
           </p>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
-              In: {formatCurrency(filteredTransactionSummary.revenue)}
+              Masuk: {formatCurrency(filteredTransactionSummary.revenue)}
             </span>
             <span className="rounded-lg bg-red-50 px-2.5 py-1 font-medium text-red-700">
-              Out: {formatCurrency(filteredTransactionSummary.expense)}
+              Keluar: {formatCurrency(filteredTransactionSummary.expense)}
             </span>
             <span
               className={`rounded-lg px-2.5 py-1 font-medium ${
@@ -2021,7 +2092,7 @@ export default function AdminFinancialPage() {
                   : "bg-amber-50 text-amber-700"
               }`}
             >
-              Net: {formatCurrency(filteredNetAmount)}
+              Bersih: {formatCurrency(filteredNetAmount)}
             </span>
           </div>
         </div>
@@ -2614,9 +2685,6 @@ export default function AdminFinancialPage() {
                   </label>
                   <select
                     value={form.category}
-                    disabled={
-                      formMode === "edit" && form.category === "deposit"
-                    }
                     onChange={(event) =>
                       handleCategoryChange(
                         event.target.value as TransactionFormCategory,
@@ -2625,8 +2693,10 @@ export default function AdminFinancialPage() {
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     <option value="income">Pemasukan</option>
-                    <option value="expense">Pengeluaran</option>
-                    {formMode === "create" || form.category === "deposit" ? (
+                    {!form.depositId ? (
+                      <option value="expense">Pengeluaran</option>
+                    ) : null}
+                    {formMode === "create" || form.depositId ? (
                       <option value="deposit">Deposit Booking Batal</option>
                     ) : null}
                   </select>
@@ -2646,7 +2716,7 @@ export default function AdminFinancialPage() {
                       }
                       className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                     >
-                      {incomeTransactionTypeOptions.map((option) => (
+                      {availableIncomeTransactionTypeOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>

@@ -584,6 +584,14 @@ export interface AdminDepositCreatePayload {
 
 export type AdminDepositUpdatePayload = AdminDepositCreatePayload;
 
+export interface AdminDepositIncomeConversionPayload {
+  tenant_id?: number;
+  amount: number;
+  transaction_date?: string;
+  description: string;
+  notes?: string;
+}
+
 export interface AdminFinancialSummary {
   total_revenue: number;
   total_expenses: number;
@@ -2010,6 +2018,22 @@ export const deleteAdminDeposit = async (id: number | string) => {
   );
 
   return {
+    message: response.data.message,
+  };
+};
+
+export const convertAdminDepositToIncome = async (
+  id: number | string,
+  payload: AdminDepositIncomeConversionPayload,
+) => {
+  const response = await axiosInstance.patch<
+    ApiResponse<AdminFinancialTransaction>
+  >(`/api/v1/deposits/${id}/convert_to_income`, {
+    financial_transaction: payload,
+  });
+
+  return {
+    data: normalizeFinancialTransaction(response.data.data),
     message: response.data.message,
   };
 };
