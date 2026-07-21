@@ -53,6 +53,7 @@ import {
   createAdminDeposit,
   createAdminCashflowEntry,
   createAdminFinancialTransaction,
+  deleteAdminDeposit,
   deleteAdminFinancialTransaction,
   exportAdminFinancialTransactions,
   getAllAdminCashflowEntries,
@@ -64,6 +65,7 @@ import {
   getAllAdminTenants,
   getApiErrorMessage,
   toAbsoluteAssetUrl,
+  updateAdminDeposit,
   updateAdminFinancialTransaction,
   type AdminCashflowEntry,
   type AdminDeposit,
@@ -532,6 +534,7 @@ const incomeTransactionTypeOptions: Array<{
 ];
 
 type TransactionFormState = {
+  depositId: string;
   propertyId: string;
   unitId: string;
   tenantId: string;
@@ -548,6 +551,7 @@ type TransactionFormState = {
 };
 
 const getInitialForm = (propertyId = ""): TransactionFormState => ({
+  depositId: "",
   propertyId,
   unitId: "",
   tenantId: "",
@@ -698,8 +702,16 @@ const shouldShowPropertyField = (form: TransactionFormState) =>
 const shouldShowDepositCustomerField = (form: TransactionFormState) =>
   form.category === "deposit";
 
+const shouldShowNonUnitTenantField = (form: TransactionFormState) =>
+  form.category === "income" &&
+  form.incomeType === "cancelled_booking_non_refund";
+
+const getTransactionDepositId = (transaction: AdminFinancialTransaction) =>
+  transaction.deposit?.id || transaction.deposit_id || null;
+
 const buildTransactionNotes = (form: TransactionFormState) => {
   const useRentalFields = shouldShowRentalFields(form);
+  const useNonUnitTenantField = shouldShowNonUnitTenantField(form);
   const noteRows: Array<[string, string]> = [];
 
   if (form.category === "income") {
@@ -715,6 +727,10 @@ const buildTransactionNotes = (form: TransactionFormState) => {
       ["Check In", form.checkInDate],
       ["Check Out", form.checkOutDate],
     );
+  }
+
+  if (useNonUnitTenantField) {
+    noteRows.push(["Nama Penyewa", form.tenantName]);
   }
 
   noteRows.push(["Catatan", form.notes]);
@@ -1300,6 +1316,11 @@ export default function AdminFinancialPage() {
               prev.description || "Deposit dari booking yang dibatalkan",
           }
         : {}),
+      ...(category === "expense"
+        ? {
+            depositId: "",
+          }
+        : {}),
     }));
 
     if (category === "deposit") {
@@ -1316,10 +1337,14 @@ export default function AdminFinancialPage() {
         ? {
             propertyId: "",
             unitId: "",
-            tenantId: "",
-            tenantName: "",
             checkInDate: "",
             checkOutDate: "",
+          }
+        : {}),
+      ...(incomeType === "other_income"
+        ? {
+            tenantId: "",
+            tenantName: "",
           }
         : {}),
     }));
@@ -1347,11 +1372,21 @@ export default function AdminFinancialPage() {
 
   const openEditModal = (transaction: AdminFinancialTransaction) => {
     const transactionType = getTransactionType(transaction);
-    if (transactionType === "deposit" || transactionType === "deposit_usage") {
+    if (transactionType === "deposit_usage") {
       setNotice({
         variant: "error",
         message:
-          "Transaksi deposit belum bisa diubah dari form transaksi biasa. Untuk sementara hapus lalu input ulang bila perlu.",
+          "Pemakaian deposit belum bisa diubah dari form transaksi biasa.",
+      });
+      return;
+    }
+
+    const depositId = getTransactionDepositId(transaction);
+    if (transactionType === "deposit" && !depositId) {
+      setNotice({
+        variant: "error",
+        message:
+          "Data deposit belum terhubung ke saldo deposit. Hapus lalu input ulang dari kategori Deposit Booking Batal.",
       });
       return;
     }
@@ -1367,6 +1402,7 @@ export default function AdminFinancialPage() {
     const transactionDetails = getTransactionDetails(transaction);
     setUnitOptionSearch("");
     setForm({
+      depositId: depositId ? String(depositId) : "",
       propertyId,
       unitId,
       tenantId:
@@ -1374,7 +1410,8 @@ export default function AdminFinancialPage() {
           ? String(transaction.tenant?.id || transaction.tenant_id)
           : "",
       tenantName: transactionDetails.tenantName,
-      category: transaction.category,
+      category:
+        transactionType === "deposit" ? "deposit" : transaction.category,
       incomeType: transactionDetails.incomeType,
       transactionDate: toDateInput(transaction.transaction_date),
       checkInDate: transactionDetails.checkInDate,
@@ -1405,15 +1442,22 @@ export default function AdminFinancialPage() {
     const usePropertyField = shouldShowPropertyField(form);
     const useRentalFields = shouldShowRentalFields(form);
     const useDepositCustomerField = shouldShowDepositCustomerField(form);
+    const useNonUnitTenantField = shouldShowNonUnitTenantField(form);
     const selectedUnitId =
       useRentalFields && form.unitId ? Number(form.unitId) : null;
-    const tenantName = useRentalFields
-      ? normalizeOptional(form.tenantName)
-      : undefined;
+    const tenantName =
+      useRentalFields || useNonUnitTenantField
+        ? normalizeOptional(form.tenantName)
+        : undefined;
     const transactionNotes = normalizeOptional(buildTransactionNotes(form));
 
     if (usePropertyField && !propertyId) {
       setFormError("Pilih properti terlebih dahulu.");
+      return;
+    }
+
+    if (useNonUnitTenantField && !form.tenantId) {
+      setFormError("Pilih penyewa terlebih dahulu.");
       return;
     }
 
@@ -1450,16 +1494,29 @@ export default function AdminFinancialPage() {
 
     try {
       if (form.category === "deposit") {
-        await createAdminDeposit({
+        const depositPayload = {
           customer_id: Number(form.tenantId),
           amount,
           transaction_date: form.transactionDate,
           description,
-        });
+        };
+
+        if (formMode === "create") {
+          await createAdminDeposit(depositPayload);
+        } else {
+          if (!form.depositId) {
+            throw new Error("Data deposit tidak ditemukan.");
+          }
+
+          await updateAdminDeposit(form.depositId, depositPayload);
+        }
 
         setNotice({
           variant: "success",
-          message: "Deposit berhasil ditambahkan dari modul keuangan.",
+          message:
+            formMode === "create"
+              ? "Deposit berhasil ditambahkan dari modul keuangan."
+              : "Deposit berhasil diperbarui.",
         });
         setIsFormOpen(false);
         setRefreshKey((prev) => prev + 1);
@@ -1487,7 +1544,7 @@ export default function AdminFinancialPage() {
           : formMode === "edit"
             ? { unit_id: null }
             : {}),
-        ...(useRentalFields && form.tenantId
+        ...((useRentalFields || useNonUnitTenantField) && form.tenantId
           ? { tenant_id: Number(form.tenantId) }
           : {}),
         ...(tenantName ? { tenant_name: tenantName } : {}),
@@ -1671,6 +1728,7 @@ export default function AdminFinancialPage() {
   const handleDeleteTransaction = async (
     transaction: AdminFinancialTransaction,
   ) => {
+    const transactionType = getTransactionType(transaction);
     const agreed = window.confirm(
       `Hapus transaksi "${transaction.description}"? Tindakan ini tidak bisa dibatalkan.`,
     );
@@ -1682,10 +1740,22 @@ export default function AdminFinancialPage() {
     setNotice(null);
 
     try {
-      await deleteAdminFinancialTransaction(transaction.id);
+      if (transactionType === "deposit") {
+        const depositId = getTransactionDepositId(transaction);
+        if (!depositId) {
+          throw new Error("Data deposit tidak ditemukan.");
+        }
+
+        await deleteAdminDeposit(depositId);
+      } else {
+        await deleteAdminFinancialTransaction(transaction.id);
+      }
       setNotice({
         variant: "success",
-        message: "Transaksi berhasil dihapus.",
+        message:
+          transactionType === "deposit"
+            ? "Deposit berhasil dihapus."
+            : "Transaksi berhasil dihapus.",
       });
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
@@ -2534,16 +2604,19 @@ export default function AdminFinancialPage() {
                   </label>
                   <select
                     value={form.category}
+                    disabled={
+                      formMode === "edit" && form.category === "deposit"
+                    }
                     onChange={(event) =>
                       handleCategoryChange(
                         event.target.value as TransactionFormCategory,
                       )
                     }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     <option value="income">Pemasukan</option>
                     <option value="expense">Pengeluaran</option>
-                    {formMode === "create" ? (
+                    {formMode === "create" || form.category === "deposit" ? (
                       <option value="deposit">Deposit Booking Batal</option>
                     ) : null}
                   </select>
@@ -2603,6 +2676,36 @@ export default function AdminFinancialPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              ) : null}
+
+              {shouldShowNonUnitTenantField(form) ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Penyewa
+                  </label>
+                  <input
+                    list="financial-tenant-options"
+                    value={form.tenantName}
+                    onChange={(event) =>
+                      handleTenantNameChange(event.target.value)
+                    }
+                    placeholder="Pilih atau ketik nama penyewa"
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Pilih nama dari daftar agar transaksi terhubung ke penyewa
+                    yang benar.
+                  </p>
+                  <datalist id="financial-tenant-options">
+                    {tenantOptions.map(({ tenant, label }) => (
+                      <option
+                        key={tenant.id}
+                        value={label}
+                        label={tenant.email || undefined}
+                      />
+                    ))}
+                  </datalist>
                 </div>
               ) : null}
 

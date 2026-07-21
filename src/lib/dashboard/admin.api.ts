@@ -446,6 +446,12 @@ export interface AdminFinancialTransaction {
   transaction_type?: "income" | "expense" | "deposit" | "deposit_usage";
   income_category?: string | null;
   rental_booking_id?: number | null;
+  deposit_id?: number | null;
+  deposit?: {
+    id?: number | null;
+    remaining_balance?: number | null;
+    status?: string | null;
+  } | null;
   rental_booking?: {
     id?: number | null;
     booking_code?: string | null;
@@ -575,6 +581,8 @@ export interface AdminDepositCreatePayload {
   transaction_date?: string;
   description?: string;
 }
+
+export type AdminDepositUpdatePayload = AdminDepositCreatePayload;
 
 export interface AdminFinancialSummary {
   total_revenue: number;
@@ -1975,6 +1983,33 @@ export const createAdminDeposit = async (
 
   return {
     data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const updateAdminDeposit = async (
+  id: number | string,
+  payload: AdminDepositUpdatePayload,
+) => {
+  const response = await axiosInstance.patch<ApiResponse<AdminDeposit>>(
+    `/api/v1/deposits/${id}`,
+    {
+      deposit: payload,
+    },
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const deleteAdminDeposit = async (id: number | string) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/deposits/${id}`,
+  );
+
+  return {
     message: response.data.message,
   };
 };
