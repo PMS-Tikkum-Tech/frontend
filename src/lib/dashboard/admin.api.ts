@@ -363,7 +363,7 @@ export interface AdminUserUpdatePayload {
 export interface AdminMaintenanceRequest {
   id: number;
   property: {
-    id: number;
+    id?: number | null;
     name?: string | null;
   };
   unit: {
@@ -454,7 +454,7 @@ export interface AdminFinancialTransaction {
 }
 
 export interface AdminFinancialTransactionCreatePayload {
-  property_id: number;
+  property_id?: number | null;
   unit_id?: number | null;
   category: "income" | "expense";
   transaction_date: string;
@@ -469,7 +469,7 @@ export interface AdminFinancialTransactionCreatePayload {
 }
 
 export interface AdminFinancialTransactionUpdatePayload {
-  property_id?: number;
+  property_id?: number | null;
   unit_id?: number | null;
   category?: "income" | "expense";
   transaction_date?: string;
@@ -1101,7 +1101,7 @@ const toFinancialTransactionFormData = (
   if (payload.property_id !== undefined) {
     formData.append(
       "financial_transaction[property_id]",
-      String(payload.property_id),
+      payload.property_id === null ? "" : String(payload.property_id),
     );
   }
 

@@ -636,6 +636,9 @@ const parseTransactionNotes = (
 const shouldShowRentalFields = (form: TransactionFormState) =>
   form.category !== "income" || form.incomeType === "unit_rental";
 
+const shouldShowPropertyField = (form: TransactionFormState) =>
+  form.category !== "income" || form.incomeType === "unit_rental";
+
 const buildTransactionNotes = (form: TransactionFormState) => {
   const useRentalFields = shouldShowRentalFields(form);
   const noteRows: Array<[string, string]> = [];
@@ -1031,6 +1034,7 @@ export default function AdminFinancialPage() {
   const viewTransactionDetails = viewTransaction
     ? getTransactionDetails(viewTransaction)
     : null;
+  const showPropertyField = shouldShowPropertyField(form);
   const showRentalFields = shouldShowRentalFields(form);
 
   useEffect(() => {
@@ -1181,6 +1185,7 @@ export default function AdminFinancialPage() {
       incomeType,
       ...(incomeType === "other_income"
         ? {
+            propertyId: "",
             unitId: "",
             tenantId: "",
             tenantName: "",
@@ -1191,6 +1196,7 @@ export default function AdminFinancialPage() {
     }));
 
     if (incomeType === "other_income") {
+      setUnits([]);
       setUnitOptionSearch("");
     }
   };
@@ -1257,6 +1263,7 @@ export default function AdminFinancialPage() {
     const propertyId = Number(form.propertyId);
     const amount = parseRupiahInputValue(form.amount);
     const description = form.description.trim();
+    const usePropertyField = shouldShowPropertyField(form);
     const useRentalFields = shouldShowRentalFields(form);
     const selectedUnitId =
       useRentalFields && form.unitId ? Number(form.unitId) : null;
@@ -1265,7 +1272,7 @@ export default function AdminFinancialPage() {
       : undefined;
     const transactionNotes = normalizeOptional(buildTransactionNotes(form));
 
-    if (!propertyId) {
+    if (usePropertyField && !propertyId) {
       setFormError("Pilih properti terlebih dahulu.");
       return;
     }
@@ -1285,7 +1292,7 @@ export default function AdminFinancialPage() {
       return;
     }
 
-    if (formMode === "create" && !resolvedOwner?.id) {
+    if (formMode === "create" && usePropertyField && !resolvedOwner?.id) {
       setFormError(
         "Pemilik properti tidak ditemukan. Pilih properti atau unit yang sudah terhubung ke akun owner.",
       );
@@ -1298,7 +1305,11 @@ export default function AdminFinancialPage() {
 
     try {
       const payload = {
-        property_id: propertyId,
+        ...(usePropertyField && propertyId
+          ? { property_id: propertyId }
+          : formMode === "edit"
+            ? { property_id: null }
+            : {}),
         ...(selectedUnitId
           ? { unit_id: selectedUnitId }
           : formMode === "edit"
@@ -1327,7 +1338,7 @@ export default function AdminFinancialPage() {
           await createAdminFinancialTransaction(payload);
         let ownerCashflowError: string | null = null;
 
-        if (resolvedOwner?.id) {
+        if (usePropertyField && resolvedOwner?.id) {
           try {
             await createAdminCashflowEntry({
               account_scope: "owner",
@@ -1358,7 +1369,9 @@ export default function AdminFinancialPage() {
           variant: ownerCashflowError ? "error" : "success",
           message: ownerCashflowError
             ? `Transaksi tersimpan, tetapi belum masuk dashboard owner: ${ownerCashflowError}`
-            : "Transaksi berhasil ditambahkan dan masuk dashboard owner.",
+            : usePropertyField && resolvedOwner?.id
+              ? "Transaksi berhasil ditambahkan dan masuk dashboard owner."
+              : "Transaksi berhasil ditambahkan.",
         });
       } else {
         if (!editingTransactionId) {
@@ -2179,7 +2192,10 @@ export default function AdminFinancialPage() {
                   {viewTransaction.description || "-"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {viewTransaction.property.name || "-"}
+                  {viewTransaction.property.name ||
+                    (viewTransactionDetails?.incomeType === "other_income"
+                      ? incomeTransactionTypeLabels.other_income
+                      : "-")}
                   {viewTransaction.unit.name
                     ? ` • Unit ${viewTransaction.unit.name}`
                     : ""}
@@ -2208,10 +2224,13 @@ export default function AdminFinancialPage() {
                   }
                 />
               ) : null}
-              <DetailRow
-                label="Properti"
-                value={viewTransaction.property.name || "-"}
-              />
+              {viewTransaction.property.name ||
+              viewTransactionDetails?.incomeType === "unit_rental" ? (
+                <DetailRow
+                  label="Properti"
+                  value={viewTransaction.property.name || "-"}
+                />
+              ) : null}
               {viewTransaction.unit.name ||
               viewTransactionDetails?.incomeType === "unit_rental" ? (
                 <DetailRow
@@ -2305,37 +2324,6 @@ export default function AdminFinancialPage() {
             </div>
 
             <div className="space-y-4 px-6 py-5">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Properti
-                </label>
-                <select
-                  value={form.propertyId}
-                  onChange={(event) => {
-                    const nextPropertyId = event.target.value;
-                    setForm((prev) => ({
-                      ...prev,
-                      propertyId: nextPropertyId,
-                      unitId: "",
-                      tenantId: "",
-                      tenantName: "",
-                      checkInDate: "",
-                      checkOutDate: "",
-                    }));
-                    setUnitOptionSearch("");
-                    void loadUnitsByProperty(nextPropertyId);
-                  }}
-                  className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                >
-                  <option value="">Pilih properti</option>
-                  {properties.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -2379,6 +2367,39 @@ export default function AdminFinancialPage() {
                   </div>
                 ) : null}
               </div>
+
+              {showPropertyField ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Properti
+                  </label>
+                  <select
+                    value={form.propertyId}
+                    onChange={(event) => {
+                      const nextPropertyId = event.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        propertyId: nextPropertyId,
+                        unitId: "",
+                        tenantId: "",
+                        tenantName: "",
+                        checkInDate: "",
+                        checkOutDate: "",
+                      }));
+                      setUnitOptionSearch("");
+                      void loadUnitsByProperty(nextPropertyId);
+                    }}
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  >
+                    <option value="">Pilih properti</option>
+                    {properties.map((property) => (
+                      <option key={property.id} value={property.id}>
+                        {property.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
 
               {showRentalFields ? (
                 <>
