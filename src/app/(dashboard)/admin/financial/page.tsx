@@ -50,6 +50,7 @@ import {
 import { id as idLocale } from "date-fns/locale";
 import StatCard from "@/components/dashboard/admin/cards/StatCard";
 import {
+  createAdminDeposit,
   createAdminCashflowEntry,
   createAdminFinancialTransaction,
   deleteAdminFinancialTransaction,
@@ -509,12 +510,17 @@ type Notice = {
 } | null;
 
 type TransactionFormMode = "create" | "edit";
+type TransactionFormCategory = "income" | "expense" | "deposit";
 
-type IncomeTransactionType = "unit_rental" | "other_income";
+type IncomeTransactionType =
+  | "unit_rental"
+  | "other_income"
+  | "cancelled_booking_non_refund";
 
 const incomeTransactionTypeLabels: Record<IncomeTransactionType, string> = {
   unit_rental: "Penyewaan Unit",
   other_income: "Pemasukan Lainnya",
+  cancelled_booking_non_refund: "Booking Batal Non Refund",
 };
 
 const incomeTransactionTypeOptions: Array<{
@@ -530,7 +536,7 @@ type TransactionFormState = {
   unitId: string;
   tenantId: string;
   tenantName: string;
-  category: "income" | "expense";
+  category: TransactionFormCategory;
   incomeType: IncomeTransactionType;
   transactionDate: string;
   checkInDate: string;
@@ -599,6 +605,15 @@ const parseIncomeTransactionType = (
     normalizedValue === "lainnya"
   ) {
     return "other_income";
+  }
+
+  if (
+    normalizedValue === "booking batal non refund" ||
+    normalizedValue === "booking dibatalkan non refund" ||
+    normalizedValue === "booking dibatalkan non refundable" ||
+    normalizedValue === "booking dibatalkan non-refundable"
+  ) {
+    return "cancelled_booking_non_refund";
   }
 
   return "";
@@ -673,10 +688,15 @@ const parseTransactionNotes = (
 };
 
 const shouldShowRentalFields = (form: TransactionFormState) =>
-  form.category !== "income" || form.incomeType === "unit_rental";
+  form.category === "expense" ||
+  (form.category === "income" && form.incomeType === "unit_rental");
 
 const shouldShowPropertyField = (form: TransactionFormState) =>
-  form.category !== "income" || form.incomeType === "unit_rental";
+  form.category === "expense" ||
+  (form.category === "income" && form.incomeType === "unit_rental");
+
+const shouldShowDepositCustomerField = (form: TransactionFormState) =>
+  form.category === "deposit";
 
 const buildTransactionNotes = (form: TransactionFormState) => {
   const useRentalFields = shouldShowRentalFields(form);
@@ -1117,6 +1137,7 @@ export default function AdminFinancialPage() {
     : null;
   const showPropertyField = shouldShowPropertyField(form);
   const showRentalFields = shouldShowRentalFields(form);
+  const showDepositCustomerField = shouldShowDepositCustomerField(form);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1260,11 +1281,38 @@ export default function AdminFinancialPage() {
     }));
   };
 
+  const handleCategoryChange = (category: TransactionFormCategory) => {
+    setForm((prev) => ({
+      ...prev,
+      category,
+      incomeType: category === "income" ? prev.incomeType : "unit_rental",
+      ...(category === "deposit"
+        ? {
+            propertyId: "",
+            unitId: "",
+            tenantId: "",
+            tenantName: "",
+            checkInDate: "",
+            checkOutDate: "",
+            notes: "",
+            receiptFile: null,
+            description:
+              prev.description || "Deposit dari booking yang dibatalkan",
+          }
+        : {}),
+    }));
+
+    if (category === "deposit") {
+      setUnits([]);
+      setUnitOptionSearch("");
+    }
+  };
+
   const handleIncomeTypeChange = (incomeType: IncomeTransactionType) => {
     setForm((prev) => ({
       ...prev,
       incomeType,
-      ...(incomeType === "other_income"
+      ...(incomeType !== "unit_rental"
         ? {
             propertyId: "",
             unitId: "",
@@ -1276,7 +1324,7 @@ export default function AdminFinancialPage() {
         : {}),
     }));
 
-    if (incomeType === "other_income") {
+    if (incomeType !== "unit_rental") {
       setUnits([]);
       setUnitOptionSearch("");
     }
@@ -1298,6 +1346,16 @@ export default function AdminFinancialPage() {
   };
 
   const openEditModal = (transaction: AdminFinancialTransaction) => {
+    const transactionType = getTransactionType(transaction);
+    if (transactionType === "deposit" || transactionType === "deposit_usage") {
+      setNotice({
+        variant: "error",
+        message:
+          "Transaksi deposit belum bisa diubah dari form transaksi biasa. Untuk sementara hapus lalu input ulang bila perlu.",
+      });
+      return;
+    }
+
     setNotice(null);
     setFormMode("edit");
     setEditingTransactionId(transaction.id);
@@ -1346,6 +1404,7 @@ export default function AdminFinancialPage() {
     const description = form.description.trim();
     const usePropertyField = shouldShowPropertyField(form);
     const useRentalFields = shouldShowRentalFields(form);
+    const useDepositCustomerField = shouldShowDepositCustomerField(form);
     const selectedUnitId =
       useRentalFields && form.unitId ? Number(form.unitId) : null;
     const tenantName = useRentalFields
@@ -1355,6 +1414,11 @@ export default function AdminFinancialPage() {
 
     if (usePropertyField && !propertyId) {
       setFormError("Pilih properti terlebih dahulu.");
+      return;
+    }
+
+    if (useDepositCustomerField && !form.tenantId) {
+      setFormError("Pilih penyewa terlebih dahulu.");
       return;
     }
 
@@ -1385,12 +1449,33 @@ export default function AdminFinancialPage() {
     setNotice(null);
 
     try {
+      if (form.category === "deposit") {
+        await createAdminDeposit({
+          customer_id: Number(form.tenantId),
+          amount,
+          transaction_date: form.transactionDate,
+          description,
+        });
+
+        setNotice({
+          variant: "success",
+          message: "Deposit berhasil ditambahkan dari modul keuangan.",
+        });
+        setIsFormOpen(false);
+        setRefreshKey((prev) => prev + 1);
+        return;
+      }
+
       const incomeCategory =
         form.category === "income"
-          ? form.incomeType === "other_income"
-            ? "non_unit_income"
-            : "unit_rental"
+          ? form.incomeType === "unit_rental"
+            ? "unit_rental"
+            : "non_unit_income"
           : "";
+      const financialCategory: "income" | "expense" =
+        form.category === "expense" ? "expense" : "income";
+      const transactionType: "income" | "expense" =
+        financialCategory === "expense" ? "expense" : "income";
       const payload = {
         ...(usePropertyField && propertyId
           ? { property_id: propertyId }
@@ -1406,8 +1491,8 @@ export default function AdminFinancialPage() {
           ? { tenant_id: Number(form.tenantId) }
           : {}),
         ...(tenantName ? { tenant_name: tenantName } : {}),
-        category: form.category,
-        transaction_type: form.category,
+        category: financialCategory,
+        transaction_type: transactionType,
         income_category: incomeCategory,
         transaction_date: form.transactionDate,
         ...(useRentalFields && form.checkInDate
@@ -1431,7 +1516,7 @@ export default function AdminFinancialPage() {
           try {
             await createAdminCashflowEntry({
               account_scope: "owner",
-              direction: form.category === "income" ? "inflow" : "outflow",
+              direction: financialCategory === "income" ? "inflow" : "outflow",
               amount,
               occurred_on: form.transactionDate,
               description: buildOwnerCashflowDescription(
@@ -2450,15 +2535,17 @@ export default function AdminFinancialPage() {
                   <select
                     value={form.category}
                     onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        category: event.target.value as "income" | "expense",
-                      }))
+                      handleCategoryChange(
+                        event.target.value as TransactionFormCategory,
+                      )
                     }
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                   >
                     <option value="income">Pemasukan</option>
                     <option value="expense">Pengeluaran</option>
+                    {formMode === "create" ? (
+                      <option value="deposit">Deposit Booking Batal</option>
+                    ) : null}
                   </select>
                 </div>
 
@@ -2516,6 +2603,36 @@ export default function AdminFinancialPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              ) : null}
+
+              {showDepositCustomerField ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Penyewa
+                  </label>
+                  <input
+                    list="financial-tenant-options"
+                    value={form.tenantName}
+                    onChange={(event) =>
+                      handleTenantNameChange(event.target.value)
+                    }
+                    placeholder="Pilih atau ketik nama penyewa"
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Pilih nama dari daftar agar deposit tersimpan ke penyewa
+                    yang benar.
+                  </p>
+                  <datalist id="financial-tenant-options">
+                    {tenantOptions.map(({ tenant, label }) => (
+                      <option
+                        key={tenant.id}
+                        value={label}
+                        label={tenant.email || undefined}
+                      />
+                    ))}
+                  </datalist>
                 </div>
               ) : null}
 
@@ -2670,62 +2787,74 @@ export default function AdminFinancialPage() {
                     }))
                   }
                   placeholder={
-                    form.category === "income" &&
-                    form.incomeType === "other_income"
-                      ? "Contoh: Pemasukan parkir bulanan"
-                      : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
+                    form.category === "deposit"
+                      ? "Deposit dari booking yang dibatalkan"
+                      : form.category === "income" &&
+                          form.incomeType === "cancelled_booking_non_refund"
+                        ? "Booking dibatalkan (non-refundable)"
+                        : form.category === "income" &&
+                            form.incomeType === "other_income"
+                          ? "Contoh: Pemasukan parkir bulanan"
+                          : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
                   }
                   className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                 />
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Catatan (Opsional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={form.notes}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, notes: event.target.value }))
-                  }
-                  placeholder="Catatan tambahan"
-                  className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                />
-              </div>
+              {form.category !== "deposit" ? (
+                <>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Catatan (Opsional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={form.notes}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          notes: event.target.value,
+                        }))
+                      }
+                      placeholder="Catatan tambahan"
+                      className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                    />
+                  </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Bukti Transaksi (Opsional)
-                </label>
-                <input
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/jpg,image/png"
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      receiptFile: event.target.files?.[0] || null,
-                    }))
-                  }
-                  className="text-sm"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Format: PDF, PNG, JPG, JPEG.
-                </p>
-                {formMode === "edit" && editingTransaction?.receipt_url ? (
-                  <a
-                    href={
-                      toAbsoluteAssetUrl(editingTransaction.receipt_url) ||
-                      editingTransaction.receipt_url
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:underline"
-                  >
-                    Lihat lampiran saat ini
-                  </a>
-                ) : null}
-              </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Bukti Transaksi (Opsional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/jpg,image/png"
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          receiptFile: event.target.files?.[0] || null,
+                        }))
+                      }
+                      className="text-sm"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Format: PDF, PNG, JPG, JPEG.
+                    </p>
+                    {formMode === "edit" && editingTransaction?.receipt_url ? (
+                      <a
+                        href={
+                          toAbsoluteAssetUrl(editingTransaction.receipt_url) ||
+                          editingTransaction.receipt_url
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        Lihat lampiran saat ini
+                      </a>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
 
               {formError && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

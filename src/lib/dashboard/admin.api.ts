@@ -569,6 +569,13 @@ export interface AdminDepositUsagePayload {
   description?: string;
 }
 
+export interface AdminDepositCreatePayload {
+  customer_id: number;
+  amount: number;
+  transaction_date?: string;
+  description?: string;
+}
+
 export interface AdminFinancialSummary {
   total_revenue: number;
   total_expenses: number;
@@ -1955,6 +1962,22 @@ export const getAdminDeposits = (params?: QueryParams) =>
 
 export const getAllAdminDeposits = (params?: QueryParams) =>
   getAllList<AdminDeposit>("/api/v1/deposits", params);
+
+export const createAdminDeposit = async (
+  payload: AdminDepositCreatePayload,
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminDeposit>>(
+    "/api/v1/deposits",
+    {
+      deposit: payload,
+    },
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
 
 export const useAdminDeposit = async (payload: AdminDepositUsagePayload) => {
   const response = await axiosInstance.post<
