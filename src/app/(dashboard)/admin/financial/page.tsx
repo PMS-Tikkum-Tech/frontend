@@ -11,6 +11,7 @@ import {
   FileText,
   Filter,
   Pencil,
+  PiggyBank,
   Plus,
   RotateCcw,
   Search,
@@ -54,6 +55,7 @@ import {
   deleteAdminFinancialTransaction,
   exportAdminFinancialTransactions,
   getAllAdminCashflowEntries,
+  getAllAdminDeposits,
   getAllAdminFinancialTransactions,
   getAdminFinancialDashboard,
   getAllAdminProperties,
@@ -63,6 +65,7 @@ import {
   toAbsoluteAssetUrl,
   updateAdminFinancialTransaction,
   type AdminCashflowEntry,
+  type AdminDeposit,
   type AdminFinancialSummary,
   type AdminFinancialTransaction,
   type AdminPropertyListItem,
@@ -89,13 +92,19 @@ type FinancialDateRange = {
   endDate: string;
 };
 
-type QuickDateRangeKey = "today" | "thisWeek" | "thisMonth" | "lastMonth";
+type QuickDateRangeKey =
+  | "all"
+  | "today"
+  | "thisWeek"
+  | "thisMonth"
+  | "lastMonth";
 
 const quickDateRanges: Array<{ key: QuickDateRangeKey; label: string }> = [
-  { key: "today", label: "Today" },
-  { key: "thisWeek", label: "This Week" },
-  { key: "thisMonth", label: "This Month" },
-  { key: "lastMonth", label: "Last Month" },
+  { key: "all", label: "Semua Data" },
+  { key: "today", label: "Hari Ini" },
+  { key: "thisWeek", label: "Minggu Ini" },
+  { key: "thisMonth", label: "Bulan Ini" },
+  { key: "lastMonth", label: "Bulan Lalu" },
 ];
 
 const weekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
@@ -103,6 +112,19 @@ const weekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const categoryLabelMap: Record<string, string> = {
   income: "Pemasukan",
   expense: "Pengeluaran",
+};
+
+type FinancialTransactionType =
+  | "income"
+  | "expense"
+  | "deposit"
+  | "deposit_usage";
+
+const transactionTypeLabelMap: Record<FinancialTransactionType, string> = {
+  income: "Pemasukan",
+  expense: "Pengeluaran",
+  deposit: "Deposit",
+  deposit_usage: "Pemakaian Deposit",
 };
 
 const toFinancialDateKey = (date: Date) => format(date, "yyyy-MM-dd");
@@ -124,6 +146,13 @@ const normalizeFinancialDateRange = (
   startDate: string,
   endDate: string,
 ): FinancialDateRange | null => {
+  if (!startDate && !endDate) {
+    return {
+      startDate: "",
+      endDate: "",
+    };
+  }
+
   const parsedStart = parseFinancialDate(startDate);
   const parsedEnd = parseFinancialDate(endDate);
 
@@ -157,6 +186,11 @@ const getQuickDateRange = (rangeKey: QuickDateRangeKey): FinancialDateRange => {
   const today = new Date();
 
   switch (rangeKey) {
+    case "all":
+      return {
+        startDate: "",
+        endDate: "",
+      };
     case "today":
       return {
         startDate: toFinancialDateKey(today),
@@ -216,10 +250,15 @@ const formatFinancialDateLabel = (value: string) => {
   return format(parsed, "dd MMM yyyy", { locale: idLocale });
 };
 
-const formatFinancialDateRangeLabel = (startDate: string, endDate: string) =>
-  `${formatFinancialDateLabel(startDate)} → ${formatFinancialDateLabel(
+const formatFinancialDateRangeLabel = (startDate: string, endDate: string) => {
+  if (!startDate && !endDate) {
+    return "Semua Data";
+  }
+
+  return `${formatFinancialDateLabel(startDate)} → ${formatFinancialDateLabel(
     endDate,
   )}`;
+};
 
 const buildCalendarDates = (month: Date) =>
   eachDayOfInterval({
@@ -681,12 +720,19 @@ const getTransactionDetails = (transaction: AdminFinancialTransaction) => {
   const checkOutDate =
     toDateInput(transaction.check_out_date) ||
     toDateInput(parsedNotes.checkOutDate);
+  const metadataIncomeType =
+    transaction.income_category === "non_unit_income"
+      ? "other_income"
+      : transaction.income_category === "unit_rental"
+        ? "unit_rental"
+        : "";
   const hasRentalContext = Boolean(
     transaction.unit.id || tenantName || checkInDate || checkOutDate,
   );
   const incomeType =
-    transaction.category === "income"
+    getTransactionType(transaction) === "income"
       ? parsedNotes.incomeType ||
+        metadataIncomeType ||
         (hasRentalContext ? "unit_rental" : "other_income")
       : "unit_rental";
 
@@ -698,6 +744,18 @@ const getTransactionDetails = (transaction: AdminFinancialTransaction) => {
     notes: parsedNotes.notes,
   };
 };
+
+const getTransactionType = (
+  transaction: Pick<AdminFinancialTransaction, "category" | "transaction_type">,
+): FinancialTransactionType =>
+  (transaction.transaction_type ||
+    transaction.category) as FinancialTransactionType;
+
+const isRevenueTransaction = (transaction: AdminFinancialTransaction) =>
+  getTransactionType(transaction) === "income";
+
+const isExpenseTransaction = (transaction: AdminFinancialTransaction) =>
+  getTransactionType(transaction) === "expense";
 
 export default function AdminFinancialPage() {
   const defaultDateRange = useMemo(() => getCurrentMonthDateRange(), []);
@@ -729,6 +787,7 @@ export default function AdminFinancialPage() {
   const [transactions, setTransactions] = useState<AdminFinancialTransaction[]>(
     [],
   );
+  const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
   const [properties, setProperties] = useState<AdminPropertyListItem[]>([]);
   const [units, setUnits] = useState<AdminPropertyUnitRow[]>([]);
   const [tenants, setTenants] = useState<AdminUser[]>([]);
@@ -799,11 +858,13 @@ export default function AdminFinancialPage() {
           const [
             dashboardResponse,
             transactionResponse,
+            depositResponse,
             propertiesResponse,
             tenantsResponse,
           ] = await Promise.all([
             getAdminFinancialDashboard(),
             getAllAdminFinancialTransactions(),
+            getAllAdminDeposits(),
             getAllAdminProperties(),
             getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
           ]);
@@ -825,6 +886,7 @@ export default function AdminFinancialPage() {
             ),
           );
           setTransactions(transactionResponse.data);
+          setDeposits(depositResponse.data);
           setProperties(propertiesResponse.data);
           setTenants(
             tenantsResponse.data
@@ -866,8 +928,10 @@ export default function AdminFinancialPage() {
   const categoryFilterOptions = useMemo(
     () =>
       uniqueFilterOptions(
-        transactions,
-        (transaction) => transaction.category,
+        transactions.filter((transaction) =>
+          ["income", "expense"].includes(getTransactionType(transaction)),
+        ),
+        (transaction) => getTransactionType(transaction),
         (value) => categoryLabelMap[value],
       ),
     [transactions],
@@ -896,14 +960,15 @@ export default function AdminFinancialPage() {
     const filtered = transactions.filter((transaction) => {
       const details = getTransactionDetails(transaction);
       const transactionAmount = Number(transaction.amount || 0);
+      const transactionType = getTransactionType(transaction);
       const searchable =
         `${transaction.property_label} ${transaction.property.name || ""} ${
           transaction.unit.name || ""
         } ${transaction.description} ${
-          transaction.category === "income"
+          transactionType === "income"
             ? incomeTransactionTypeLabels[details.incomeType]
             : ""
-        } ${details.tenantName} ${details.notes} ${
+        } ${transactionTypeLabelMap[transactionType]} ${details.tenantName} ${details.notes} ${
           transaction.created_by.full_name || ""
         }`.toLowerCase();
 
@@ -916,7 +981,7 @@ export default function AdminFinancialPage() {
           selectedStartDate,
           selectedEndDate,
         ) &&
-        (category ? transaction.category === category : true) &&
+        (category ? transactionType === category : true) &&
         (propertyFilter
           ? String(transaction.property.id || "") === propertyFilter
           : true) &&
@@ -967,9 +1032,9 @@ export default function AdminFinancialPage() {
       (summary, transaction) => {
         const amount = Number(transaction.amount || 0);
 
-        if (transaction.category === "income") {
+        if (isRevenueTransaction(transaction)) {
           summary.revenue += amount;
-        } else {
+        } else if (isExpenseTransaction(transaction)) {
           summary.expense += amount;
         }
 
@@ -981,6 +1046,19 @@ export default function AdminFinancialPage() {
 
   const filteredNetAmount =
     filteredTransactionSummary.revenue - filteredTransactionSummary.expense;
+
+  const depositSummary = useMemo(
+    () =>
+      deposits.reduce(
+        (summary, deposit) => {
+          summary.total += Number(deposit.amount || 0);
+          summary.remaining += Number(deposit.remaining_balance || 0);
+          return summary;
+        },
+        { total: 0, remaining: 0 },
+      ),
+    [deposits],
+  );
 
   const totalPages = Math.max(
     1,
@@ -1033,6 +1111,9 @@ export default function AdminFinancialPage() {
 
   const viewTransactionDetails = viewTransaction
     ? getTransactionDetails(viewTransaction)
+    : null;
+  const viewTransactionType = viewTransaction
+    ? getTransactionType(viewTransaction)
     : null;
   const showPropertyField = shouldShowPropertyField(form);
   const showRentalFields = shouldShowRentalFields(form);
@@ -1304,6 +1385,12 @@ export default function AdminFinancialPage() {
     setNotice(null);
 
     try {
+      const incomeCategory =
+        form.category === "income"
+          ? form.incomeType === "other_income"
+            ? "non_unit_income"
+            : "unit_rental"
+          : "";
       const payload = {
         ...(usePropertyField && propertyId
           ? { property_id: propertyId }
@@ -1320,6 +1407,8 @@ export default function AdminFinancialPage() {
           : {}),
         ...(tenantName ? { tenant_name: tenantName } : {}),
         category: form.category,
+        transaction_type: form.category,
+        income_category: incomeCategory,
         transaction_date: form.transactionDate,
         ...(useRentalFields && form.checkInDate
           ? { check_in_date: form.checkInDate }
@@ -1430,6 +1519,12 @@ export default function AdminFinancialPage() {
           continue;
         }
 
+        const transactionType = getTransactionType(transaction);
+        if (transactionType !== "income" && transactionType !== "expense") {
+          skippedOwnerCount += 1;
+          continue;
+        }
+
         const propertyId = Number(transaction.property.id || 0);
         const unitId = Number(transaction.unit.id || 0);
         const property =
@@ -1447,7 +1542,7 @@ export default function AdminFinancialPage() {
         try {
           await createAdminCashflowEntry({
             account_scope: "owner",
-            direction: transaction.category === "income" ? "inflow" : "outflow",
+            direction: transactionType === "income" ? "inflow" : "outflow",
             amount: Number(transaction.amount || 0),
             occurred_on: toCashflowDate(transaction.transaction_date),
             description: buildOwnerCashflowDescription(
@@ -1785,7 +1880,7 @@ export default function AdminFinancialPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
           title="Total Pemasukan"
           value={
@@ -1818,6 +1913,18 @@ export default function AdminFinancialPage() {
             isLoading ? "..." : formatCurrency(summary.outstanding_balances)
           }
           icon={<FileText size={20} />}
+        />
+
+        <StatCard
+          title="Total Deposit"
+          value={isLoading ? "..." : formatCurrency(depositSummary.total)}
+          icon={<PiggyBank size={20} />}
+        />
+
+        <StatCard
+          title="Sisa Deposit"
+          value={isLoading ? "..." : formatCurrency(depositSummary.remaining)}
+          icon={<Wallet size={20} />}
         />
       </div>
 
@@ -1981,6 +2088,7 @@ export default function AdminFinancialPage() {
               ) : (
                 pagedTransactions.map((transaction) => {
                   const details = getTransactionDetails(transaction);
+                  const transactionType = getTransactionType(transaction);
                   const stayPeriod =
                     details.checkInDate || details.checkOutDate
                       ? `${details.checkInDate ? formatDate(details.checkInDate) : "-"} - ${
@@ -2012,7 +2120,7 @@ export default function AdminFinancialPage() {
 
                       <td data-label="Periode" className="p-3 text-slate-700">
                         <p className="max-w-[190px] text-sm">{periodLabel}</p>
-                        {!stayPeriod && transaction.category === "income" ? (
+                        {!stayPeriod && transactionType === "income" ? (
                           <p className="mt-1 text-xs text-slate-500">
                             {incomeTransactionTypeLabels[details.incomeType]}
                           </p>
@@ -2032,10 +2140,15 @@ export default function AdminFinancialPage() {
                         <p className="max-w-[300px] truncate text-slate-700">
                           {transaction.description}
                         </p>
-                        {transaction.category === "income" ? (
+                        {transactionType === "income" ? (
                           <p className="max-w-[300px] truncate text-xs text-slate-500">
                             Jenis:{" "}
                             {incomeTransactionTypeLabels[details.incomeType]}
+                          </p>
+                        ) : transactionType === "deposit" ||
+                          transactionType === "deposit_usage" ? (
+                          <p className="max-w-[300px] truncate text-xs text-slate-500">
+                            Jenis: {transactionTypeLabelMap[transactionType]}
                           </p>
                         ) : null}
                         {details.tenantName ? (
@@ -2058,7 +2171,7 @@ export default function AdminFinancialPage() {
                       </td>
 
                       <td data-label="Kategori" className="p-3">
-                        <CategoryBadge category={transaction.category} />
+                        <CategoryBadge transaction={transaction} />
                       </td>
 
                       <td data-label="Lampiran" className="p-3">
@@ -2211,10 +2324,13 @@ export default function AdminFinancialPage() {
               />
               <DetailRow
                 label="Kategori"
-                value={toCategoryLabel(viewTransaction.category)}
+                value={
+                  viewTransactionType
+                    ? transactionTypeLabelMap[viewTransactionType]
+                    : toCategoryLabel(viewTransaction.category)
+                }
               />
-              {viewTransaction.category === "income" &&
-              viewTransactionDetails ? (
+              {viewTransactionType === "income" && viewTransactionDetails ? (
                 <DetailRow
                   label="Jenis Pemasukan"
                   value={
@@ -2225,14 +2341,16 @@ export default function AdminFinancialPage() {
                 />
               ) : null}
               {viewTransaction.property.name ||
-              viewTransactionDetails?.incomeType === "unit_rental" ? (
+              (viewTransactionType === "income" &&
+                viewTransactionDetails?.incomeType === "unit_rental") ? (
                 <DetailRow
                   label="Properti"
                   value={viewTransaction.property.name || "-"}
                 />
               ) : null}
               {viewTransaction.unit.name ||
-              viewTransactionDetails?.incomeType === "unit_rental" ? (
+              (viewTransactionType === "income" &&
+                viewTransactionDetails?.incomeType === "unit_rental") ? (
                 <DetailRow
                   label="Unit"
                   value={viewTransaction.unit.name || "-"}
@@ -2910,14 +3028,14 @@ function FinancialDateRangePicker({
               onClick={handleCancelClick}
               className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Cancel
+              Batal
             </button>
             <button
               type="button"
               onClick={handleApplyClick}
               className="h-10 rounded-xl bg-[#1E2746] px-5 text-sm font-semibold text-white hover:bg-[#141B35]"
             >
-              Apply
+              Terapkan
             </button>
           </div>
         </div>
@@ -2930,17 +3048,26 @@ function toCategoryLabel(category: "income" | "expense") {
   return categoryLabelMap[category] || category;
 }
 
-function CategoryBadge({ category }: { category: "income" | "expense" }) {
+function CategoryBadge({
+  transaction,
+}: {
+  transaction: AdminFinancialTransaction;
+}) {
+  const transactionType = getTransactionType(transaction);
   const styles =
-    category === "income"
+    transactionType === "income"
       ? "border border-green-200 bg-green-50 text-green-700"
-      : "border border-red-200 bg-red-50 text-red-700";
+      : transactionType === "expense"
+        ? "border border-red-200 bg-red-50 text-red-700"
+        : transactionType === "deposit"
+          ? "border border-blue-200 bg-blue-50 text-blue-700"
+          : "border border-amber-200 bg-amber-50 text-amber-700";
 
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${styles}`}
     >
-      {toCategoryLabel(category)}
+      {transactionTypeLabelMap[transactionType]}
     </span>
   );
 }

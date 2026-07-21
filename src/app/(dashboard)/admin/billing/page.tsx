@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Ban,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -10,6 +11,7 @@ import {
   Eye,
   Filter,
   Pencil,
+  PiggyBank,
   Plus,
   RotateCcw,
   Search,
@@ -34,6 +36,8 @@ import {
 import { id as idLocale } from "date-fns/locale";
 import {
   approveAdminManualRentalBooking,
+  cancelAdminManualRentalBookingNonRefund,
+  cancelAdminManualRentalBookingToDeposit,
   createAdminFinancialTransaction,
   createAdminPayment,
   getAllAdminManualRentalBookings,
@@ -510,7 +514,9 @@ const getInvoiceDescription = (payment: AdminPayment) => {
   const details = parseBillingDescription(payment.description);
   const duration = details.rentalDuration || "Periode sewa";
   const checkIn = details.checkInDate ? formatDate(details.checkInDate) : null;
-  const checkOut = details.checkOutDate ? formatDate(details.checkOutDate) : null;
+  const checkOut = details.checkOutDate
+    ? formatDate(details.checkOutDate)
+    : null;
 
   return [
     "Tagihan sewa kamar",
@@ -563,6 +569,11 @@ const getPaymentRowKey = (payment: AdminPayment) =>
 
 const isManualBookingRecord = (payment: AdminPayment) =>
   payment.record_type === "manual_booking";
+
+const canCancelManualBooking = (payment: AdminPayment) =>
+  isManualBookingRecord(payment) &&
+  (payment.booking_status === "pending_review" ||
+    payment.booking_status === "booked");
 
 const getProofExtensionFromContentType = (contentType?: string | null) => {
   if (!contentType) {
@@ -661,7 +672,13 @@ const recordPaymentAsIncome = async (payment: AdminPayment) => {
     await createAdminFinancialTransaction({
       property_id: propertyId,
       ...(payment.unit.id ? { unit_id: payment.unit.id } : {}),
+      ...(payment.tenant.id ? { tenant_id: payment.tenant.id } : {}),
+      ...(isManualBookingRecord(payment)
+        ? { rental_booking_id: payment.id }
+        : {}),
       category: "income",
+      transaction_type: "income",
+      income_category: "unit_rental",
       transaction_date: new Date().toISOString().slice(0, 10),
       amount,
       description,
@@ -712,6 +729,7 @@ export default function AdminBillingPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
+  const [isCancellingId, setIsCancellingId] = useState<number | null>(null);
   const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<
     string | null
   >(null);
@@ -719,7 +737,8 @@ export default function AdminBillingPage() {
 
   useEffect(() => {
     const storedDateRange = getStoredBillingDateRange();
-    const initialDateRange = storedDateRange || getCurrentBillingMonthDateRange();
+    const initialDateRange =
+      storedDateRange || getCurrentBillingMonthDateRange();
 
     setStartDate(initialDateRange.startDate);
     setEndDate(initialDateRange.endDate);
@@ -1353,6 +1372,62 @@ export default function AdminBillingPage() {
     }
   };
 
+  const handleCancelManualBooking = async (
+    payment: AdminPayment,
+    mode: "non_refund" | "deposit",
+  ) => {
+    if (!canCancelManualBooking(payment)) {
+      setNotice({
+        variant: "error",
+        message:
+          "Pemesanan ini tidak berada pada status yang bisa dibatalkan dari modul tagihan.",
+      });
+      return;
+    }
+
+    const isDepositMode = mode === "deposit";
+    const confirmed = window.confirm(
+      isDepositMode
+        ? `Jadikan pembayaran booking #${payment.invoice_id} sebagai deposit? Transaksi income tidak akan dibuat.`
+        : `Batalkan booking #${payment.invoice_id} sebagai non-refund? Nominal akan dicatat sebagai pemasukan lainnya.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsCancellingId(payment.id);
+    setNotice(null);
+
+    try {
+      if (isDepositMode) {
+        await cancelAdminManualRentalBookingToDeposit(payment.id);
+      } else {
+        await cancelAdminManualRentalBookingNonRefund(payment.id);
+      }
+
+      setNotice({
+        variant: "success",
+        message: isDepositMode
+          ? `Booking #${payment.invoice_id} dibatalkan dan dana dicatat sebagai deposit.`
+          : `Booking #${payment.invoice_id} dibatalkan sebagai non-refund dan tercatat di keuangan.`,
+      });
+      setRefreshKey((previous) => previous + 1);
+    } catch (cancelError) {
+      setNotice({
+        variant: "error",
+        message: getApiErrorMessage(
+          cancelError,
+          isDepositMode
+            ? "Gagal menjadikan pembayaran sebagai deposit."
+            : "Gagal membatalkan booking sebagai non-refund.",
+        ),
+      });
+    } finally {
+      setIsCancellingId(null);
+    }
+  };
+
   const approveConfirmationIsManual = approveConfirmationPayment
     ? isManualBookingRecord(approveConfirmationPayment)
     : false;
@@ -1491,8 +1566,7 @@ export default function AdminBillingPage() {
 
         <p className="mt-3 text-xs text-slate-500">
           Menampilkan <span className="font-semibold">{filtered.length}</span>{" "}
-          dari{" "}
-          <span className="font-semibold">{dateRangePayments.length}</span>{" "}
+          dari <span className="font-semibold">{dateRangePayments.length}</span>{" "}
           tagihan dalam periode.
         </p>
       </section>
@@ -1542,13 +1616,21 @@ export default function AdminBillingPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
+                  <td
+                    data-label=""
+                    colSpan={7}
+                    className="p-6 text-center text-slate-500"
+                  >
                     Memuat data tagihan...
                   </td>
                 </tr>
               ) : pagedPayments.length === 0 ? (
                 <tr>
-                  <td data-label="" colSpan={7} className="p-6 text-center text-slate-500">
+                  <td
+                    data-label=""
+                    colSpan={7}
+                    className="p-6 text-center text-slate-500"
+                  >
                     Tidak ada data tagihan.
                   </td>
                 </tr>
@@ -1558,7 +1640,11 @@ export default function AdminBillingPage() {
                     key={getPaymentRowKey(payment)}
                     className="border-t border-slate-100 align-top hover:bg-slate-50"
                   >
-                    <td data-label="Faktur" data-mobile-primary="true" className="px-4 py-4">
+                    <td
+                      data-label="Faktur"
+                      data-mobile-primary="true"
+                      className="px-4 py-4"
+                    >
                       <p
                         className="break-words font-mono text-xs font-semibold text-slate-800"
                         title={`#${payment.invoice_id}`}
@@ -1620,7 +1706,10 @@ export default function AdminBillingPage() {
                       </p>
                     </td>
 
-                    <td data-label="Penyewa" className="px-4 py-4 text-slate-700">
+                    <td
+                      data-label="Penyewa"
+                      className="px-4 py-4 text-slate-700"
+                    >
                       <p
                         className="line-clamp-3 break-words"
                         title={payment.tenant.full_name || "-"}
@@ -1645,7 +1734,10 @@ export default function AdminBillingPage() {
                       </p>
                     </td>
 
-                    <td data-label="Total Harga" className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">
+                    <td
+                      data-label="Total Harga"
+                      className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800"
+                    >
                       Rp {Number(payment.amount || 0).toLocaleString("id-ID")}
                     </td>
 
@@ -1669,7 +1761,11 @@ export default function AdminBillingPage() {
                       ) : null}
                     </td>
 
-                    <td data-label="Aksi" data-mobile-actions="true" className="px-4 py-4">
+                    <td
+                      data-label="Aksi"
+                      data-mobile-actions="true"
+                      className="px-4 py-4"
+                    >
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
@@ -1695,7 +1791,8 @@ export default function AdminBillingPage() {
                           disabled={
                             getPaymentDisplayStatus(payment) === "paid" ||
                             getPaymentDisplayStatus(payment) === "cancelled" ||
-                            isApprovingId === payment.id
+                            isApprovingId === payment.id ||
+                            isCancellingId === payment.id
                           }
                           className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
@@ -1708,6 +1805,44 @@ export default function AdminBillingPage() {
                         >
                           <CheckCircle2 size={16} />
                         </button>
+                        {canCancelManualBooking(payment) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleCancelManualBooking(
+                                  payment,
+                                  "non_refund",
+                                );
+                              }}
+                              disabled={
+                                isCancellingId === payment.id ||
+                                isApprovingId === payment.id
+                              }
+                              className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-40"
+                              title="Batalkan sebagai non-refund"
+                            >
+                              <Ban size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleCancelManualBooking(
+                                  payment,
+                                  "deposit",
+                                );
+                              }}
+                              disabled={
+                                isCancellingId === payment.id ||
+                                isApprovingId === payment.id
+                              }
+                              className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-40"
+                              title="Jadikan pembayaran sebagai deposit"
+                            >
+                              <PiggyBank size={16} />
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1892,7 +2027,9 @@ export default function AdminBillingPage() {
 
                 <div className="grid gap-3 rounded-lg bg-white p-4 shadow-sm">
                   <InvoiceMetaRow label="Status">
-                    <StatusBadge status={getPaymentDisplayStatus(viewPayment)} />
+                    <StatusBadge
+                      status={getPaymentDisplayStatus(viewPayment)}
+                    />
                   </InvoiceMetaRow>
                   <InvoiceMetaRow
                     label="Tanggal Faktur"
@@ -1950,16 +2087,16 @@ export default function AdminBillingPage() {
                           {getInvoiceDescription(viewPayment)}
                         </p>
                         <div className="mt-2 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
-                          {getBillingDescriptionRows(viewPayment.description).map(
-                            (row) => (
-                              <p key={row.label}>
-                                <span className="font-medium text-slate-600">
-                                  {row.label}:
-                                </span>{" "}
-                                {row.value}
-                              </p>
-                            ),
-                          )}
+                          {getBillingDescriptionRows(
+                            viewPayment.description,
+                          ).map((row) => (
+                            <p key={row.label}>
+                              <span className="font-medium text-slate-600">
+                                {row.label}:
+                              </span>{" "}
+                              {row.value}
+                            </p>
+                          ))}
                           {viewPayment.booking_status_label ? (
                             <p>
                               <span className="font-medium text-slate-600">
@@ -2074,7 +2211,8 @@ export default function AdminBillingPage() {
 
               {isPaymentAutoCancelledByDueDate(viewPayment) ? (
                 <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
-                  Pembayaran dibatalkan otomatis karena melewati batas pembayaran
+                  Pembayaran dibatalkan otomatis karena melewati batas
+                  pembayaran
                   {viewPayment.due_date
                     ? ` (${formatDueDate(viewPayment.due_date)}).`
                     : "."}
@@ -2522,7 +2660,10 @@ function BillingDateRangePicker({
     const nextStartDate = isBefore(date, anchorDate) ? date : anchorDate;
     const nextEndDate = isBefore(date, anchorDate) ? anchorDate : date;
 
-    onDateChange(toBillingDateKey(nextStartDate), toBillingDateKey(nextEndDate));
+    onDateChange(
+      toBillingDateKey(nextStartDate),
+      toBillingDateKey(nextEndDate),
+    );
     setIsSelectingRangeEnd(false);
   };
 
@@ -2571,8 +2712,8 @@ function BillingDateRangePicker({
           const isRangeEdge = isStart || isEnd;
           const isInRange = Boolean(
             rangeStart &&
-              rangeEnd &&
-              isWithinInterval(date, { start: rangeStart, end: rangeEnd }),
+            rangeEnd &&
+            isWithinInterval(date, { start: rangeStart, end: rangeEnd }),
           );
 
           const dayClassName = [
@@ -2603,7 +2744,10 @@ function BillingDateRangePicker({
   );
 
   return (
-    <div ref={wrapperRef} className="relative col-span-2 w-full md:min-w-[320px]">
+    <div
+      ref={wrapperRef}
+      className="relative col-span-2 w-full md:min-w-[320px]"
+    >
       <button
         type="button"
         onClick={handleTogglePicker}
@@ -2727,7 +2871,11 @@ function SummaryCard({
   return (
     <div className="h-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm last:col-span-2 sm:p-4 xl:last:col-span-1">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 break-words text-xl font-semibold sm:text-2xl ${valueStyle}`}>{value}</p>
+      <p
+        className={`mt-1 break-words text-xl font-semibold sm:text-2xl ${valueStyle}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

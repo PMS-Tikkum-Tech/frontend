@@ -432,7 +432,7 @@ export interface AdminFinancialTransaction {
     email?: string | null;
   } | null;
   property: {
-    id: number;
+    id?: number | null;
     name?: string | null;
   };
   unit: {
@@ -443,6 +443,14 @@ export interface AdminFinancialTransaction {
   description: string;
   amount: number;
   category: "income" | "expense";
+  transaction_type?: "income" | "expense" | "deposit" | "deposit_usage";
+  income_category?: string | null;
+  rental_booking_id?: number | null;
+  rental_booking?: {
+    id?: number | null;
+    booking_code?: string | null;
+    status?: string | null;
+  } | null;
   notes?: string | null;
   receipt_url?: string | null;
   created_by: {
@@ -456,11 +464,14 @@ export interface AdminFinancialTransaction {
 export interface AdminFinancialTransactionCreatePayload {
   property_id?: number | null;
   unit_id?: number | null;
+  rental_booking_id?: number;
+  tenant_id?: number;
   category: "income" | "expense";
+  transaction_type?: "income" | "expense" | "deposit" | "deposit_usage";
+  income_category?: string;
   transaction_date: string;
   check_in_date?: string;
   check_out_date?: string;
-  tenant_id?: number;
   tenant_name?: string;
   amount: number;
   description: string;
@@ -471,11 +482,14 @@ export interface AdminFinancialTransactionCreatePayload {
 export interface AdminFinancialTransactionUpdatePayload {
   property_id?: number | null;
   unit_id?: number | null;
+  rental_booking_id?: number;
+  tenant_id?: number;
   category?: "income" | "expense";
+  transaction_type?: "income" | "expense" | "deposit" | "deposit_usage";
+  income_category?: string;
   transaction_date?: string;
   check_in_date?: string;
   check_out_date?: string;
-  tenant_id?: number;
   tenant_name?: string;
   amount?: number;
   description?: string;
@@ -526,6 +540,33 @@ export interface AdminCashflowEntryCreatePayload {
   unit_id?: number;
   tenant_id?: number;
   owner_id?: number;
+}
+
+export interface AdminDeposit {
+  id: number;
+  customer: {
+    id?: number | null;
+    full_name?: string | null;
+    email?: string | null;
+  };
+  amount: number;
+  remaining_balance: number;
+  status: "active" | "consumed" | string;
+  description?: string | null;
+  source_booking?: {
+    id?: number | null;
+    booking_code?: string | null;
+    status?: string | null;
+  } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminDepositUsagePayload {
+  customer_id: number;
+  amount: number;
+  booking_id?: number;
+  description?: string;
 }
 
 export interface AdminFinancialSummary {
@@ -579,8 +620,11 @@ export interface AdminPayment {
     | "awaiting_payment"
     | "pending_review"
     | "approved"
+    | "booked"
     | "denied"
     | "cancelled"
+    | "cancelled_non_refund"
+    | "cancelled_to_deposit"
     | "expired"
     | null;
   booking_status_label?: string | null;
@@ -600,8 +644,11 @@ export interface AdminManualRentalBooking {
     | "awaiting_payment"
     | "pending_review"
     | "approved"
+    | "booked"
     | "denied"
     | "cancelled"
+    | "cancelled_non_refund"
+    | "cancelled_to_deposit"
     | "expired"
     | string
     | null;
@@ -1112,8 +1159,36 @@ const toFinancialTransactionFormData = (
     );
   }
 
+  if (payload.rental_booking_id !== undefined) {
+    formData.append(
+      "financial_transaction[rental_booking_id]",
+      String(payload.rental_booking_id),
+    );
+  }
+
+  if (payload.tenant_id !== undefined) {
+    formData.append(
+      "financial_transaction[tenant_id]",
+      String(payload.tenant_id),
+    );
+  }
+
   if (payload.category !== undefined) {
     formData.append("financial_transaction[category]", payload.category);
+  }
+
+  if (payload.transaction_type !== undefined) {
+    formData.append(
+      "financial_transaction[transaction_type]",
+      payload.transaction_type,
+    );
+  }
+
+  if (payload.income_category !== undefined) {
+    formData.append(
+      "financial_transaction[income_category]",
+      payload.income_category,
+    );
   }
 
   if (payload.transaction_date !== undefined) {
@@ -1134,13 +1209,6 @@ const toFinancialTransactionFormData = (
     formData.append(
       "financial_transaction[check_out_date]",
       payload.check_out_date,
-    );
-  }
-
-  if (payload.tenant_id !== undefined) {
-    formData.append(
-      "financial_transaction[tenant_id]",
-      String(payload.tenant_id),
     );
   }
 
@@ -1882,14 +1950,39 @@ export const getAdminFinancialDashboard = (params?: QueryParams) =>
     params,
   );
 
+export const getAdminDeposits = (params?: QueryParams) =>
+  getList<AdminDeposit>("/api/v1/deposits", params);
+
+export const getAllAdminDeposits = (params?: QueryParams) =>
+  getAllList<AdminDeposit>("/api/v1/deposits", params);
+
+export const useAdminDeposit = async (payload: AdminDepositUsagePayload) => {
+  const response = await axiosInstance.post<
+    ApiResponse<AdminFinancialTransaction>
+  >("/api/v1/deposits/use", {
+    deposit_usage: payload,
+  });
+
+  return {
+    data: normalizeFinancialTransaction(response.data.data),
+    message: response.data.message,
+  };
+};
+
 const mapManualBookingStatusToPaymentStatus = (
   status?: string | null,
 ): AdminPayment["status"] => {
-  if (status === "approved") {
+  if (status === "approved" || status === "booked") {
     return "paid";
   }
 
-  if (status === "cancelled" || status === "denied" || status === "expired") {
+  if (
+    status === "cancelled" ||
+    status === "cancelled_non_refund" ||
+    status === "cancelled_to_deposit" ||
+    status === "denied" ||
+    status === "expired"
+  ) {
     return "cancelled";
   }
 
@@ -1986,6 +2079,32 @@ export const approveAdminManualRentalBooking = async (
   >(`/api/v1/manual_rentals/admin/bookings/${id}/approve`, {
     settlement: payload,
   });
+
+  return {
+    data: mapAdminManualRentalBookingToPayment(response.data.data),
+    message: response.data.message,
+  };
+};
+
+export const cancelAdminManualRentalBookingNonRefund = async (
+  id: number | string,
+) => {
+  const response = await axiosInstance.post<
+    ApiResponse<AdminManualRentalBooking>
+  >(`/api/v1/manual_rentals/admin/bookings/${id}/cancel_non_refund`);
+
+  return {
+    data: mapAdminManualRentalBookingToPayment(response.data.data),
+    message: response.data.message,
+  };
+};
+
+export const cancelAdminManualRentalBookingToDeposit = async (
+  id: number | string,
+) => {
+  const response = await axiosInstance.post<
+    ApiResponse<AdminManualRentalBooking>
+  >(`/api/v1/manual_rentals/admin/bookings/${id}/cancel_to_deposit`);
 
   return {
     data: mapAdminManualRentalBookingToPayment(response.data.data),
