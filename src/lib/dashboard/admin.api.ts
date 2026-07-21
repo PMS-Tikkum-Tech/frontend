@@ -306,13 +306,7 @@ export interface AdminUser {
   emergency_contact_number?: string | null;
   relationship?: string | null;
   nik?: string | null;
-  role:
-    | "admin"
-    | "finance"
-    | "owner"
-    | "tenant"
-    | "housekeeper"
-    | "technician";
+  role: "admin" | "finance" | "owner" | "tenant" | "housekeeper" | "technician";
   account_status: "active" | "inactive";
   occupation?: string | null;
   profile_picture_url?: string | null;
@@ -461,7 +455,7 @@ export interface AdminFinancialTransaction {
 
 export interface AdminFinancialTransactionCreatePayload {
   property_id: number;
-  unit_id?: number;
+  unit_id?: number | null;
   category: "income" | "expense";
   transaction_date: string;
   check_in_date?: string;
@@ -476,7 +470,7 @@ export interface AdminFinancialTransactionCreatePayload {
 
 export interface AdminFinancialTransactionUpdatePayload {
   property_id?: number;
-  unit_id?: number;
+  unit_id?: number | null;
   category?: "income" | "expense";
   transaction_date?: string;
   check_in_date?: string;
@@ -1112,7 +1106,10 @@ const toFinancialTransactionFormData = (
   }
 
   if (payload.unit_id !== undefined) {
-    formData.append("financial_transaction[unit_id]", String(payload.unit_id));
+    formData.append(
+      "financial_transaction[unit_id]",
+      payload.unit_id === null ? "" : String(payload.unit_id),
+    );
   }
 
   if (payload.category !== undefined) {
@@ -1967,9 +1964,7 @@ export const getAdminManualRentalBookings = async (params?: QueryParams) => {
   };
 };
 
-export const getAllAdminManualRentalBookings = async (
-  params?: QueryParams,
-) => {
+export const getAllAdminManualRentalBookings = async (params?: QueryParams) => {
   const response = await getAllList<AdminManualRentalBooking>(
     "/api/v1/manual_rentals/admin/bookings",
     params,

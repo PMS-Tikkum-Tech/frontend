@@ -230,6 +230,7 @@ const buildCalendarDates = (month: Date) =>
 const isLeasePeriodInRange = (
   checkInDate: string,
   checkOutDate: string,
+  transactionDate: string,
   filterStart: Date | null,
   filterEnd: Date | null,
 ) => {
@@ -241,7 +242,15 @@ const isLeasePeriodInRange = (
   const leaseEnd = parseFinancialDate(checkOutDate);
 
   if (!leaseStart && !leaseEnd) {
-    return false;
+    const fallbackDate = parseFinancialDate(transactionDate);
+
+    if (!fallbackDate) {
+      return false;
+    }
+
+    return (
+      !isBefore(fallbackDate, filterStart) && !isAfter(fallbackDate, filterEnd)
+    );
   }
 
   const normalizedLeaseStart = leaseStart || leaseEnd;
@@ -462,12 +471,28 @@ type Notice = {
 
 type TransactionFormMode = "create" | "edit";
 
+type IncomeTransactionType = "unit_rental" | "other_income";
+
+const incomeTransactionTypeLabels: Record<IncomeTransactionType, string> = {
+  unit_rental: "Penyewaan Unit",
+  other_income: "Pemasukan Lainnya",
+};
+
+const incomeTransactionTypeOptions: Array<{
+  value: IncomeTransactionType;
+  label: string;
+}> = [
+  { value: "unit_rental", label: incomeTransactionTypeLabels.unit_rental },
+  { value: "other_income", label: incomeTransactionTypeLabels.other_income },
+];
+
 type TransactionFormState = {
   propertyId: string;
   unitId: string;
   tenantId: string;
   tenantName: string;
   category: "income" | "expense";
+  incomeType: IncomeTransactionType;
   transactionDate: string;
   checkInDate: string;
   checkOutDate: string;
@@ -483,6 +508,7 @@ const getInitialForm = (propertyId = ""): TransactionFormState => ({
   tenantId: "",
   tenantName: "",
   category: "income",
+  incomeType: "unit_rental",
   transactionDate: new Date().toISOString().slice(0, 10),
   checkInDate: "",
   checkOutDate: "",
@@ -492,12 +518,16 @@ const getInitialForm = (propertyId = ""): TransactionFormState => ({
   receiptFile: null,
 });
 
-type TransactionNoteFields = Pick<
-  TransactionFormState,
-  "tenantName" | "checkInDate" | "checkOutDate" | "notes"
->;
+type TransactionNoteFields = {
+  incomeType: IncomeTransactionType | "";
+  tenantName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  notes: string;
+};
 
 const getEmptyTransactionNoteFields = (): TransactionNoteFields => ({
+  incomeType: "",
   tenantName: "",
   checkInDate: "",
   checkOutDate: "",
@@ -509,6 +539,31 @@ const normalizeTransactionNoteLabel = (value: string) =>
     .toLowerCase()
     .replace(/[\s_-]+/g, " ")
     .trim();
+
+const parseIncomeTransactionType = (
+  value: string,
+): IncomeTransactionType | "" => {
+  const normalizedValue = normalizeTransactionNoteLabel(value);
+
+  if (
+    normalizedValue === "unit rental" ||
+    normalizedValue === "penyewaan unit" ||
+    normalizedValue === "sewa unit"
+  ) {
+    return "unit_rental";
+  }
+
+  if (
+    normalizedValue === "other income" ||
+    normalizedValue === "pemasukan lainnya" ||
+    normalizedValue === "pemasukan lain" ||
+    normalizedValue === "lainnya"
+  ) {
+    return "other_income";
+  }
+
+  return "";
+};
 
 const parseTransactionNotes = (
   notes?: string | null,
@@ -522,6 +577,9 @@ const parseTransactionNotes = (
 
   const unmatchedLines: string[] = [];
   const labelToField: Record<string, keyof TransactionNoteFields> = {
+    "jenis pemasukan": "incomeType",
+    "tipe pemasukan": "incomeType",
+    "sumber pemasukan": "incomeType",
     "nama penyewa": "tenantName",
     penyewa: "tenantName",
     tenant: "tenantName",
@@ -551,6 +609,18 @@ const parseTransactionNotes = (
       return;
     }
 
+    if (field === "incomeType") {
+      const incomeType = parseIncomeTransactionType(match[2]);
+
+      if (!incomeType) {
+        unmatchedLines.push(trimmedLine);
+        return;
+      }
+
+      parsed.incomeType = incomeType;
+      return;
+    }
+
     parsed[field] = match[2].trim();
   });
 
@@ -563,18 +633,35 @@ const parseTransactionNotes = (
   return parsed;
 };
 
-const buildTransactionNotes = (form: TransactionFormState) =>
-  (
-    [
+const shouldShowRentalFields = (form: TransactionFormState) =>
+  form.category !== "income" || form.incomeType === "unit_rental";
+
+const buildTransactionNotes = (form: TransactionFormState) => {
+  const useRentalFields = shouldShowRentalFields(form);
+  const noteRows: Array<[string, string]> = [];
+
+  if (form.category === "income") {
+    noteRows.push([
+      "Jenis Pemasukan",
+      incomeTransactionTypeLabels[form.incomeType],
+    ]);
+  }
+
+  if (useRentalFields) {
+    noteRows.push(
       ["Nama Penyewa", form.tenantName],
       ["Check In", form.checkInDate],
       ["Check Out", form.checkOutDate],
-      ["Catatan", form.notes],
-    ] satisfies Array<[string, string]>
-  )
+    );
+  }
+
+  noteRows.push(["Catatan", form.notes]);
+
+  return noteRows
     .filter(([, value]) => value.trim())
     .map(([label, value]) => `${label}: ${value.trim()}`)
     .join("\n");
+};
 
 const getTransactionTenantName = (transaction: AdminFinancialTransaction) =>
   transaction.tenant_name?.trim() ||
@@ -584,15 +671,27 @@ const getTransactionTenantName = (transaction: AdminFinancialTransaction) =>
 
 const getTransactionDetails = (transaction: AdminFinancialTransaction) => {
   const parsedNotes = parseTransactionNotes(transaction.notes);
+  const tenantName = getTransactionTenantName(transaction);
+  const checkInDate =
+    toDateInput(transaction.check_in_date) ||
+    toDateInput(parsedNotes.checkInDate);
+  const checkOutDate =
+    toDateInput(transaction.check_out_date) ||
+    toDateInput(parsedNotes.checkOutDate);
+  const hasRentalContext = Boolean(
+    transaction.unit.id || tenantName || checkInDate || checkOutDate,
+  );
+  const incomeType =
+    transaction.category === "income"
+      ? parsedNotes.incomeType ||
+        (hasRentalContext ? "unit_rental" : "other_income")
+      : "unit_rental";
 
   return {
-    tenantName: getTransactionTenantName(transaction),
-    checkInDate:
-      toDateInput(transaction.check_in_date) ||
-      toDateInput(parsedNotes.checkInDate),
-    checkOutDate:
-      toDateInput(transaction.check_out_date) ||
-      toDateInput(parsedNotes.checkOutDate),
+    incomeType,
+    tenantName,
+    checkInDate,
+    checkOutDate,
     notes: parsedNotes.notes,
   };
 };
@@ -797,7 +896,11 @@ export default function AdminFinancialPage() {
       const searchable =
         `${transaction.property_label} ${transaction.property.name || ""} ${
           transaction.unit.name || ""
-        } ${transaction.description} ${details.tenantName} ${details.notes} ${
+        } ${transaction.description} ${
+          transaction.category === "income"
+            ? incomeTransactionTypeLabels[details.incomeType]
+            : ""
+        } ${details.tenantName} ${details.notes} ${
           transaction.created_by.full_name || ""
         }`.toLowerCase();
 
@@ -806,6 +909,7 @@ export default function AdminFinancialPage() {
         isLeasePeriodInRange(
           details.checkInDate,
           details.checkOutDate,
+          transaction.transaction_date || "",
           selectedStartDate,
           selectedEndDate,
         ) &&
@@ -813,7 +917,9 @@ export default function AdminFinancialPage() {
         (propertyFilter
           ? String(transaction.property.id || "") === propertyFilter
           : true) &&
-        (receiptFilter === "with_receipt" ? Boolean(transaction.receipt_url) : true) &&
+        (receiptFilter === "with_receipt"
+          ? Boolean(transaction.receipt_url)
+          : true) &&
         (receiptFilter === "without_receipt"
           ? !transaction.receipt_url
           : true) &&
@@ -925,6 +1031,7 @@ export default function AdminFinancialPage() {
   const viewTransactionDetails = viewTransaction
     ? getTransactionDetails(viewTransaction)
     : null;
+  const showRentalFields = shouldShowRentalFields(form);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1068,6 +1175,26 @@ export default function AdminFinancialPage() {
     }));
   };
 
+  const handleIncomeTypeChange = (incomeType: IncomeTransactionType) => {
+    setForm((prev) => ({
+      ...prev,
+      incomeType,
+      ...(incomeType === "other_income"
+        ? {
+            unitId: "",
+            tenantId: "",
+            tenantName: "",
+            checkInDate: "",
+            checkOutDate: "",
+          }
+        : {}),
+    }));
+
+    if (incomeType === "other_income") {
+      setUnitOptionSearch("");
+    }
+  };
+
   const openCreateModal = () => {
     setNotice(null);
     setFormMode("create");
@@ -1103,6 +1230,7 @@ export default function AdminFinancialPage() {
           : "",
       tenantName: transactionDetails.tenantName,
       category: transaction.category,
+      incomeType: transactionDetails.incomeType,
       transactionDate: toDateInput(transaction.transaction_date),
       checkInDate: transactionDetails.checkInDate,
       checkOutDate: transactionDetails.checkOutDate,
@@ -1129,7 +1257,12 @@ export default function AdminFinancialPage() {
     const propertyId = Number(form.propertyId);
     const amount = parseRupiahInputValue(form.amount);
     const description = form.description.trim();
-    const tenantName = normalizeOptional(form.tenantName);
+    const useRentalFields = shouldShowRentalFields(form);
+    const selectedUnitId =
+      useRentalFields && form.unitId ? Number(form.unitId) : null;
+    const tenantName = useRentalFields
+      ? normalizeOptional(form.tenantName)
+      : undefined;
     const transactionNotes = normalizeOptional(buildTransactionNotes(form));
 
     if (!propertyId) {
@@ -1166,13 +1299,23 @@ export default function AdminFinancialPage() {
     try {
       const payload = {
         property_id: propertyId,
-        ...(form.unitId ? { unit_id: Number(form.unitId) } : {}),
-        ...(form.tenantId ? { tenant_id: Number(form.tenantId) } : {}),
+        ...(selectedUnitId
+          ? { unit_id: selectedUnitId }
+          : formMode === "edit"
+            ? { unit_id: null }
+            : {}),
+        ...(useRentalFields && form.tenantId
+          ? { tenant_id: Number(form.tenantId) }
+          : {}),
         ...(tenantName ? { tenant_name: tenantName } : {}),
         category: form.category,
         transaction_date: form.transactionDate,
-        ...(form.checkInDate ? { check_in_date: form.checkInDate } : {}),
-        ...(form.checkOutDate ? { check_out_date: form.checkOutDate } : {}),
+        ...(useRentalFields && form.checkInDate
+          ? { check_in_date: form.checkInDate }
+          : {}),
+        ...(useRentalFields && form.checkOutDate
+          ? { check_out_date: form.checkOutDate }
+          : {}),
         amount,
         description,
         notes: transactionNotes,
@@ -1197,8 +1340,10 @@ export default function AdminFinancialPage() {
               ),
               ...(transactionNotes ? { notes: transactionNotes } : {}),
               property_id: propertyId,
-              ...(form.unitId ? { unit_id: Number(form.unitId) } : {}),
-              ...(form.tenantId ? { tenant_id: Number(form.tenantId) } : {}),
+              ...(selectedUnitId ? { unit_id: selectedUnitId } : {}),
+              ...(useRentalFields && form.tenantId
+                ? { tenant_id: Number(form.tenantId) }
+                : {}),
               owner_id: resolvedOwner.id,
             });
           } catch (syncError) {
@@ -1587,7 +1732,7 @@ export default function AdminFinancialPage() {
             Menampilkan{" "}
             <span className="font-semibold">{filteredTransactions.length}</span>{" "}
             dari <span className="font-semibold">{transactions.length}</span>{" "}
-            transaksi dalam masa sewa.
+            transaksi pada periode yang dipilih.
           </p>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
@@ -1631,7 +1776,9 @@ export default function AdminFinancialPage() {
         <StatCard
           title="Total Pemasukan"
           value={
-            isLoading ? "..." : formatCurrency(filteredTransactionSummary.revenue)
+            isLoading
+              ? "..."
+              : formatCurrency(filteredTransactionSummary.revenue)
           }
           icon={<Wallet size={20} />}
         />
@@ -1639,7 +1786,9 @@ export default function AdminFinancialPage() {
         <StatCard
           title="Total Pengeluaran"
           value={
-            isLoading ? "..." : formatCurrency(filteredTransactionSummary.expense)
+            isLoading
+              ? "..."
+              : formatCurrency(filteredTransactionSummary.expense)
           }
           icon={<ArrowDownCircle size={20} />}
         />
@@ -1785,7 +1934,7 @@ export default function AdminFinancialPage() {
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="p-3 text-left">Tanggal Input Data</th>
-                <th className="p-3 text-left">Masa Sewa</th>
+                <th className="p-3 text-left">Periode</th>
                 <th className="p-3 text-left">Properti</th>
                 <th className="p-3 text-left">Deskripsi</th>
                 <th className="p-3 text-left">Jumlah</th>
@@ -1798,13 +1947,21 @@ export default function AdminFinancialPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td data-label="" colSpan={8} className="p-6 text-center text-slate-500">
+                  <td
+                    data-label=""
+                    colSpan={8}
+                    className="p-6 text-center text-slate-500"
+                  >
                     Memuat data transaksi...
                   </td>
                 </tr>
               ) : pagedTransactions.length === 0 ? (
                 <tr>
-                  <td data-label="" colSpan={8} className="p-6 text-center text-slate-500">
+                  <td
+                    data-label=""
+                    colSpan={8}
+                    className="p-6 text-center text-slate-500"
+                  >
                     Tidak ada transaksi.
                   </td>
                 </tr>
@@ -1819,13 +1976,19 @@ export default function AdminFinancialPage() {
                             : "-"
                         }`
                       : "";
+                  const periodLabel =
+                    stayPeriod || formatDate(transaction.transaction_date);
 
                   return (
                     <tr
                       key={transaction.id}
                       className="border-t border-slate-100"
                     >
-                      <td data-label="Tanggal Input Data" data-mobile-primary="true" className="p-3 text-slate-700">
+                      <td
+                        data-label="Tanggal Input Data"
+                        data-mobile-primary="true"
+                        className="p-3 text-slate-700"
+                      >
                         <p className="font-medium">
                           {formatDate(getTransactionInputDate(transaction))}
                         </p>
@@ -1834,12 +1997,13 @@ export default function AdminFinancialPage() {
                         </p>
                       </td>
 
-                      <td data-label="Masa Sewa" className="p-3 text-slate-700">
-                        {stayPeriod ? (
-                          <p className="max-w-[190px] text-sm">{stayPeriod}</p>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
+                      <td data-label="Periode" className="p-3 text-slate-700">
+                        <p className="max-w-[190px] text-sm">{periodLabel}</p>
+                        {!stayPeriod && transaction.category === "income" ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {incomeTransactionTypeLabels[details.incomeType]}
+                          </p>
+                        ) : null}
                       </td>
 
                       <td data-label="Properti" className="p-3">
@@ -1855,6 +2019,12 @@ export default function AdminFinancialPage() {
                         <p className="max-w-[300px] truncate text-slate-700">
                           {transaction.description}
                         </p>
+                        {transaction.category === "income" ? (
+                          <p className="max-w-[300px] truncate text-xs text-slate-500">
+                            Jenis:{" "}
+                            {incomeTransactionTypeLabels[details.incomeType]}
+                          </p>
+                        ) : null}
                         {details.tenantName ? (
                           <p className="max-w-[300px] truncate text-xs text-slate-500">
                             Penyewa: {details.tenantName}
@@ -1867,7 +2037,10 @@ export default function AdminFinancialPage() {
                         ) : null}
                       </td>
 
-                      <td data-label="Jumlah" className="p-3 font-semibold text-slate-800">
+                      <td
+                        data-label="Jumlah"
+                        className="p-3 font-semibold text-slate-800"
+                      >
                         {formatCurrency(transaction.amount)}
                       </td>
 
@@ -1893,7 +2066,11 @@ export default function AdminFinancialPage() {
                         )}
                       </td>
 
-                      <td data-label="Aksi" data-mobile-actions="true" className="p-3">
+                      <td
+                        data-label="Aksi"
+                        data-mobile-actions="true"
+                        className="p-3"
+                      >
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -2002,8 +2179,10 @@ export default function AdminFinancialPage() {
                   {viewTransaction.description || "-"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {viewTransaction.property.name || "-"} • Unit{" "}
-                  {viewTransaction.unit.name || "-"}
+                  {viewTransaction.property.name || "-"}
+                  {viewTransaction.unit.name
+                    ? ` • Unit ${viewTransaction.unit.name}`
+                    : ""}
                 </p>
               </div>
               <DetailRow
@@ -2018,14 +2197,28 @@ export default function AdminFinancialPage() {
                 label="Kategori"
                 value={toCategoryLabel(viewTransaction.category)}
               />
+              {viewTransaction.category === "income" &&
+              viewTransactionDetails ? (
+                <DetailRow
+                  label="Jenis Pemasukan"
+                  value={
+                    incomeTransactionTypeLabels[
+                      viewTransactionDetails.incomeType
+                    ]
+                  }
+                />
+              ) : null}
               <DetailRow
                 label="Properti"
                 value={viewTransaction.property.name || "-"}
               />
-              <DetailRow
-                label="Unit"
-                value={viewTransaction.unit.name || "-"}
-              />
+              {viewTransaction.unit.name ||
+              viewTransactionDetails?.incomeType === "unit_rental" ? (
+                <DetailRow
+                  label="Unit"
+                  value={viewTransaction.unit.name || "-"}
+                />
+              ) : null}
               {viewTransactionDetails?.tenantName ? (
                 <DetailRow
                   label="Nama Penyewa"
@@ -2143,75 +2336,6 @@ export default function AdminFinancialPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Unit (Opsional)
-                </label>
-                <div className="mb-2">
-                  <input
-                    value={unitOptionSearch}
-                    onChange={(event) => setUnitOptionSearch(event.target.value)}
-                    disabled={!form.propertyId || isLoadingUnits}
-                    className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
-                    placeholder="Cari unit, contoh: Aa1"
-                  />
-                </div>
-                <select
-                  value={form.unitId}
-                  onChange={(event) => handleUnitChange(event.target.value)}
-                  disabled={!form.propertyId || isLoadingUnits}
-                  className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
-                >
-                  <option value="">
-                    {isLoadingUnits ? "Memuat unit..." : "Tanpa unit spesifik"}
-                  </option>
-                  {form.unitId &&
-                  !filteredUnitOptions.some(
-                    (unit) => String(unit.unit_id) === form.unitId,
-                  ) ? (
-                    <option value={form.unitId}>
-                      {selectedUnit
-                        ? getFinancialUnitLabel(selectedUnit)
-                        : `Unit #${form.unitId}`}
-                    </option>
-                  ) : null}
-                  {filteredUnitOptions.map((unit) => (
-                    <option key={unit.unit_id} value={unit.unit_id}>
-                      {getFinancialUnitLabel(unit)}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-500">
-                  {unitOptionSearch && filteredUnitOptions.length === 0
-                    ? "Unit tidak ditemukan dalam properti ini."
-                    : `Pemilik: ${resolvedOwner?.name || "-"}`}
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Nama Penyewa
-                </label>
-                <input
-                  list="financial-tenant-options"
-                  value={form.tenantName}
-                  onChange={(event) =>
-                    handleTenantNameChange(event.target.value)
-                  }
-                  placeholder="Nama penyewa"
-                  className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                />
-                <datalist id="financial-tenant-options">
-                  {tenantOptions.map(({ tenant, label }) => (
-                    <option
-                      key={tenant.id}
-                      value={label}
-                      label={tenant.email || undefined}
-                    />
-                  ))}
-                </datalist>
-              </div>
-
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -2231,43 +2355,143 @@ export default function AdminFinancialPage() {
                     <option value="expense">Pengeluaran</option>
                   </select>
                 </div>
+
+                {form.category === "income" ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Jenis Pemasukan
+                    </label>
+                    <select
+                      value={form.incomeType}
+                      onChange={(event) =>
+                        handleIncomeTypeChange(
+                          event.target.value as IncomeTransactionType,
+                        )
+                      }
+                      className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                    >
+                      {incomeTransactionTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Check In
-                  </label>
-                  <input
-                    type="date"
-                    value={form.checkInDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        checkInDate: event.target.value,
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  />
-                </div>
+              {showRentalFields ? (
+                <>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Unit (Opsional)
+                    </label>
+                    <div className="mb-2">
+                      <input
+                        value={unitOptionSearch}
+                        onChange={(event) =>
+                          setUnitOptionSearch(event.target.value)
+                        }
+                        disabled={!form.propertyId || isLoadingUnits}
+                        className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                        placeholder="Cari unit, contoh: Aa1"
+                      />
+                    </div>
+                    <select
+                      value={form.unitId}
+                      onChange={(event) => handleUnitChange(event.target.value)}
+                      disabled={!form.propertyId || isLoadingUnits}
+                      className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        {isLoadingUnits
+                          ? "Memuat unit..."
+                          : "Tanpa unit spesifik"}
+                      </option>
+                      {form.unitId &&
+                      !filteredUnitOptions.some(
+                        (unit) => String(unit.unit_id) === form.unitId,
+                      ) ? (
+                        <option value={form.unitId}>
+                          {selectedUnit
+                            ? getFinancialUnitLabel(selectedUnit)
+                            : `Unit #${form.unitId}`}
+                        </option>
+                      ) : null}
+                      {filteredUnitOptions.map((unit) => (
+                        <option key={unit.unit_id} value={unit.unit_id}>
+                          {getFinancialUnitLabel(unit)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {unitOptionSearch && filteredUnitOptions.length === 0
+                        ? "Unit tidak ditemukan dalam properti ini."
+                        : `Pemilik: ${resolvedOwner?.name || "-"}`}
+                    </p>
+                  </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Check Out
-                  </label>
-                  <input
-                    type="date"
-                    value={form.checkOutDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        checkOutDate: event.target.value,
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Nama Penyewa
+                    </label>
+                    <input
+                      list="financial-tenant-options"
+                      value={form.tenantName}
+                      onChange={(event) =>
+                        handleTenantNameChange(event.target.value)
+                      }
+                      placeholder="Nama penyewa"
+                      className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                    />
+                    <datalist id="financial-tenant-options">
+                      {tenantOptions.map(({ tenant, label }) => (
+                        <option
+                          key={tenant.id}
+                          value={label}
+                          label={tenant.email || undefined}
+                        />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Check In
+                      </label>
+                      <input
+                        type="date"
+                        value={form.checkInDate}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            checkInDate: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Check Out
+                      </label>
+                      <input
+                        type="date"
+                        value={form.checkOutDate}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            checkOutDate: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : null}
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -2306,7 +2530,12 @@ export default function AdminFinancialPage() {
                       description: event.target.value,
                     }))
                   }
-                  placeholder="Tuliskan deskripsi transaksi (minimal 10 karakter)"
+                  placeholder={
+                    form.category === "income" &&
+                    form.incomeType === "other_income"
+                      ? "Contoh: Pemasukan parkir bulanan"
+                      : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
+                  }
                   className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                 />
               </div>
@@ -2487,7 +2716,10 @@ function FinancialDateRangePicker({
     const nextStartDate = isBefore(date, anchorDate) ? date : anchorDate;
     const nextEndDate = isBefore(date, anchorDate) ? anchorDate : date;
 
-    onDateChange(toFinancialDateKey(nextStartDate), toFinancialDateKey(nextEndDate));
+    onDateChange(
+      toFinancialDateKey(nextStartDate),
+      toFinancialDateKey(nextEndDate),
+    );
     setIsSelectingRangeEnd(false);
   };
 
@@ -2495,7 +2727,9 @@ function FinancialDateRangePicker({
     const nextRange = getQuickDateRange(rangeKey);
 
     onDateChange(nextRange.startDate, nextRange.endDate);
-    setVisibleMonth(startOfMonth(parseFinancialDate(nextRange.startDate) || new Date()));
+    setVisibleMonth(
+      startOfMonth(parseFinancialDate(nextRange.startDate) || new Date()),
+    );
     setIsSelectingRangeEnd(false);
   };
 
@@ -2534,8 +2768,8 @@ function FinancialDateRangePicker({
           const isRangeEdge = isStart || isEnd;
           const isInRange = Boolean(
             rangeStart &&
-              rangeEnd &&
-              isWithinInterval(date, { start: rangeStart, end: rangeEnd }),
+            rangeEnd &&
+            isWithinInterval(date, { start: rangeStart, end: rangeEnd }),
           );
 
           const dayClassName = [
@@ -2591,7 +2825,7 @@ function FinancialDateRangePicker({
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-800">
-                Periode Masa Sewa
+                Periode Transaksi
               </p>
               <p className="mt-1 text-xs text-slate-500">
                 {formatFinancialDateRangeLabel(tempStartDate, tempEndDate)}
