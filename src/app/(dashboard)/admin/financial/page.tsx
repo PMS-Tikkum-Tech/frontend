@@ -706,8 +706,18 @@ const shouldShowNonUnitTenantField = (form: TransactionFormState) =>
   form.category === "income" &&
   form.incomeType === "cancelled_booking_non_refund";
 
-const getTransactionDepositId = (transaction: AdminFinancialTransaction) =>
-  transaction.deposit?.id || transaction.deposit_id || null;
+const getTransactionDepositId = (transaction: AdminFinancialTransaction) => {
+  const explicitDepositId = transaction.deposit?.id || transaction.deposit_id;
+  if (explicitDepositId) {
+    return explicitDepositId;
+  }
+
+  const noteDepositId = /deposit\s+manual\s+#(\d+)/i.exec(
+    transaction.notes || "",
+  )?.[1];
+
+  return noteDepositId ? Number(noteDepositId) : null;
+};
 
 const buildTransactionNotes = (form: TransactionFormState) => {
   const useRentalFields = shouldShowRentalFields(form);
