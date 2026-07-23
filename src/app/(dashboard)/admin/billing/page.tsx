@@ -15,7 +15,6 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -37,11 +36,11 @@ import {
 import { id as idLocale } from "date-fns/locale";
 import {
   approveAdminManualRentalBooking,
+  cancelAdminPayment,
   cancelAdminManualRentalBookingNonRefund,
   cancelAdminManualRentalBookingToDeposit,
   createAdminFinancialTransaction,
   createAdminPayment,
-  deleteAdminPayment,
   getAllAdminManualRentalBookings,
   getAllAdminPayments,
   getAllAdminProperties,
@@ -49,6 +48,7 @@ import {
   getAllAdminTenants,
   getAllAdminUsers,
   getApiErrorMessage,
+  markAdminPaymentPaid,
   updateAdminPayment,
   type AdminPayment,
   type AdminPropertyListItem,
@@ -399,7 +399,6 @@ type BillingFormState = {
   unitId: string;
   tenantId: string;
   leaseId: string;
-  status: "waiting" | "paid" | "overdue" | "cancelled";
   dueDate: string;
   amount: string;
   paymentMethod: string;
@@ -415,7 +414,6 @@ const getInitialForm = (): BillingFormState => ({
   unitId: "",
   tenantId: "",
   leaseId: "",
-  status: "waiting",
   dueDate: new Date().toISOString().slice(0, 10),
   amount: "",
   paymentMethod: "",
@@ -756,6 +754,14 @@ export default function AdminBillingPage() {
   const [viewPayment, setViewPayment] = useState<AdminPayment | null>(null);
   const [approveConfirmationPayment, setApproveConfirmationPayment] =
     useState<AdminPayment | null>(null);
+  const [cancelConfirmationPayment, setCancelConfirmationPayment] =
+    useState<AdminPayment | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationConfirmation, setCancellationConfirmation] =
+    useState("");
+  const [cancellationError, setCancellationError] = useState<string | null>(
+    null,
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<BillingFormMode>("create");
   const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
@@ -764,7 +770,6 @@ export default function AdminBillingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
   const [isCancellingId, setIsCancellingId] = useState<number | null>(null);
-  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<
     string | null
   >(null);
@@ -1122,7 +1127,6 @@ export default function AdminBillingPage() {
       unitId: String(payment.unit.id || ""),
       tenantId: String(payment.tenant.id || ""),
       leaseId: payment.lease_id ? String(payment.lease_id) : "",
-      status: payment.status,
       dueDate: toInputDate(payment.due_date),
       amount: formatRupiahInputValue(payment.amount || ""),
       paymentMethod: payment.payment_method || "",
@@ -1143,6 +1147,15 @@ export default function AdminBillingPage() {
         variant: "error",
         message:
           "Pemesanan pembayaran penyewa manual belum memiliki layanan ubah dari modul tagihan biasa.",
+      });
+      return;
+    }
+
+    if (payment.status !== "waiting") {
+      setNotice({
+        variant: "error",
+        message:
+          "Hanya tagihan berstatus menunggu yang dapat diubah. Tagihan final tetap disimpan sebagai arsip.",
       });
       return;
     }
@@ -1190,7 +1203,6 @@ export default function AdminBillingPage() {
         property_id: propertyId,
         unit_id: unitId,
         tenant_id: tenantId,
-        status: form.status,
         amount,
         due_date: form.dueDate,
         ...(leaseId > 0 ? { lease_id: leaseId } : {}),
@@ -1379,10 +1391,7 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      await updateAdminPayment(payment.id, {
-        status: "paid",
-        paid_at: new Date().toISOString(),
-      });
+      await markAdminPaymentPaid(payment.id);
 
       const incomeRecorded = await recordPaymentAsIncome(payment);
 
@@ -1463,46 +1472,81 @@ export default function AdminBillingPage() {
     }
   };
 
-  const handleDeletePayment = async (payment: AdminPayment) => {
-    if (isManualBookingRecord(payment)) {
+  const openCancelConfirmation = (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment) || payment.status !== "waiting") {
       setNotice({
         variant: "error",
-        message: "Booking penyewa tidak dapat dihapus dari modul tagihan.",
+        message: "Hanya tagihan menunggu yang dapat dibatalkan.",
       });
       return;
     }
 
-    const confirmed = window.confirm(
-      `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`,
-    );
+    setNotice(null);
+    setCancellationReason("");
+    setCancellationConfirmation("");
+    setCancellationError(null);
+    setCancelConfirmationPayment(payment);
+  };
 
-    if (!confirmed) {
+  const closeCancelConfirmation = () => {
+    if (isCancellingId !== null) {
       return;
     }
 
-    setIsDeletingId(payment.id);
+    setCancelConfirmationPayment(null);
+    setCancellationReason("");
+    setCancellationConfirmation("");
+    setCancellationError(null);
+  };
+
+  const handleCancelPayment = async () => {
+    if (!cancelConfirmationPayment) {
+      return;
+    }
+
+    const normalizedReason = cancellationReason.trim();
+    if (normalizedReason.length < 10) {
+      setCancellationError("Alasan pembatalan minimal 10 karakter.");
+      return;
+    }
+
+    if (
+      cancellationConfirmation.trim() !==
+      cancelConfirmationPayment.invoice_id
+    ) {
+      setCancellationError("Nomor faktur yang diketik belum sesuai.");
+      return;
+    }
+
+    setIsCancellingId(cancelConfirmationPayment.id);
+    setCancellationError(null);
     setNotice(null);
 
     try {
-      await deleteAdminPayment(payment.id);
+      await cancelAdminPayment(
+        cancelConfirmationPayment.id,
+        normalizedReason,
+      );
       setNotice({
         variant: "success",
-        message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
+        message: `Tagihan #${cancelConfirmationPayment.invoice_id} berhasil dibatalkan dan tetap tersimpan sebagai arsip.`,
       });
       if (
-        viewPayment?.id === payment.id &&
+        viewPayment?.id === cancelConfirmationPayment.id &&
         !isManualBookingRecord(viewPayment)
       ) {
         setViewPayment(null);
       }
+      setCancelConfirmationPayment(null);
+      setCancellationReason("");
+      setCancellationConfirmation("");
       setRefreshKey((previous) => previous + 1);
-    } catch (deleteError) {
-      setNotice({
-        variant: "error",
-        message: getApiErrorMessage(deleteError, "Gagal menghapus tagihan."),
-      });
+    } catch (cancelError) {
+      setCancellationError(
+        getApiErrorMessage(cancelError, "Gagal membatalkan tagihan."),
+      );
     } finally {
-      setIsDeletingId(null);
+      setIsCancellingId(null);
     }
   };
 
@@ -1897,7 +1941,8 @@ export default function AdminBillingPage() {
                         >
                           <Eye size={16} />
                         </button>
-                        {!isManualBookingRecord(payment) ? (
+                        {!isManualBookingRecord(payment) &&
+                        payment.status === "waiting" ? (
                           <button
                             type="button"
                             onClick={() => handleEditPayment(payment)}
@@ -1916,8 +1961,7 @@ export default function AdminBillingPage() {
                             getPaymentDisplayStatus(payment) === "paid" ||
                             getPaymentDisplayStatus(payment) === "cancelled" ||
                             isApprovingId === payment.id ||
-                            isCancellingId === payment.id ||
-                            isDeletingId === payment.id
+                            isCancellingId === payment.id
                           }
                           className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
@@ -1930,22 +1974,23 @@ export default function AdminBillingPage() {
                         >
                           <CheckCircle2 size={16} />
                         </button>
-                        {!isManualBookingRecord(payment) ? (
+                        {!isManualBookingRecord(payment) &&
+                        payment.status === "waiting" &&
+                        getPaymentDisplayStatus(payment) === "waiting" ? (
                           <button
                             type="button"
                             onClick={() => {
-                              void handleDeletePayment(payment);
+                              openCancelConfirmation(payment);
                             }}
                             disabled={
-                              isDeletingId === payment.id ||
                               isApprovingId === payment.id ||
                               isCancellingId === payment.id
                             }
                             className="col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-40"
-                            title="Hapus tagihan"
+                            title="Batalkan tagihan"
                           >
-                            <Trash2 size={15} />
-                            Hapus
+                            <Ban size={15} />
+                            Batalkan
                           </button>
                         ) : null}
                         {canCancelManualBooking(payment) ? (
@@ -2126,6 +2171,125 @@ export default function AdminBillingPage() {
                 {isApproveConfirmationBusy
                   ? "Memproses..."
                   : "Ya, ACC Pembayaran"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelConfirmationPayment && (
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="admin-mobile-dialog-panel max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="px-5 pb-5 pt-6 sm:px-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
+                  <Ban size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                    Konfirmasi Pembatalan
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                    Batalkan tagihan?
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Tagihan tetap tersimpan sebagai arsip dan tidak dapat
+                    diaktifkan kembali.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <InvoiceMetaRow
+                  label="Faktur"
+                  value={`#${cancelConfirmationPayment.invoice_id}`}
+                />
+                <div className="mt-3">
+                  <InvoiceMetaRow
+                    label="Penyewa"
+                    value={cancelConfirmationPayment.tenant.full_name || "-"}
+                  />
+                </div>
+                <div className="mt-3">
+                  <InvoiceMetaRow
+                    label="Total"
+                    value={formatCurrency(cancelConfirmationPayment.amount)}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label
+                  htmlFor="cancellation-reason"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  Alasan pembatalan
+                </label>
+                <textarea
+                  id="cancellation-reason"
+                  value={cancellationReason}
+                  onChange={(event) => {
+                    setCancellationReason(event.target.value);
+                    setCancellationError(null);
+                  }}
+                  rows={3}
+                  maxLength={500}
+                  className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                  placeholder="Contoh: Tagihan dibuat untuk unit yang salah"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Minimal 10 karakter.
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <label
+                  htmlFor="cancellation-invoice-confirmation"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  Ketik nomor faktur untuk konfirmasi
+                </label>
+                <input
+                  id="cancellation-invoice-confirmation"
+                  value={cancellationConfirmation}
+                  onChange={(event) => {
+                    setCancellationConfirmation(event.target.value);
+                    setCancellationError(null);
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                  placeholder={cancelConfirmationPayment.invoice_id}
+                  autoComplete="off"
+                />
+              </div>
+
+              {cancellationError ? (
+                <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                  {cancellationError}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <button
+                type="button"
+                onClick={closeCancelConfirmation}
+                disabled={isCancellingId === cancelConfirmationPayment.id}
+                className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-medium text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleCancelPayment();
+                }}
+                disabled={isCancellingId === cancelConfirmationPayment.id}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-70"
+              >
+                <Ban size={16} />
+                {isCancellingId === cancelConfirmationPayment.id
+                  ? "Membatalkan..."
+                  : "Batalkan Tagihan"}
               </button>
             </div>
           </div>
@@ -2359,6 +2523,31 @@ export default function AdminBillingPage() {
                   {viewPayment.due_date
                     ? ` (${formatDueDate(viewPayment.due_date)}).`
                     : "."}
+                </section>
+              ) : null}
+
+              {!isManualBookingRecord(viewPayment) &&
+              viewPayment.status === "cancelled" ? (
+                <section className="rounded-xl border border-red-200 bg-red-50 p-4">
+                  <p className="font-semibold text-red-900">
+                    Informasi pembatalan
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <InvoiceMetaRow
+                      label="Dibatalkan oleh"
+                      value={viewPayment.cancelled_by?.full_name || "-"}
+                    />
+                    <InvoiceMetaRow
+                      label="Waktu"
+                      value={formatDateTime(viewPayment.cancelled_at)}
+                    />
+                    <div className="border-t border-red-100 pt-3">
+                      <p className="text-xs font-medium text-red-700">Alasan</p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-red-900">
+                        {viewPayment.cancellation_reason || "-"}
+                      </p>
+                    </div>
+                  </div>
                 </section>
               ) : null}
             </div>
@@ -2603,28 +2792,6 @@ export default function AdminBillingPage() {
                     className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                     placeholder="Transfer Bank / Tunai / E-Wallet / DP"
                   />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Status
-                  </label>
-                  <select
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        status: event.target
-                          .value as BillingFormState["status"],
-                      }))
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  >
-                    <option value="waiting">Menunggu</option>
-                    <option value="paid">Lunas</option>
-                    <option value="overdue">Dibatalkan Otomatis</option>
-                    <option value="cancelled">Dibatalkan</option>
-                  </select>
                 </div>
 
                 <div>

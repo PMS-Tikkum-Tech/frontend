@@ -639,6 +639,12 @@ export interface AdminPayment {
   paid_at?: string | null;
   payment_method?: string | null;
   description?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  cancelled_by?: {
+    id: number;
+    full_name?: string | null;
+  } | null;
   transfer_proof_url?: string | null;
   booking_status?:
     | "awaiting_payment"
@@ -720,10 +726,8 @@ export interface AdminPaymentCreatePayload {
   unit_id: number;
   tenant_id: number;
   lease_id?: number;
-  status?: "waiting" | "paid" | "overdue" | "cancelled";
   amount: number;
   due_date: string;
-  paid_at?: string;
   payment_method?: string;
   description?: string;
 }
@@ -733,10 +737,8 @@ export interface AdminPaymentUpdatePayload {
   unit_id?: number;
   tenant_id?: number;
   lease_id?: number;
-  status?: "waiting" | "paid" | "overdue" | "cancelled";
   amount?: number;
   due_date?: string;
-  paid_at?: string;
   payment_method?: string;
   description?: string;
 }
@@ -2256,12 +2258,30 @@ export const updateAdminPayment = async (
   };
 };
 
-export const deleteAdminPayment = async (id: number | string) => {
-  const response = await axiosInstance.delete<ApiResponse<null>>(
-    `/api/v1/payments/${id}`,
+export const markAdminPaymentPaid = async (id: number | string) => {
+  const response = await axiosInstance.post<ApiResponse<AdminPayment>>(
+    `/api/v1/payments/${id}/mark_paid`,
   );
 
   return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const cancelAdminPayment = async (
+  id: number | string,
+  reason: string,
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminPayment>>(
+    `/api/v1/payments/${id}/cancel`,
+    {
+      cancellation: { reason },
+    },
+  );
+
+  return {
+    data: response.data.data,
     message: response.data.message,
   };
 };
