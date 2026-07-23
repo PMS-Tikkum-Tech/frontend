@@ -41,6 +41,7 @@ import {
   cancelAdminManualRentalBookingToDeposit,
   createAdminFinancialTransaction,
   createAdminPayment,
+  deleteAdminManualRentalBooking,
   deleteAdminPayment,
   getAllAdminManualRentalBookings,
   getAllAdminPayments,
@@ -1432,15 +1433,6 @@ export default function AdminBillingPage() {
   };
 
   const handleDeletePayment = async (payment: AdminPayment) => {
-    if (isManualBookingRecord(payment)) {
-      setNotice({
-        variant: "error",
-        message:
-          "Data booking penyewa tidak bisa dihapus dari tombol hapus tagihan sementara.",
-      });
-      return;
-    }
-
     const confirmed = window.confirm(
       `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`,
     );
@@ -1453,14 +1445,19 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      await deleteAdminPayment(payment.id);
+      if (isManualBookingRecord(payment)) {
+        await deleteAdminManualRentalBooking(payment.id);
+      } else {
+        await deleteAdminPayment(payment.id);
+      }
       setNotice({
         variant: "success",
         message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
       });
       if (
         viewPayment?.id === payment.id &&
-        !isManualBookingRecord(viewPayment)
+        isManualBookingRecord(viewPayment) ===
+          isManualBookingRecord(payment)
       ) {
         setViewPayment(null);
       }
@@ -1866,14 +1863,16 @@ export default function AdminBillingPage() {
                         >
                           <Eye size={16} />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEditPayment(payment)}
-                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          title="Ubah tagihan"
-                        >
-                          <Pencil size={16} />
-                        </button>
+                        {!isManualBookingRecord(payment) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleEditPayment(payment)}
+                            className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                            title="Ubah tagihan"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => {
@@ -1897,23 +1896,22 @@ export default function AdminBillingPage() {
                         >
                           <CheckCircle2 size={16} />
                         </button>
-                        {!isManualBookingRecord(payment) ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void handleDeletePayment(payment);
-                            }}
-                            disabled={
-                              isDeletingId === payment.id ||
-                              isApprovingId === payment.id ||
-                              isCancellingId === payment.id
-                            }
-                            className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-40"
-                            title="Hapus tagihan"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleDeletePayment(payment);
+                          }}
+                          disabled={
+                            isDeletingId === payment.id ||
+                            isApprovingId === payment.id ||
+                            isCancellingId === payment.id
+                          }
+                          className="col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-40"
+                          title="Hapus tagihan"
+                        >
+                          <Trash2 size={15} />
+                          Hapus
+                        </button>
                         {canCancelManualBooking(payment) ? (
                           <>
                             <button

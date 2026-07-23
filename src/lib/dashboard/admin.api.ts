@@ -2159,6 +2159,19 @@ export const getAllAdminManualRentalBookings = async (params?: QueryParams) => {
   };
 };
 
+export const deleteAdminManualRentalBooking = async (
+  id: number | string,
+) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/manual_rentals/admin/bookings/${id}`,
+  );
+
+  return {
+    data: response.data.data,
+    message: response.data.message,
+  };
+};
+
 export const approveAdminManualRentalBooking = async (
   id: number | string,
   payload: AdminManualRentalBookingApprovePayload,
