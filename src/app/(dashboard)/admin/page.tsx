@@ -71,21 +71,21 @@ export default function AdminDashboardPage() {
         <div className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-white/20 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-52 w-52 rounded-full bg-cyan-200/20 blur-3xl" />
 
-        <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+        <div className="relative grid min-w-0 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0">
+            <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
               <BarChart3 size={14} />
-              Dasbor Operasional
+              <span className="min-w-0">Dasbor Operasional</span>
             </p>
-            <h1 className="mt-3 text-xl font-semibold leading-tight sm:text-3xl">
+            <h1 className="mt-3 max-w-full text-xl font-semibold leading-tight sm:text-3xl">
               Pantau Properti, Perawatan, dan Pembayaran dalam Satu Layar
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/85">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/85">
               Semua metrik utama ditampilkan langsung dari data administrator, tanpa
               perlu pindah halaman.
             </p>
 
-            <div className="-mx-4 mt-5 grid snap-x snap-mandatory grid-flow-col auto-cols-[minmax(220px,80%)] gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid-flow-row sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-3">
               <HeroChip
                 label="Okupansi Saat Ini"
                 value={`${occupancyRate}%`}
@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/35 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4">
+          <div className="min-w-0 rounded-2xl border border-white/35 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-white/80">
               Kontrol Dasbor
             </p>
@@ -113,17 +113,21 @@ export default function AdminDashboardPage() {
               Pilih periode data dan ekspor ringkasan dengan cepat.
             </p>
 
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-              <GlobalFilter value={period} onChange={setPeriod} />
-              <ExportButton
-                period={period}
-                stats={statsForExport}
-                revenueData={data.revenueData}
-                paymentData={data.paymentData}
-                occupancyData={data.occupancyData}
-                maintenanceData={data.maintenanceData}
-                sourceData={data.sourceData}
-              />
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <div className="min-w-0">
+                <GlobalFilter value={period} onChange={setPeriod} />
+              </div>
+              <div className="min-w-0">
+                <ExportButton
+                  period={period}
+                  stats={statsForExport}
+                  revenueData={data.revenueData}
+                  paymentData={data.paymentData}
+                  occupancyData={data.occupancyData}
+                  maintenanceData={data.maintenanceData}
+                  sourceData={data.sourceData}
+                />
+              </div>
             </div>
 
             <div className="mt-4 space-y-2 rounded-xl border border-white/25 bg-slate-900/25 p-3 text-sm">
@@ -291,18 +295,20 @@ function HeroChip({
   trend?: "up" | "down" | "neutral";
 }) {
   return (
-    <div className="snap-start rounded-xl border border-white/35 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-      <p className="text-[11px] uppercase tracking-wide text-white/80">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
-      <p className="mt-1 inline-flex items-center gap-1 text-xs text-white/85">
+    <div className="min-w-0 rounded-xl border border-white/35 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
+      <p className="text-[11px] uppercase leading-4 tracking-wide text-white/80">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-lg font-semibold leading-6">{value}</p>
+      <p className="mt-1 flex min-w-0 items-start gap-1 text-xs leading-5 text-white/85">
         {trend === "up" ? (
-          <ArrowUpRight size={13} />
+          <ArrowUpRight size={13} className="mt-1 shrink-0" />
         ) : trend === "down" ? (
-          <ArrowDownRight size={13} />
+          <ArrowDownRight size={13} className="mt-1 shrink-0" />
         ) : (
-          <TrendingUp size={13} />
+          <TrendingUp size={13} className="mt-1 shrink-0" />
         )}
-        {hint}
+        <span className="min-w-0">{hint}</span>
       </p>
     </div>
   );
@@ -318,12 +324,12 @@ function QuickLine({
   value: string;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
-      <p className="inline-flex min-w-0 items-center gap-2 text-white/85">
-        {icon}
-        <span>{label}</span>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
+      <p className="flex min-w-0 items-start gap-2 text-white/85">
+        <span className="mt-0.5 shrink-0">{icon}</span>
+        <span className="min-w-0 leading-5">{label}</span>
       </p>
-      <span className="font-semibold text-white">{value}</span>
+      <span className="shrink-0 font-semibold text-white">{value}</span>
     </div>
   );
 }

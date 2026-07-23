@@ -49,6 +49,7 @@ import {
 } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import StatCard from "@/components/dashboard/admin/cards/StatCard";
+import { useAuth } from "@/context/AuthContext";
 import {
   convertAdminDepositToIncome,
   createAdminDeposit,
@@ -87,7 +88,7 @@ const COLORS = [
 ];
 
 const PAGE_SIZE = 10;
-const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v1";
+const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v2";
 
 type FinancialDateRange = {
   startDate: string;
@@ -807,7 +808,9 @@ const isExpenseTransaction = (transaction: AdminFinancialTransaction) =>
   getTransactionType(transaction) === "expense";
 
 export default function AdminFinancialPage() {
-  const defaultDateRange = useMemo(() => getCurrentMonthDateRange(), []);
+  const { user } = useAuth();
+  const canManageFinancials = user?.role === "finance";
+  const defaultDateRange = useMemo(() => getQuickDateRange("all"), []);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
@@ -867,7 +870,7 @@ export default function AdminFinancialPage() {
 
   useEffect(() => {
     const storedDateRange = getStoredFinancialDateRange();
-    const initialDateRange = storedDateRange || getCurrentMonthDateRange();
+    const initialDateRange = storedDateRange || getQuickDateRange("all");
 
     setStartDate(initialDateRange.startDate);
     setEndDate(initialDateRange.endDate);
@@ -1243,7 +1246,7 @@ export default function AdminFinancialPage() {
   };
 
   const handleResetFilters = () => {
-    const currentMonthDateRange = getCurrentMonthDateRange();
+    const allDateRange = getQuickDateRange("all");
 
     setSearch("");
     setCategory("");
@@ -1251,10 +1254,10 @@ export default function AdminFinancialPage() {
     setReceiptFilter("");
     setAmountMin("");
     setAmountMax("");
-    setStartDate(currentMonthDateRange.startDate);
-    setEndDate(currentMonthDateRange.endDate);
-    setTempStartDate(currentMonthDateRange.startDate);
-    setTempEndDate(currentMonthDateRange.endDate);
+    setStartDate(allDateRange.startDate);
+    setEndDate(allDateRange.endDate);
+    setTempStartDate(allDateRange.startDate);
+    setTempEndDate(allDateRange.endDate);
     setSortBy("newest");
     setCurrentPage(1);
   };
@@ -1898,7 +1901,7 @@ export default function AdminFinancialPage() {
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
-              Modul Keuangan
+              {canManageFinancials ? "Modul Keuangan" : "Modul Keuangan - Hanya Lihat"}
             </p>
             <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Laporan Keuangan
@@ -1921,185 +1924,262 @@ export default function AdminFinancialPage() {
               <Download size={16} />
               {isExporting ? "Mengekspor..." : "Ekspor CSV"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                void handleSyncOwnerCashflows();
-              }}
-              disabled={isSyncingOwnerCashflows}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <RotateCcw size={16} />
-              {isSyncingOwnerCashflows ? "Sinkronisasi..." : "Sinkronkan Owner"}
-            </button>
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/45 bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20"
-            >
-              <Plus size={16} />
-              Tambah Transaksi
-            </button>
+            {canManageFinancials ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleSyncOwnerCashflows();
+                  }}
+                  disabled={isSyncingOwnerCashflows}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RotateCcw size={16} />
+                  {isSyncingOwnerCashflows
+                    ? "Sinkronisasi..."
+                    : "Sinkronkan Owner"}
+                </button>
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/45 bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20"
+                >
+                  <Plus size={16} />
+                  Tambah Transaksi
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-12">
-          <div className="relative col-span-2 xl:col-span-4">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              placeholder="Cari transaksi, unit, penyewa, atau catatan..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            />
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Filter size={17} className="shrink-0 text-slate-500" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Filter Transaksi
+              </h2>
+              <p className="hidden text-xs text-slate-500 sm:block">
+                Saring data transaksi sesuai kebutuhan.
+              </p>
+            </div>
           </div>
-
-          <div className="relative col-span-1 xl:col-span-2">
-            <Filter
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            >
-              <option value="">Semua Arus Kas</option>
-              {categoryFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <select
-            value={propertyFilter}
-            onChange={(event) => setPropertyFilter(event.target.value)}
-            className="col-span-1 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
-          >
-            <option value="">Semua Properti</option>
-            {propertyFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <FinancialDateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            tempStartDate={tempStartDate}
-            tempEndDate={tempEndDate}
-            onDateChange={handleDateChange}
-            onApply={handleApply}
-            onCancel={handleCancel}
-          />
-
-          <div className="col-span-2 grid grid-cols-2 gap-3 xl:col-span-4">
-            <label className="flex h-11 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
-              <span className="inline-flex items-center border-r border-slate-200 px-3 text-xs font-semibold text-slate-500">
-                Min
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountMin}
-                onChange={(event) =>
-                  setAmountMin(formatRupiahInputValue(event.target.value))
-                }
-                placeholder="Rp 0"
-                className="min-w-0 flex-1 bg-transparent px-3 text-sm focus:outline-none"
-              />
-            </label>
-            <label className="flex h-11 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
-              <span className="inline-flex items-center border-r border-slate-200 px-3 text-xs font-semibold text-slate-500">
-                Max
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountMax}
-                onChange={(event) =>
-                  setAmountMax(formatRupiahInputValue(event.target.value))
-                }
-                placeholder="Rp"
-                className="min-w-0 flex-1 bg-transparent px-3 text-sm focus:outline-none"
-              />
-            </label>
-          </div>
-
-          <select
-            value={receiptFilter}
-            onChange={(event) =>
-              setReceiptFilter(
-                event.target.value as "" | "with_receipt" | "without_receipt",
-              )
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
-          >
-            <option value="">Semua Bukti</option>
-            <option value="with_receipt">Ada Bukti</option>
-            <option value="without_receipt">Tanpa Bukti</option>
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(event) =>
-              setSortBy(
-                event.target.value as
-                  | "newest"
-                  | "oldest"
-                  | "amount_desc"
-                  | "amount_asc",
-              )
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none xl:col-span-2"
-          >
-            <option value="newest">Input Terbaru</option>
-            <option value="oldest">Input Terlama</option>
-            <option value="amount_desc">Nominal Tertinggi</option>
-            <option value="amount_asc">Nominal Terendah</option>
-          </select>
-
           <button
             type="button"
             onClick={handleResetFilters}
-            className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1 xl:col-span-2"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
             Atur Ulang
           </button>
         </div>
 
-        <div className="mt-3 flex flex-col gap-2 text-xs text-slate-500 lg:flex-row lg:items-center lg:justify-between">
-          <p>
-            Menampilkan{" "}
-            <span className="font-semibold">{filteredTransactions.length}</span>{" "}
-            dari <span className="font-semibold">{transactions.length}</span>{" "}
-            transaksi pada periode yang dipilih.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
-              Masuk: {formatCurrency(filteredTransactionSummary.revenue)}
+        <div className="space-y-4 p-4 sm:p-5">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">
+              Pencarian
             </span>
-            <span className="rounded-lg bg-red-50 px-2.5 py-1 font-medium text-red-700">
-              Keluar: {formatCurrency(filteredTransactionSummary.expense)}
+            <span className="relative block">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                placeholder="Cari transaksi, unit, penyewa, atau catatan..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none"
+              />
             </span>
-            <span
-              className={`rounded-lg px-2.5 py-1 font-medium ${
-                filteredNetAmount >= 0
-                  ? "bg-blue-50 text-blue-700"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              Bersih: {formatCurrency(filteredNetAmount)}
-            </span>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Arus Kas
+              </span>
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Arus Kas</option>
+                {categoryFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Properti
+              </span>
+              <select
+                value={propertyFilter}
+                onChange={(event) => setPropertyFilter(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Properti</option>
+                {propertyFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Periode
+              </span>
+              <FinancialDateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                tempStartDate={tempStartDate}
+                tempEndDate={tempEndDate}
+                onDateChange={handleDateChange}
+                onApply={handleApply}
+                onCancel={handleCancel}
+              />
+            </div>
+
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Bukti Transaksi
+              </span>
+              <select
+                value={receiptFilter}
+                onChange={(event) =>
+                  setReceiptFilter(
+                    event.target.value as
+                      | ""
+                      | "with_receipt"
+                      | "without_receipt",
+                  )
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Bukti</option>
+                <option value="with_receipt">Ada Bukti</option>
+                <option value="without_receipt">Tanpa Bukti</option>
+              </select>
+            </label>
+
+            <fieldset className="min-w-0 sm:col-span-2 xl:col-span-8">
+              <legend className="mb-1.5 text-xs font-medium text-slate-600">
+                Rentang Nominal
+              </legend>
+              <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+                <label className="flex h-11 min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
+                  <span className="inline-flex shrink-0 items-center border-r border-slate-200 px-3 text-xs font-semibold text-slate-500">
+                    Min
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={amountMin}
+                    onChange={(event) =>
+                      setAmountMin(formatRupiahInputValue(event.target.value))
+                    }
+                    placeholder="Rp 0"
+                    aria-label="Nominal minimum"
+                    className="min-w-0 flex-1 bg-transparent px-3 text-sm focus:outline-none"
+                  />
+                </label>
+                <label className="flex h-11 min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
+                  <span className="inline-flex shrink-0 items-center border-r border-slate-200 px-3 text-xs font-semibold text-slate-500">
+                    Max
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={amountMax}
+                    onChange={(event) =>
+                      setAmountMax(formatRupiahInputValue(event.target.value))
+                    }
+                    placeholder="Rp"
+                    aria-label="Nominal maksimum"
+                    className="min-w-0 flex-1 bg-transparent px-3 text-sm focus:outline-none"
+                  />
+                </label>
+              </div>
+            </fieldset>
+
+            <label className="min-w-0 sm:col-span-2 xl:col-span-4">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Urutkan
+              </span>
+              <select
+                value={sortBy}
+                onChange={(event) =>
+                  setSortBy(
+                    event.target.value as
+                      | "newest"
+                      | "oldest"
+                      | "amount_desc"
+                      | "amount_asc",
+                  )
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="newest">Input Terbaru</option>
+                <option value="oldest">Input Terlama</option>
+                <option value="amount_desc">Nominal Tertinggi</option>
+                <option value="amount_asc">Nominal Terendah</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <p className="text-xs leading-5 text-slate-500">
+              Menampilkan{" "}
+              <span className="font-semibold text-slate-700">
+                {filteredTransactions.length}
+              </span>{" "}
+              dari{" "}
+              <span className="font-semibold text-slate-700">
+                {transactions.length}
+              </span>{" "}
+              transaksi pada periode yang dipilih.
+            </p>
+            <dl className="grid grid-cols-3 divide-x divide-slate-200">
+              <div className="min-w-0 pr-3">
+                <dt className="text-[11px] font-medium text-slate-500">
+                  Masuk
+                </dt>
+                <dd className="mt-0.5 break-words text-xs font-semibold text-emerald-700 sm:text-sm">
+                  {formatCurrency(filteredTransactionSummary.revenue)}
+                </dd>
+              </div>
+              <div className="min-w-0 px-3">
+                <dt className="text-[11px] font-medium text-slate-500">
+                  Keluar
+                </dt>
+                <dd className="mt-0.5 break-words text-xs font-semibold text-red-700 sm:text-sm">
+                  {formatCurrency(filteredTransactionSummary.expense)}
+                </dd>
+              </div>
+              <div className="min-w-0 pl-3">
+                <dt className="text-[11px] font-medium text-slate-500">
+                  Bersih
+                </dt>
+                <dd
+                  className={`mt-0.5 break-words text-xs font-semibold sm:text-sm ${
+                    filteredNetAmount >= 0
+                      ? "text-blue-700"
+                      : "text-amber-700"
+                  }`}
+                >
+                  {formatCurrency(filteredNetAmount)}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>
@@ -2216,7 +2296,7 @@ export default function AdminFinancialPage() {
           )}
         </div>
 
-        <div className="h-[320px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:h-[380px] sm:p-6">
+        <div className="flex min-h-[420px] flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:h-[380px] md:min-h-0">
           <h2 className="mb-1 font-semibold text-slate-800">
             Komposisi Pendapatan
           </h2>
@@ -2226,44 +2306,48 @@ export default function AdminFinancialPage() {
 
           {isChartReady ? (
             categoryData.length > 0 ? (
-              <div className="grid h-[84%] grid-cols-1 gap-3 md:grid-cols-[1fr,180px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      dataKey="value"
-                      nameKey="name"
-                      outerRadius={100}
-                    >
-                      {categoryData.map((item, index) => (
-                        <Cell
-                          key={item.name}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="grid min-w-0 grid-cols-1 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_180px]">
+                <div className="h-[220px] min-w-0 md:h-full md:min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        dataKey="value"
+                        nameKey="name"
+                        outerRadius="72%"
+                      >
+                        {categoryData.map((item, index) => (
+                          <Cell
+                            key={item.name}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
 
-                <div className="space-y-2 overflow-y-auto pr-1">
+                <div className="min-w-0 space-y-2 md:min-h-0 md:overflow-y-auto md:pr-1">
                   {categoryData.map((item, index) => (
                     <div
                       key={`${item.name}-${index}`}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                      className="flex min-w-0 items-start justify-between gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
                     >
-                      <span className="inline-flex items-center gap-2 text-slate-600">
+                      <span className="flex min-w-0 items-start gap-2 text-slate-600">
                         <span
-                          className="inline-block h-2.5 w-2.5 rounded-full"
+                          className="mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{
                             backgroundColor: COLORS[index % COLORS.length],
                           }}
                         />
-                        {item.name}
+                        <span className="min-w-0 break-words leading-4">
+                          {item.name}
+                        </span>
                       </span>
-                      <span className="font-semibold text-slate-700">
+                      <span className="shrink-0 text-right font-semibold leading-4 text-slate-700">
                         {formatCurrency(item.value)}
                       </span>
                     </div>
@@ -2271,12 +2355,12 @@ export default function AdminFinancialPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex h-[84%] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+              <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 md:min-h-0">
                 Belum ada data komposisi pendapatan.
               </div>
             )
           ) : (
-            <div className="h-[84%] animate-pulse rounded-xl bg-slate-100" />
+            <div className="min-h-[280px] flex-1 animate-pulse rounded-xl bg-slate-100 md:min-h-0" />
           )}
         </div>
       </section>
@@ -2448,25 +2532,29 @@ export default function AdminFinancialPage() {
                           >
                             <Eye size={16} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(transaction)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                            title="Ubah transaksi"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void handleDeleteTransaction(transaction);
-                            }}
-                            disabled={isDeletingId === transaction.id}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Hapus transaksi"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canManageFinancials ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(transaction)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                                title="Ubah transaksi"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void handleDeleteTransaction(transaction);
+                                }}
+                                disabled={isDeletingId === transaction.id}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Hapus transaksi"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -2666,7 +2754,7 @@ export default function AdminFinancialPage() {
         </div>
       )}
 
-      {isFormOpen && (
+      {canManageFinancials && isFormOpen && (
         <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
@@ -3257,7 +3345,7 @@ function FinancialDateRangePicker({
   );
 
   return (
-    <div ref={wrapperRef} className="relative col-span-2 w-full xl:col-span-4">
+    <div ref={wrapperRef} className="relative min-w-0 w-full">
       <button
         type="button"
         onClick={handleTogglePicker}

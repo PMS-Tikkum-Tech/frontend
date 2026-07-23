@@ -510,70 +510,19 @@ export default function AdminMaintenancePage() {
         />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
-          <div className="relative col-span-2 w-full min-w-0 flex-1">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              placeholder="Cari masalah, properti, unit, atau penyewa..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            />
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Filter size={17} className="shrink-0 text-slate-500" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Filter Perawatan
+              </h2>
+              <p className="hidden text-xs text-slate-500 sm:block">
+                Saring tiket berdasarkan status, prioritas, dan urutan data.
+              </p>
+            </div>
           </div>
-
-          <div className="relative w-full md:min-w-[190px]">
-            <Filter
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            >
-              <option value="">Semua Status</option>
-              {statusFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="relative w-full md:min-w-[170px]">
-            <Filter
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={priority}
-              onChange={(event) => setPriority(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            >
-              <option value="">Semua Prioritas</option>
-              {priorityFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <select
-            value={sortBy}
-            onChange={(event) =>
-              setSortBy(event.target.value as "newest" | "oldest")
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-          >
-            <option value="newest">Terbaru</option>
-            <option value="oldest">Terlama</option>
-          </select>
-
           <button
             type="button"
             onClick={() => {
@@ -583,18 +532,98 @@ export default function AdminMaintenancePage() {
               setSortBy("newest");
               setCurrentPage(1);
             }}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 md:w-auto md:px-4"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
             Atur Ulang
           </button>
-
         </div>
 
-        <p className="mt-3 text-xs text-slate-500">
-          Menampilkan <span className="font-semibold">{filtered.length}</span> dari{" "}
-          <span className="font-semibold">{issues.length}</span> tiket perawatan.
-        </p>
+        <div className="space-y-4 p-4 sm:p-5">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">
+              Pencarian
+            </span>
+            <span className="relative block">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                placeholder="Cari masalah, properti, unit, atau penyewa..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none"
+              />
+            </span>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
+            <label className="min-w-0 xl:col-span-4">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Status
+              </span>
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Status</option>
+                {statusFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 xl:col-span-4">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Prioritas
+              </span>
+              <select
+                value={priority}
+                onChange={(event) => setPriority(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Prioritas</option>
+                {priorityFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 sm:col-span-2 xl:col-span-4">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Urutkan
+              </span>
+              <select
+                value={sortBy}
+                onChange={(event) =>
+                  setSortBy(event.target.value as "newest" | "oldest")
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+          <p className="text-xs leading-5 text-slate-500">
+            Menampilkan{" "}
+            <span className="font-semibold text-slate-700">
+              {filtered.length}
+            </span>{" "}
+            dari{" "}
+            <span className="font-semibold text-slate-700">{issues.length}</span>{" "}
+            tiket perawatan.
+          </p>
+        </div>
       </section>
 
       {notice && (

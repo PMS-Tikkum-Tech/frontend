@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  AlertTriangle,
   CalendarClock,
   CheckCircle2,
   CircleAlert,
   Clock3,
   CreditCard,
+  Trash2,
   WalletCards,
   XCircle,
 } from "lucide-react";
 import {
+  deleteTenantPayment,
   getApiErrorMessage,
   getTenantPayments,
   type TenantPayment,
@@ -76,6 +79,20 @@ const getPaymentDisplayStatus = (payment: TenantPayment): TenantPayment["status"
   return payment.status;
 };
 
+const TENANT_DELETABLE_BOOKING_STATUSES = new Set([
+  "awaiting_payment",
+  "pending_review",
+  "denied",
+  "cancelled",
+  "expired",
+]);
+
+const canDeletePayment = (payment: TenantPayment) =>
+  Boolean(
+    payment.booking_status &&
+      TENANT_DELETABLE_BOOKING_STATUSES.has(payment.booking_status)
+  );
+
 const isAutoCancelledByDueDate = (payment: TenantPayment) => {
   const canAutoCancelByDueDate =
     !payment.booking_status || payment.booking_status === "awaiting_payment";
@@ -94,6 +111,9 @@ export default function TenantPaymentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<TenantPayment | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -193,6 +213,32 @@ export default function TenantPaymentsPage() {
   }, [outstandingPayments, sortedHistory]);
 
   const nextDuePayment = outstandingPayments[0] || null;
+
+  const handleDeletePayment = async () => {
+    if (!deleteTarget || isDeleting || !canDeletePayment(deleteTarget)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await deleteTenantPayment(deleteTarget.id);
+      setPayments((current) =>
+        current.filter((payment) => payment.id !== deleteTarget.id)
+      );
+      setDeleteTarget(null);
+    } catch (deletePaymentError) {
+      setDeleteError(
+        getApiErrorMessage(
+          deletePaymentError,
+          "Gagal menghapus data pembayaran. Silakan coba lagi."
+        )
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -340,13 +386,41 @@ export default function TenantPaymentsPage() {
             ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                 {filteredHistory.map((payment) => (
-                  <HistoryPaymentCard key={payment.id} payment={payment} />
+                  <HistoryPaymentCard
+                    key={payment.id}
+                    payment={payment}
+                    onDelete={
+                      canDeletePayment(payment)
+                        ? () => {
+                            setDeleteError(null);
+                            setDeleteTarget(payment);
+                          }
+                        : undefined
+                    }
+                  />
                 ))}
               </div>
             )}
           </section>
         </>
       )}
+
+      {deleteTarget ? (
+        <DeletePaymentDialog
+          payment={deleteTarget}
+          error={deleteError}
+          isSubmitting={isDeleting}
+          onClose={() => {
+            if (!isDeleting) {
+              setDeleteError(null);
+              setDeleteTarget(null);
+            }
+          }}
+          onConfirm={() => {
+            void handleDeletePayment();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -458,7 +532,13 @@ function ActivePaymentCard({ payment }: { payment: TenantPayment }) {
   );
 }
 
-function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
+function HistoryPaymentCard({
+  payment,
+  onDelete,
+}: {
+  payment: TenantPayment;
+  onDelete?: () => void;
+}) {
   const displayStatus = getPaymentDisplayStatus(payment);
   const isDue = displayStatus === "overdue";
   const isAutoCancelled = isAutoCancelledByDueDate(payment);
@@ -519,14 +599,112 @@ function HistoryPaymentCard({ payment }: { payment: TenantPayment }) {
         </p>
       </div>
 
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 sm:w-auto"
+          >
+            <Trash2 size={13} />
+            Hapus
+          </button>
+        ) : null}
         <Link
           href="/tenant/kost-saya"
-          className="text-xs font-medium text-green-700 hover:text-green-800"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-green-700 transition hover:border-green-300 hover:text-green-800 sm:w-auto"
         >
           Lihat Kost Saya
         </Link>
       </div>
     </article>
+  );
+}
+
+function DeletePaymentDialog({
+  payment,
+  error,
+  isSubmitting,
+  onClose,
+  onConfirm,
+}: {
+  payment: TenantPayment;
+  error: string | null;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm"
+        onClick={onClose}
+        disabled={isSubmitting}
+        aria-label="Tutup konfirmasi hapus pembayaran"
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-payment-title"
+        className="relative z-[91] w-full max-w-md overflow-hidden rounded-2xl border border-red-100 bg-white shadow-2xl"
+      >
+        <div className="border-b border-red-100 bg-red-50 px-4 py-4 sm:px-5">
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-700">
+            <AlertTriangle size={20} />
+          </div>
+          <h2
+            id="delete-payment-title"
+            className="mt-3 text-xl font-semibold text-slate-900"
+          >
+            Hapus data pembayaran?
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Data testing ini akan dihapus permanen dan tidak dapat dikembalikan.
+          </p>
+        </div>
+
+        <div className="space-y-3 px-4 py-4 sm:px-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-sm font-semibold text-slate-900">
+              {payment.property.name || "-"}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Faktur: {payment.invoice_id}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">
+              {formatCurrency(payment.amount)}
+            </p>
+          </div>
+
+          {error ? (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-60"
+            >
+              <Trash2 size={15} />
+              {isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

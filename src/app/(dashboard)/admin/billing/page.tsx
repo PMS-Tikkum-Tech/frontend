@@ -1532,90 +1532,134 @@ export default function AdminBillingPage() {
         />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
-          <div className="relative col-span-2 w-full min-w-0 flex-1">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              placeholder="Cari faktur, properti, unit, atau penyewa..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            />
+      <section className="overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Filter size={17} className="shrink-0 text-slate-500" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Filter Tagihan
+              </h2>
+              <p className="hidden text-xs text-slate-500 sm:block">
+                Saring tagihan berdasarkan status, properti, dan periode.
+              </p>
+            </div>
           </div>
-
-          <div className="relative w-full md:min-w-[170px]">
-            <Filter
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-            >
-              <option value="">Semua Status</option>
-              {statusFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <select
-            value={propertyFilter}
-            onChange={(event) => setPropertyFilter(event.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-          >
-            <option value="">Semua Properti</option>
-            {propertyFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <BillingDateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            tempStartDate={tempStartDate}
-            tempEndDate={tempEndDate}
-            onDateChange={handleDateChange}
-            onApply={handleApply}
-            onCancel={handleCancel}
-          />
-
-          <select
-            value={sortBy}
-            onChange={(event) =>
-              setSortBy(event.target.value as "newest" | "oldest" | "due_date")
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
-          >
-            <option value="newest">Terbaru</option>
-            <option value="oldest">Terlama</option>
-            <option value="due_date">Tanggal</option>
-          </select>
-
           <button
             type="button"
             onClick={handleResetFilters}
-            className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1 md:w-auto"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
           >
             <RotateCcw size={14} />
             Atur Ulang
           </button>
         </div>
 
-        <p className="mt-3 text-xs text-slate-500">
-          Menampilkan <span className="font-semibold">{filtered.length}</span>{" "}
-          dari <span className="font-semibold">{dateRangePayments.length}</span>{" "}
-          tagihan dalam periode.
-        </p>
+        <div className="space-y-4 p-4 sm:p-5">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">
+              Pencarian
+            </span>
+            <span className="relative block">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                placeholder="Cari faktur, properti, unit, atau penyewa..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none"
+              />
+            </span>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Status
+              </span>
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Status</option>
+                {statusFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Properti
+              </span>
+              <select
+                value={propertyFilter}
+                onChange={(event) => setPropertyFilter(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="">Semua Properti</option>
+                {propertyFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="min-w-0 xl:col-span-4">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Periode
+              </span>
+              <BillingDateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                tempStartDate={tempStartDate}
+                tempEndDate={tempEndDate}
+                onDateChange={handleDateChange}
+                onApply={handleApply}
+                onCancel={handleCancel}
+              />
+            </div>
+
+            <label className="min-w-0 sm:col-span-2 xl:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Urutkan
+              </span>
+              <select
+                value={sortBy}
+                onChange={(event) =>
+                  setSortBy(
+                    event.target.value as "newest" | "oldest" | "due_date",
+                  )
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
+              >
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+                <option value="due_date">Tanggal</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-b-xl border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+          <p className="text-xs leading-5 text-slate-500">
+            Menampilkan{" "}
+            <span className="font-semibold text-slate-700">
+              {filtered.length}
+            </span>{" "}
+            dari{" "}
+            <span className="font-semibold text-slate-700">
+              {dateRangePayments.length}
+            </span>{" "}
+            tagihan dalam periode.
+          </p>
+        </div>
       </section>
 
       {notice && (
@@ -2809,14 +2853,11 @@ function BillingDateRangePicker({
   );
 
   return (
-    <div
-      ref={wrapperRef}
-      className="relative col-span-2 w-full md:min-w-[320px]"
-    >
+    <div ref={wrapperRef} className="relative min-w-0 w-full">
       <button
         type="button"
         onClick={handleTogglePicker}
-        className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-left text-sm text-slate-700 shadow-sm hover:bg-white focus:border-blue-400 focus:bg-white focus:outline-none"
+        className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left text-sm text-slate-700 hover:bg-white focus:border-blue-400 focus:bg-white focus:outline-none"
       >
         <span className="inline-flex min-w-0 items-center gap-2">
           <CalendarDays size={16} className="shrink-0 text-slate-400" />

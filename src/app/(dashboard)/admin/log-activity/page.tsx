@@ -7,6 +7,7 @@ import {
   Download,
   Eye,
   Filter,
+  RotateCcw,
   Search,
   X,
 } from "lucide-react";
@@ -392,105 +393,147 @@ export default function AdminLogActivityPage() {
         />
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <Filter size={16} />
-          Filter Log Aktivitas
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
-          <label className="relative col-span-2 w-full min-w-0 flex-1">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              placeholder="Cari aktivitas, administrator, atau modul"
-              value={search}
-              onChange={(event) =>
-                handleFilterChange(() => setSearch(event.target.value))
-              }
-              className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
-            />
-          </label>
-
-          <select
-            value={action}
-            onChange={(event) =>
-              handleFilterChange(() => setAction(event.target.value))
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
-          >
-            <option value="">Semua Aksi</option>
-            {actionFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={moduleName}
-            onChange={(event) =>
-              handleFilterChange(() => setModuleName(event.target.value))
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
-          >
-            <option value="">Semua Modul</option>
-            {moduleFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={sort}
-            onChange={(event) =>
-              handleFilterChange(() =>
-                setSort(event.target.value as "newest" | "oldest")
-              )
-            }
-            className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20 md:w-auto"
-          >
-            <option value="newest">Urutkan: Terbaru</option>
-            <option value="oldest">Urutkan: Terlama</option>
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:flex md:flex-row md:flex-wrap md:items-center">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600">Dari</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(event) =>
-                handleFilterChange(() => setDateFrom(event.target.value))
-              }
-              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
-            />
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Filter size={17} className="shrink-0 text-slate-500" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Filter Log Aktivitas
+              </h2>
+              <p className="hidden text-xs text-slate-500 sm:block">
+                Saring riwayat aktivitas berdasarkan aksi, modul, dan periode.
+              </p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600">Sampai</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) =>
-                handleFilterChange(() => setDateTo(event.target.value))
-              }
-              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#1E2746] focus:outline-none focus:ring-2 focus:ring-[#1E2746]/20"
-            />
-          </div>
-
           <button
             type="button"
             onClick={clearFilters}
-            className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:col-span-1 md:w-auto"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
           >
+            <RotateCcw size={14} />
             Atur Ulang
           </button>
+        </div>
 
+        <div className="space-y-4 p-4 sm:p-5">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">
+              Pencarian
+            </span>
+            <span className="relative block">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                placeholder="Cari aktivitas, administrator, atau modul"
+                value={search}
+                onChange={(event) =>
+                  handleFilterChange(() => setSearch(event.target.value))
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-[#1E2746] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E2746]/10"
+              />
+            </span>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Aksi
+              </span>
+              <select
+                value={action}
+                onChange={(event) =>
+                  handleFilterChange(() => setAction(event.target.value))
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-[#1E2746] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E2746]/10"
+              >
+                <option value="">Semua Aksi</option>
+                {actionFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 xl:col-span-3">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Modul
+              </span>
+              <select
+                value={moduleName}
+                onChange={(event) =>
+                  handleFilterChange(() => setModuleName(event.target.value))
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-[#1E2746] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E2746]/10"
+              >
+                <option value="">Semua Modul</option>
+                {moduleFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 xl:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Urutkan
+              </span>
+              <select
+                value={sort}
+                onChange={(event) =>
+                  handleFilterChange(() =>
+                    setSort(event.target.value as "newest" | "oldest"),
+                  )
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-[#1E2746] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E2746]/10"
+              >
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+              </select>
+            </label>
+
+            <label className="min-w-0 xl:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Dari
+              </span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) =>
+                  handleFilterChange(() => setDateFrom(event.target.value))
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-[#1E2746] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E2746]/10"
+              />
+            </label>
+
+            <label className="min-w-0 xl:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                Sampai
+              </span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) =>
+                  handleFilterChange(() => setDateTo(event.target.value))
+                }
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-[#1E2746] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E2746]/10"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+          <p className="text-xs leading-5 text-slate-500">
+            Menampilkan{" "}
+            <span className="font-semibold text-slate-700">
+              {pagination.totalCount}
+            </span>{" "}
+            catatan aktivitas sesuai filter.
+          </p>
         </div>
       </section>
 

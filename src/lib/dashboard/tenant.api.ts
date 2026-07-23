@@ -2038,6 +2038,16 @@ export const getTenantPayments = async (
   };
 };
 
+export const deleteTenantPayment = async (id: number | string) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/manual_rentals/bookings/${id}`
+  );
+
+  return {
+    message: response.data.message,
+  };
+};
+
 export const getTenantCurrentStay = () =>
   getItem<TenantCurrentStay>("/api/v1/manual_rentals/stays/current");
 
