@@ -2161,6 +2161,22 @@ export const getAllAdminManualRentalBookings = async (params?: QueryParams) => {
   };
 };
 
+export const deleteAdminManualRentalBooking = async (
+  id: number | string,
+  confirmation: string,
+) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/manual_rentals/admin/bookings/${id}`,
+    {
+      data: { confirmation },
+    },
+  );
+
+  return {
+    message: response.data.message,
+  };
+};
+
 export const approveAdminManualRentalBooking = async (
   id: number | string,
   payload: AdminManualRentalBookingApprovePayload,
@@ -2282,6 +2298,22 @@ export const cancelAdminPayment = async (
 
   return {
     data: response.data.data,
+    message: response.data.message,
+  };
+};
+
+export const deleteAdminPayment = async (
+  id: number | string,
+  confirmation: string,
+) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/payments/${id}`,
+    {
+      data: { confirmation },
+    },
+  );
+
+  return {
     message: response.data.message,
   };
 };

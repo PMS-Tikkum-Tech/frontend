@@ -15,6 +15,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -41,6 +42,8 @@ import {
   cancelAdminManualRentalBookingToDeposit,
   createAdminFinancialTransaction,
   createAdminPayment,
+  deleteAdminManualRentalBooking,
+  deleteAdminPayment,
   getAllAdminManualRentalBookings,
   getAllAdminPayments,
   getAllAdminProperties,
@@ -762,6 +765,10 @@ export default function AdminBillingPage() {
   const [cancellationError, setCancellationError] = useState<string | null>(
     null,
   );
+  const [deleteConfirmationPayment, setDeleteConfirmationPayment] =
+    useState<AdminPayment | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<BillingFormMode>("create");
   const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
@@ -770,6 +777,7 @@ export default function AdminBillingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApprovingId, setIsApprovingId] = useState<number | null>(null);
   const [isCancellingId, setIsCancellingId] = useState<number | null>(null);
+  const [isDeletingKey, setIsDeletingKey] = useState<string | null>(null);
   const [isDownloadingProofKey, setIsDownloadingProofKey] = useState<
     string | null
   >(null);
@@ -1550,6 +1558,78 @@ export default function AdminBillingPage() {
     }
   };
 
+  const openDeleteConfirmation = (payment: AdminPayment) => {
+    setNotice(null);
+    setDeleteConfirmation("");
+    setDeleteError(null);
+    setDeleteConfirmationPayment(payment);
+  };
+
+  const closeDeleteConfirmation = () => {
+    if (isDeletingKey !== null) {
+      return;
+    }
+
+    setDeleteConfirmationPayment(null);
+    setDeleteConfirmation("");
+    setDeleteError(null);
+  };
+
+  const handleDeletePayment = async () => {
+    if (!deleteConfirmationPayment) {
+      return;
+    }
+
+    if (
+      deleteConfirmation.trim() !== deleteConfirmationPayment.invoice_id
+    ) {
+      setDeleteError("Nomor faktur yang diketik belum sesuai.");
+      return;
+    }
+
+    setIsDeletingKey(getPaymentRowKey(deleteConfirmationPayment));
+    setDeleteError(null);
+    setNotice(null);
+
+    try {
+      if (isManualBookingRecord(deleteConfirmationPayment)) {
+        await deleteAdminManualRentalBooking(
+          deleteConfirmationPayment.id,
+          deleteConfirmationPayment.invoice_id,
+        );
+      } else {
+        await deleteAdminPayment(
+          deleteConfirmationPayment.id,
+          deleteConfirmationPayment.invoice_id,
+        );
+      }
+
+      setNotice({
+        variant: "success",
+        message: `Data testing #${deleteConfirmationPayment.invoice_id} berhasil dihapus permanen.`,
+      });
+      if (
+        viewPayment?.id === deleteConfirmationPayment.id &&
+        isManualBookingRecord(viewPayment) ===
+          isManualBookingRecord(deleteConfirmationPayment)
+      ) {
+        setViewPayment(null);
+      }
+      setDeleteConfirmationPayment(null);
+      setDeleteConfirmation("");
+      setRefreshKey((previous) => previous + 1);
+    } catch (deleteRequestError) {
+      setDeleteError(
+        getApiErrorMessage(
+          deleteRequestError,
+          "Gagal menghapus data tagihan.",
+        ),
+      );
+    } finally {
+      setIsDeletingKey(null);
+    }
+  };
+
   const approveConfirmationIsManual = approveConfirmationPayment
     ? isManualBookingRecord(approveConfirmationPayment)
     : false;
@@ -1946,6 +2026,9 @@ export default function AdminBillingPage() {
                           <button
                             type="button"
                             onClick={() => handleEditPayment(payment)}
+                            disabled={
+                              isDeletingKey === getPaymentRowKey(payment)
+                            }
                             className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
                             title="Ubah tagihan"
                           >
@@ -1961,7 +2044,8 @@ export default function AdminBillingPage() {
                             getPaymentDisplayStatus(payment) === "paid" ||
                             getPaymentDisplayStatus(payment) === "cancelled" ||
                             isApprovingId === payment.id ||
-                            isCancellingId === payment.id
+                            isCancellingId === payment.id ||
+                            isDeletingKey === getPaymentRowKey(payment)
                           }
                           className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           title={
@@ -1984,7 +2068,8 @@ export default function AdminBillingPage() {
                             }}
                             disabled={
                               isApprovingId === payment.id ||
-                              isCancellingId === payment.id
+                              isCancellingId === payment.id ||
+                              isDeletingKey === getPaymentRowKey(payment)
                             }
                             className="col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-40"
                             title="Batalkan tagihan"
@@ -2005,7 +2090,8 @@ export default function AdminBillingPage() {
                               }}
                               disabled={
                                 isCancellingId === payment.id ||
-                                isApprovingId === payment.id
+                                isApprovingId === payment.id ||
+                                isDeletingKey === getPaymentRowKey(payment)
                               }
                               className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-40"
                               title="Batalkan sebagai non-refund"
@@ -2022,7 +2108,8 @@ export default function AdminBillingPage() {
                               }}
                               disabled={
                                 isCancellingId === payment.id ||
-                                isApprovingId === payment.id
+                                isApprovingId === payment.id ||
+                                isDeletingKey === getPaymentRowKey(payment)
                               }
                               className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-40"
                               title="Jadikan pembayaran sebagai deposit"
@@ -2031,6 +2118,20 @@ export default function AdminBillingPage() {
                             </button>
                           </>
                         ) : null}
+                        <button
+                          type="button"
+                          onClick={() => openDeleteConfirmation(payment)}
+                          disabled={
+                            isDeletingKey === getPaymentRowKey(payment) ||
+                            isApprovingId === payment.id ||
+                            isCancellingId === payment.id
+                          }
+                          className="col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-50 disabled:cursor-wait disabled:opacity-40"
+                          title="Hapus data testing"
+                        >
+                          <Trash2 size={15} />
+                          Hapus Data Testing
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -2290,6 +2391,110 @@ export default function AdminBillingPage() {
                 {isCancellingId === cancelConfirmationPayment.id
                   ? "Membatalkan..."
                   : "Batalkan Tagihan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmationPayment && (
+        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="admin-mobile-dialog-panel max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="px-5 pb-5 pt-6 sm:px-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
+                  <Trash2 size={21} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                    Hapus Data Testing
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-900">
+                    Hapus permanen?
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Data tidak dapat dipulihkan setelah dihapus.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <InvoiceMetaRow
+                  label="Faktur"
+                  value={`#${deleteConfirmationPayment.invoice_id}`}
+                />
+                <div className="mt-3">
+                  <InvoiceMetaRow
+                    label="Jenis"
+                    value={
+                      isManualBookingRecord(deleteConfirmationPayment)
+                        ? "Pemesanan manual"
+                        : "Tagihan"
+                    }
+                  />
+                </div>
+                <div className="mt-3">
+                  <InvoiceMetaRow
+                    label="Penyewa"
+                    value={deleteConfirmationPayment.tenant.full_name || "-"}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label
+                  htmlFor="delete-invoice-confirmation"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  Ketik nomor faktur untuk konfirmasi
+                </label>
+                <input
+                  id="delete-invoice-confirmation"
+                  value={deleteConfirmation}
+                  onChange={(event) => {
+                    setDeleteConfirmation(event.target.value);
+                    setDeleteError(null);
+                  }}
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                  placeholder={deleteConfirmationPayment.invoice_id}
+                  autoComplete="off"
+                />
+              </div>
+
+              {deleteError ? (
+                <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                  {deleteError}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <button
+                type="button"
+                onClick={closeDeleteConfirmation}
+                disabled={
+                  isDeletingKey ===
+                  getPaymentRowKey(deleteConfirmationPayment)
+                }
+                className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-medium text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleDeletePayment();
+                }}
+                disabled={
+                  isDeletingKey ===
+                  getPaymentRowKey(deleteConfirmationPayment)
+                }
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-70"
+              >
+                <Trash2 size={16} />
+                {isDeletingKey === getPaymentRowKey(deleteConfirmationPayment)
+                  ? "Menghapus..."
+                  : "Hapus Permanen"}
               </button>
             </div>
           </div>
