@@ -41,7 +41,6 @@ import {
   cancelAdminManualRentalBookingToDeposit,
   createAdminFinancialTransaction,
   createAdminPayment,
-  deleteAdminManualRentalBooking,
   deleteAdminPayment,
   getAllAdminManualRentalBookings,
   getAllAdminPayments,
@@ -1465,6 +1464,14 @@ export default function AdminBillingPage() {
   };
 
   const handleDeletePayment = async (payment: AdminPayment) => {
+    if (isManualBookingRecord(payment)) {
+      setNotice({
+        variant: "error",
+        message: "Booking penyewa tidak dapat dihapus dari modul tagihan.",
+      });
+      return;
+    }
+
     const confirmed = window.confirm(
       `Hapus tagihan #${payment.invoice_id}? Tindakan ini tidak bisa dibatalkan.`,
     );
@@ -1477,19 +1484,14 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      if (isManualBookingRecord(payment)) {
-        await deleteAdminManualRentalBooking(payment.id);
-      } else {
-        await deleteAdminPayment(payment.id);
-      }
+      await deleteAdminPayment(payment.id);
       setNotice({
         variant: "success",
         message: `Tagihan #${payment.invoice_id} berhasil dihapus.`,
       });
       if (
         viewPayment?.id === payment.id &&
-        isManualBookingRecord(viewPayment) ===
-          isManualBookingRecord(payment)
+        !isManualBookingRecord(viewPayment)
       ) {
         setViewPayment(null);
       }
@@ -1928,22 +1930,24 @@ export default function AdminBillingPage() {
                         >
                           <CheckCircle2 size={16} />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleDeletePayment(payment);
-                          }}
-                          disabled={
-                            isDeletingId === payment.id ||
-                            isApprovingId === payment.id ||
-                            isCancellingId === payment.id
-                          }
-                          className="col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-40"
-                          title="Hapus tagihan"
-                        >
-                          <Trash2 size={15} />
-                          Hapus
-                        </button>
+                        {!isManualBookingRecord(payment) ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDeletePayment(payment);
+                            }}
+                            disabled={
+                              isDeletingId === payment.id ||
+                              isApprovingId === payment.id ||
+                              isCancellingId === payment.id
+                            }
+                            className="col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-40"
+                            title="Hapus tagihan"
+                          >
+                            <Trash2 size={15} />
+                            Hapus
+                          </button>
+                        ) : null}
                         {canCancelManualBooking(payment) ? (
                           <>
                             <button
