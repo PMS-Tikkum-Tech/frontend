@@ -217,6 +217,7 @@ type BillingDateRange = {
 };
 
 type BillingQuickDateRangeKey =
+  | "all"
   | "today"
   | "thisWeek"
   | "thisMonth"
@@ -226,10 +227,11 @@ const billingQuickDateRanges: Array<{
   key: BillingQuickDateRangeKey;
   label: string;
 }> = [
-  { key: "today", label: "Today" },
-  { key: "thisWeek", label: "This Week" },
-  { key: "thisMonth", label: "This Month" },
-  { key: "lastMonth", label: "Last Month" },
+  { key: "all", label: "Semua Data" },
+  { key: "today", label: "Hari Ini" },
+  { key: "thisWeek", label: "Minggu Ini" },
+  { key: "thisMonth", label: "Bulan Ini" },
+  { key: "lastMonth", label: "Bulan Lalu" },
 ];
 
 const billingWeekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
@@ -253,6 +255,10 @@ const normalizeBillingDateRange = (
   startDate: string,
   endDate: string,
 ): BillingDateRange | null => {
+  if (!startDate && !endDate) {
+    return { startDate: "", endDate: "" };
+  }
+
   const parsedStart = parseBillingDate(startDate);
   const parsedEnd = parseBillingDate(endDate);
 
@@ -288,6 +294,11 @@ const getBillingQuickDateRange = (
   const today = new Date();
 
   switch (rangeKey) {
+    case "all":
+      return {
+        startDate: "",
+        endDate: "",
+      };
     case "today":
       return {
         startDate: toBillingDateKey(today),
@@ -337,18 +348,39 @@ const getStoredBillingDateRange = (): BillingDateRange | null => {
   }
 };
 
-const formatBillingDateLabel = (value: string) => {
-  const parsed = parseBillingDate(value);
+const formatBillingDateRangeLabel = (startDate: string, endDate: string) => {
+  const parsedStart = parseBillingDate(startDate);
+  const parsedEnd = parseBillingDate(endDate);
 
-  if (!parsed) {
-    return value;
+  if (!parsedStart && !parsedEnd) {
+    return "Semua Data";
   }
 
-  return formatDateFns(parsed, "dd MMM yyyy", { locale: idLocale });
-};
+  if (!parsedStart || !parsedEnd) {
+    return "Pilih Periode";
+  }
 
-const formatBillingDateRangeLabel = (startDate: string, endDate: string) =>
-  `${formatBillingDateLabel(startDate)} → ${formatBillingDateLabel(endDate)}`;
+  if (
+    parsedStart.getFullYear() === parsedEnd.getFullYear() &&
+    parsedStart.getMonth() === parsedEnd.getMonth()
+  ) {
+    return `${formatDateFns(parsedStart, "d")}-${formatDateFns(
+      parsedEnd,
+      "d MMM yyyy",
+      { locale: idLocale },
+    )}`;
+  }
+
+  if (parsedStart.getFullYear() === parsedEnd.getFullYear()) {
+    return `${formatDateFns(parsedStart, "d MMM", {
+      locale: idLocale,
+    })} - ${formatDateFns(parsedEnd, "d MMM yyyy", { locale: idLocale })}`;
+  }
+
+  return `${formatDateFns(parsedStart, "d MMM yyyy", {
+    locale: idLocale,
+  })} - ${formatDateFns(parsedEnd, "d MMM yyyy", { locale: idLocale })}`;
+};
 
 const buildBillingCalendarDates = (month: Date) =>
   eachDayOfInterval({
@@ -1571,8 +1603,8 @@ export default function AdminBillingPage() {
             </span>
           </label>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
-            <label className="min-w-0 xl:col-span-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
+            <label className="min-w-0 lg:col-span-3">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">
                 Status
               </span>
@@ -1590,7 +1622,7 @@ export default function AdminBillingPage() {
               </select>
             </label>
 
-            <label className="min-w-0 xl:col-span-3">
+            <label className="min-w-0 lg:col-span-3">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">
                 Properti
               </span>
@@ -1608,7 +1640,7 @@ export default function AdminBillingPage() {
               </select>
             </label>
 
-            <div className="min-w-0 xl:col-span-4">
+            <div className="min-w-0 lg:col-span-4">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">
                 Periode
               </span>
@@ -1623,7 +1655,7 @@ export default function AdminBillingPage() {
               />
             </div>
 
-            <label className="min-w-0 sm:col-span-2 xl:col-span-2">
+            <label className="min-w-0 lg:col-span-2">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">
                 Urutkan
               </span>
@@ -2859,7 +2891,7 @@ function BillingDateRangePicker({
       >
         <span className="inline-flex min-w-0 items-center gap-2">
           <CalendarDays size={16} className="shrink-0 text-slate-400" />
-          <span className="truncate">
+          <span className="whitespace-nowrap text-xs sm:text-sm">
             {formatBillingDateRangeLabel(startDate, endDate)}
           </span>
         </span>
@@ -2872,7 +2904,7 @@ function BillingDateRangePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-40 w-[min(720px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+        <div className="fixed inset-x-3 top-24 z-50 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-2xl sm:left-1/2 sm:right-auto sm:w-[min(720px,calc(100vw-2rem))] sm:-translate-x-1/2">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-800">
@@ -2916,7 +2948,11 @@ function BillingDateRangePicker({
                     key={range.key}
                     type="button"
                     onClick={() => handleQuickSelect(range.key)}
-                    className={`h-10 rounded-xl border px-3 text-left text-sm font-medium transition ${
+                    className={`h-10 rounded-lg border px-3 text-left text-sm font-medium transition ${
+                      range.key === "all"
+                        ? "col-span-2 lg:col-span-1"
+                        : ""
+                    } ${
                       isActive
                         ? "border-[#1E2746] bg-[#1E2746] text-white"
                         : "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -2940,14 +2976,14 @@ function BillingDateRangePicker({
               onClick={handleCancelClick}
               className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Cancel
+              Batal
             </button>
             <button
               type="button"
               onClick={handleApplyClick}
               className="h-10 rounded-xl bg-[#1E2746] px-5 text-sm font-semibold text-white hover:bg-[#141B35]"
             >
-              Apply
+              Terapkan
             </button>
           </div>
         </div>
