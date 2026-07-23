@@ -2202,7 +2202,7 @@ export default function AdminFinancialPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 2xl:grid-cols-6">
         <StatCard
           title="Total Pemasukan"
           value={
@@ -2211,6 +2211,7 @@ export default function AdminFinancialPage() {
               : formatCurrency(filteredTransactionSummary.revenue)
           }
           icon={<Wallet size={20} />}
+          valueSize="compact"
         />
 
         <StatCard
@@ -2221,12 +2222,14 @@ export default function AdminFinancialPage() {
               : formatCurrency(filteredTransactionSummary.expense)
           }
           icon={<ArrowDownCircle size={20} />}
+          valueSize="compact"
         />
 
         <StatCard
           title="Pendapatan Bersih"
           value={isLoading ? "..." : formatCurrency(filteredNetAmount)}
           icon={<TrendingUp size={20} />}
+          valueSize="compact"
         />
 
         <StatCard
@@ -2235,18 +2238,21 @@ export default function AdminFinancialPage() {
             isLoading ? "..." : formatCurrency(summary.outstanding_balances)
           }
           icon={<FileText size={20} />}
+          valueSize="compact"
         />
 
         <StatCard
           title="Total Deposit"
           value={isLoading ? "..." : formatCurrency(depositSummary.total)}
           icon={<PiggyBank size={20} />}
+          valueSize="compact"
         />
 
         <StatCard
           title="Sisa Deposit"
           value={isLoading ? "..." : formatCurrency(depositSummary.remaining)}
           icon={<Wallet size={20} />}
+          valueSize="compact"
         />
       </div>
 
