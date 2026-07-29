@@ -211,7 +211,7 @@ const paymentStatusStyle: Record<string, string> = {
 };
 
 const PAGE_SIZE = 10;
-const BILLING_DATE_RANGE_STORAGE_KEY = "admin-billing-date-range-v1";
+const BILLING_DATE_RANGE_STORAGE_KEY = "admin-billing-date-range-v2";
 
 type BillingDateRange = {
   startDate: string;
@@ -545,6 +545,22 @@ const getBillingRemarks = (description?: string | null) => {
 const formatCurrency = (value: number | string) =>
   `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
+const getInvoiceFinancialStatus = (payment: AdminPayment) => {
+  const status = getPaymentDisplayStatus(payment);
+  if (status === "paid") return "LUNAS";
+  if (status === "overdue") return "JATUH TEMPO";
+  if (status === "cancelled") return "DIBATALKAN";
+  return "BELUM LUNAS";
+};
+
+const formatPaymentMethod = (value?: string | null) => {
+  if (!value) return "Belum ditentukan";
+
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+};
+
 const getInvoiceDescription = (payment: AdminPayment) => {
   const details = parseBillingDescription(payment.description);
   const duration = details.rentalDuration || "Periode sewa";
@@ -726,7 +742,7 @@ const recordPaymentAsIncome = async (payment: AdminPayment) => {
 };
 
 export default function AdminBillingPage() {
-  const defaultDateRange = useMemo(() => getCurrentBillingMonthDateRange(), []);
+  const defaultDateRange = useMemo(() => getBillingQuickDateRange("all"), []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
@@ -760,8 +776,7 @@ export default function AdminBillingPage() {
   const [cancelConfirmationPayment, setCancelConfirmationPayment] =
     useState<AdminPayment | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
-  const [cancellationConfirmation, setCancellationConfirmation] =
-    useState("");
+  const [cancellationConfirmation, setCancellationConfirmation] = useState("");
   const [cancellationError, setCancellationError] = useState<string | null>(
     null,
   );
@@ -785,8 +800,7 @@ export default function AdminBillingPage() {
 
   useEffect(() => {
     const storedDateRange = getStoredBillingDateRange();
-    const initialDateRange =
-      storedDateRange || getCurrentBillingMonthDateRange();
+    const initialDateRange = storedDateRange || getBillingQuickDateRange("all");
 
     setStartDate(initialDateRange.startDate);
     setEndDate(initialDateRange.endDate);
@@ -1073,15 +1087,15 @@ export default function AdminBillingPage() {
   };
 
   const handleResetFilters = () => {
-    const currentMonthDateRange = getCurrentBillingMonthDateRange();
+    const allDateRange = getBillingQuickDateRange("all");
 
     setSearch("");
     setStatus("");
     setPropertyFilter("");
-    setStartDate(currentMonthDateRange.startDate);
-    setEndDate(currentMonthDateRange.endDate);
-    setTempStartDate(currentMonthDateRange.startDate);
-    setTempEndDate(currentMonthDateRange.endDate);
+    setStartDate(allDateRange.startDate);
+    setEndDate(allDateRange.endDate);
+    setTempStartDate(allDateRange.startDate);
+    setTempEndDate(allDateRange.endDate);
     setSortBy("newest");
     setCurrentPage(1);
   };
@@ -1519,8 +1533,7 @@ export default function AdminBillingPage() {
     }
 
     if (
-      cancellationConfirmation.trim() !==
-      cancelConfirmationPayment.invoice_id
+      cancellationConfirmation.trim() !== cancelConfirmationPayment.invoice_id
     ) {
       setCancellationError("Nomor faktur yang diketik belum sesuai.");
       return;
@@ -1531,10 +1544,7 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      await cancelAdminPayment(
-        cancelConfirmationPayment.id,
-        normalizedReason,
-      );
+      await cancelAdminPayment(cancelConfirmationPayment.id, normalizedReason);
       setNotice({
         variant: "success",
         message: `Tagihan #${cancelConfirmationPayment.invoice_id} berhasil dibatalkan dan tetap tersimpan sebagai arsip.`,
@@ -1580,9 +1590,7 @@ export default function AdminBillingPage() {
       return;
     }
 
-    if (
-      deleteConfirmation.trim() !== deleteConfirmationPayment.invoice_id
-    ) {
+    if (deleteConfirmation.trim() !== deleteConfirmationPayment.invoice_id) {
       setDeleteError("Nomor faktur yang diketik belum sesuai.");
       return;
     }
@@ -1620,10 +1628,7 @@ export default function AdminBillingPage() {
       setRefreshKey((previous) => previous + 1);
     } catch (deleteRequestError) {
       setDeleteError(
-        getApiErrorMessage(
-          deleteRequestError,
-          "Gagal menghapus data tagihan.",
-        ),
+        getApiErrorMessage(deleteRequestError, "Gagal menghapus data tagihan."),
       );
     } finally {
       setIsDeletingKey(null);
@@ -2473,8 +2478,7 @@ export default function AdminBillingPage() {
                 type="button"
                 onClick={closeDeleteConfirmation}
                 disabled={
-                  isDeletingKey ===
-                  getPaymentRowKey(deleteConfirmationPayment)
+                  isDeletingKey === getPaymentRowKey(deleteConfirmationPayment)
                 }
                 className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-medium text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -2486,8 +2490,7 @@ export default function AdminBillingPage() {
                   void handleDeletePayment();
                 }}
                 disabled={
-                  isDeletingKey ===
-                  getPaymentRowKey(deleteConfirmationPayment)
+                  isDeletingKey === getPaymentRowKey(deleteConfirmationPayment)
                 }
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-70"
               >
@@ -2507,10 +2510,10 @@ export default function AdminBillingPage() {
             <div className="flex items-center justify-between border-b px-6 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Faktur Pembayaran
+                  Invoice / Faktur
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-slate-900">
-                  #{viewPayment.invoice_id}
+                  No. {viewPayment.invoice_id}
                 </h2>
               </div>
               <button
@@ -2524,24 +2527,27 @@ export default function AdminBillingPage() {
             </div>
 
             <div className="space-y-6 px-6 py-5 text-sm">
-              <section className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1.4fr_1fr]">
+              <section className="grid gap-4 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 md:grid-cols-[1.4fr_1fr]">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Ditagihkan oleh
                   </p>
                   <p className="mt-2 text-lg font-semibold text-slate-900">
-                    Kyra Stay
+                    KIKOST
                   </p>
                   <p className="mt-1 max-w-md text-sm leading-6 text-slate-600">
-                    Pengelolaan hunian dan pembayaran sewa properti.
+                    Layanan pengelolaan hunian dan administrasi sewa properti.
+                  </p>
+                  <p className="mt-4 text-xs text-slate-500">
+                    Referensi dokumen: {viewPayment.invoice_id}
                   </p>
                 </div>
 
                 <div className="grid gap-3 rounded-lg bg-white p-4 shadow-sm">
                   <InvoiceMetaRow label="Status">
-                    <StatusBadge
-                      status={getPaymentDisplayStatus(viewPayment)}
-                    />
+                    <span className="font-bold tracking-wide text-slate-900">
+                      {getInvoiceFinancialStatus(viewPayment)}
+                    </span>
                   </InvoiceMetaRow>
                   <InvoiceMetaRow
                     label="Tanggal Faktur"
@@ -2579,7 +2585,7 @@ export default function AdminBillingPage() {
                     {viewPayment.property.name || "-"}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
-                    Nomor kamar: {viewPayment.unit.name || "-"}
+                    Unit/Kamar: {viewPayment.unit.name || "-"}
                   </p>
                 </div>
               </section>
@@ -2589,6 +2595,8 @@ export default function AdminBillingPage() {
                   <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="px-4 py-3 text-left">Deskripsi</th>
+                      <th className="px-4 py-3 text-center">Kuantitas</th>
+                      <th className="px-4 py-3 text-right">Harga Satuan</th>
                       <th className="px-4 py-3 text-right">Jumlah</th>
                     </tr>
                   </thead>
@@ -2619,6 +2627,12 @@ export default function AdminBillingPage() {
                           ) : null}
                         </div>
                       </td>
+                      <td className="px-4 py-4 text-center text-slate-700">
+                        1
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-right text-slate-700">
+                        {formatCurrency(viewPayment.amount)}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right font-semibold text-slate-900">
                         {formatCurrency(viewPayment.amount)}
                       </td>
@@ -2626,11 +2640,67 @@ export default function AdminBillingPage() {
                   </tbody>
                   <tfoot className="border-t border-slate-200 bg-slate-50">
                     <tr>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-700">
-                        Total
+                      <td
+                        colSpan={3}
+                        className="px-4 py-2 text-right text-slate-600"
+                      >
+                        Subtotal
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-lg font-semibold text-slate-900">
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-800">
                         {formatCurrency(viewPayment.amount)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-4 py-2 text-right text-slate-600"
+                      >
+                        Pajak & biaya tambahan
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-800">
+                        Rp 0
+                      </td>
+                    </tr>
+                    <tr className="border-t border-slate-200">
+                      <td
+                        colSpan={3}
+                        className="px-4 py-3 text-right font-bold text-slate-800"
+                      >
+                        Total Tagihan
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-lg font-bold text-slate-950">
+                        {formatCurrency(viewPayment.amount)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-4 py-2 text-right text-slate-600"
+                      >
+                        Jumlah Dibayar
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-emerald-700">
+                        {formatCurrency(
+                          viewPayment.status === "paid"
+                            ? viewPayment.amount
+                            : 0,
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-4 py-3 text-right font-bold text-slate-800"
+                      >
+                        Sisa Tagihan
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-lg font-bold text-slate-950">
+                        {formatCurrency(
+                          viewPayment.status === "paid" ||
+                            viewPayment.status === "cancelled"
+                            ? 0
+                            : viewPayment.amount,
+                        )}
                       </td>
                     </tr>
                   </tfoot>
@@ -2645,7 +2715,7 @@ export default function AdminBillingPage() {
                   <div className="mt-3 space-y-2">
                     <InvoiceMetaRow
                       label="Metode"
-                      value={viewPayment.payment_method || "-"}
+                      value={formatPaymentMethod(viewPayment.payment_method)}
                     />
                     <InvoiceMetaRow
                       label="Pengirim"
@@ -2662,6 +2732,18 @@ export default function AdminBillingPage() {
                     <InvoiceMetaRow
                       label="Direview"
                       value={formatDateTime(viewPayment.reviewed_at)}
+                    />
+                    <InvoiceMetaRow
+                      label="Referensi Gateway"
+                      value={viewPayment.xendit_invoice_id || "-"}
+                    />
+                    <InvoiceMetaRow
+                      label="Referensi Sewa"
+                      value={
+                        viewPayment.lease_id
+                          ? String(viewPayment.lease_id)
+                          : "-"
+                      }
                     />
                   </div>
                 </div>
@@ -2755,6 +2837,15 @@ export default function AdminBillingPage() {
                   </div>
                 </section>
               ) : null}
+
+              <section className="border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
+                <p className="font-semibold text-slate-700">Catatan dokumen</p>
+                <p className="mt-1">
+                  Faktur ini diterbitkan secara elektronik oleh KIKOST. Status
+                  pembayaran dinyatakan sah setelah dana diterima dan
+                  diverifikasi pada sistem.
+                </p>
+              </section>
             </div>
 
             <div className="flex justify-end border-t bg-slate-50 px-6 py-4">
@@ -3325,9 +3416,7 @@ function BillingDateRangePicker({
                     type="button"
                     onClick={() => handleQuickSelect(range.key)}
                     className={`h-10 rounded-lg border px-3 text-left text-sm font-medium transition ${
-                      range.key === "all"
-                        ? "col-span-2 lg:col-span-1"
-                        : ""
+                      range.key === "all" ? "col-span-2 lg:col-span-1" : ""
                     } ${
                       isActive
                         ? "border-[#1E2746] bg-[#1E2746] text-white"

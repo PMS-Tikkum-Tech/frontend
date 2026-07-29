@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowDownCircle,
   CalendarDays,
@@ -3013,356 +3014,116 @@ export default function AdminFinancialPage() {
         </div>
       )}
 
-      {canManageFinancials && isFormOpen && (
-        <div className="admin-mobile-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-800">
-                {formMode === "create" ? "Tambah Transaksi" : "Ubah Transaksi"}
-              </h2>
-              <button
-                type="button"
-                onClick={closeFormModal}
-                disabled={isSubmitting}
-                className="rounded-lg p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {canManageFinancials &&
+        isFormOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="admin-mobile-dialog fixed inset-0 z-[100] flex min-h-[100dvh] items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]">
+            <div className="admin-mobile-dialog-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <h2 className="text-lg font-semibold text-slate-800">
+                  {formMode === "create"
+                    ? "Tambah Transaksi"
+                    : "Ubah Transaksi"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeFormModal}
+                  disabled={isSubmitting}
+                  className="rounded-lg p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-            <div className="space-y-4 px-6 py-5">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Kategori
-                  </label>
-                  <select
-                    value={form.category}
-                    onChange={(event) =>
-                      handleCategoryChange(
-                        event.target.value as TransactionFormCategory,
-                      )
-                    }
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
-                  >
-                    <option value="income">Pemasukan</option>
-                    {!form.depositId ? (
-                      <option value="expense">Pengeluaran</option>
-                    ) : null}
-                    {formMode === "create" || form.depositId ? (
-                      <option value="deposit">Deposit Booking Batal</option>
-                    ) : null}
-                  </select>
-                </div>
-
-                {form.category === "income" ? (
+              <div className="space-y-4 px-6 py-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Jenis Pemasukan
+                      Kategori
                     </label>
                     <select
-                      value={form.incomeType}
+                      value={form.category}
                       onChange={(event) =>
-                        handleIncomeTypeChange(
-                          event.target.value as IncomeTransactionType,
+                        handleCategoryChange(
+                          event.target.value as TransactionFormCategory,
                         )
                       }
+                      className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="income">Pemasukan</option>
+                      {!form.depositId ? (
+                        <option value="expense">Pengeluaran</option>
+                      ) : null}
+                      {formMode === "create" || form.depositId ? (
+                        <option value="deposit">Deposit Booking Batal</option>
+                      ) : null}
+                    </select>
+                  </div>
+
+                  {form.category === "income" ? (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Jenis Pemasukan
+                      </label>
+                      <select
+                        value={form.incomeType}
+                        onChange={(event) =>
+                          handleIncomeTypeChange(
+                            event.target.value as IncomeTransactionType,
+                          )
+                        }
+                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      >
+                        {availableIncomeTransactionTypeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+                </div>
+
+                {showPropertyField ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Properti
+                    </label>
+                    <select
+                      value={form.propertyId}
+                      onChange={(event) => {
+                        const nextPropertyId = event.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          propertyId: nextPropertyId,
+                          unitId: "",
+                          expenseUnitKey: "",
+                          expenseUnitName: "",
+                          tenantId: "",
+                          tenantName: "",
+                          checkInDate: "",
+                          checkOutDate: "",
+                        }));
+                        setUnitOptionSearch("");
+                        void loadUnitsByProperty(nextPropertyId);
+                      }}
                       className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                     >
-                      {availableIncomeTransactionTypeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
+                      <option value="">Pilih properti</option>
+                      {properties.map((property) => (
+                        <option key={property.id} value={property.id}>
+                          {property.name}
                         </option>
                       ))}
                     </select>
                   </div>
                 ) : null}
-              </div>
 
-              {showPropertyField ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Properti
-                  </label>
-                  <select
-                    value={form.propertyId}
-                    onChange={(event) => {
-                      const nextPropertyId = event.target.value;
-                      setForm((prev) => ({
-                        ...prev,
-                        propertyId: nextPropertyId,
-                        unitId: "",
-                        expenseUnitKey: "",
-                        expenseUnitName: "",
-                        tenantId: "",
-                        tenantName: "",
-                        checkInDate: "",
-                        checkOutDate: "",
-                      }));
-                      setUnitOptionSearch("");
-                      void loadUnitsByProperty(nextPropertyId);
-                    }}
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  >
-                    <option value="">Pilih properti</option>
-                    {properties.map((property) => (
-                      <option key={property.id} value={property.id}>
-                        {property.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-
-              {form.category === "expense" ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Unit Operasional
-                  </label>
-                  <div className="mb-2">
-                    <input
-                      value={unitOptionSearch}
-                      onChange={(event) =>
-                        setUnitOptionSearch(event.target.value)
-                      }
-                      disabled={!form.propertyId || isLoadingUnits}
-                      className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
-                      placeholder="Cari unit operasional"
-                    />
-                  </div>
-                  <select
-                    value={
-                      form.expenseUnitKey ||
-                      (form.expenseUnitName ? "existing-unit" : "")
-                    }
-                    onChange={(event) => {
-                      const option = expenseOperationalUnits.find(
-                        (item) => item.key === event.target.value,
-                      );
-                      setForm((prev) => ({
-                        ...prev,
-                        expenseUnitKey: event.target.value,
-                        expenseUnitName: option?.name || "",
-                      }));
-                    }}
-                    disabled={!form.propertyId || isLoadingUnits}
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
-                  >
-                    <option value="">
-                      {!form.propertyId
-                        ? "Pilih properti terlebih dahulu"
-                        : isLoadingUnits
-                          ? "Memuat unit..."
-                          : "Pilih unit operasional"}
-                    </option>
-                    {form.expenseUnitName &&
-                    !expenseOperationalUnits.some(
-                      (option) => option.key === form.expenseUnitKey,
-                    ) ? (
-                      <option value={form.expenseUnitKey || "existing-unit"}>
-                        {form.expenseUnitName}
-                      </option>
-                    ) : null}
-                    {filteredExpenseOperationalUnits.map((option) => (
-                      <option key={option.key} value={option.key}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {unitOptionSearch &&
-                    filteredExpenseOperationalUnits.length === 0
-                      ? "Unit operasional tidak ditemukan dalam properti ini."
-                      : "Pengeluaran dicatat sampai level unit operasional dan tidak dikaitkan dengan nomor kamar atau penyewa."}
-                  </p>
-                </div>
-              ) : null}
-
-              {form.category === "expense" ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                  <p className="mb-4 text-sm font-semibold text-slate-800">
-                    Detail Pengeluaran
-                  </p>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Jenis Pengeluaran
-                      </label>
-                      <select
-                        value={form.expenseType}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            expenseType: event.target
-                              .value as ExpenseTransactionType,
-                            customExpenseType:
-                              event.target.value === "other"
-                                ? prev.customExpenseType
-                                : "",
-                          }))
-                        }
-                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                      >
-                        {Object.entries(expenseTransactionTypeLabels).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                      {form.expenseType === "other" ? (
-                        <div className="mt-3">
-                          <label className="mb-1 block text-xs font-medium text-slate-600">
-                            Nama Kategori Pengeluaran
-                          </label>
-                          <input
-                            value={form.customExpenseType}
-                            onChange={(event) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                customExpenseType: event.target.value,
-                              }))
-                            }
-                            placeholder="Contoh: Biaya perizinan operasional"
-                            className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                            autoFocus
-                          />
-                          <p className="mt-1 text-xs text-slate-500">
-                            Gunakan nama kategori yang konsisten untuk
-                            memudahkan pelaporan dan rekonsiliasi.
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Penerima / Vendor
-                      </label>
-                      <input
-                        value={form.payee}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            payee: event.target.value,
-                          }))
-                        }
-                        placeholder="Contoh: PLN, CV Maju Jaya"
-                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Metode Pembayaran
-                      </label>
-                      <select
-                        value={form.paymentMethod}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            paymentMethod: event.target
-                              .value as ExpensePaymentMethod,
-                          }))
-                        }
-                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                      >
-                        {Object.entries(expensePaymentMethodLabels).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        No. Referensi / Invoice{" "}
-                        <span className="font-normal text-slate-400">
-                          (Opsional)
-                        </span>
-                      </label>
-                      <input
-                        value={form.referenceNumber}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            referenceNumber: event.target.value,
-                          }))
-                        }
-                        placeholder="Contoh: INV-2026-0071"
-                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {shouldShowNonUnitTenantField(form) ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Penyewa
-                  </label>
-                  <input
-                    list="financial-tenant-options"
-                    value={form.tenantName}
-                    onChange={(event) =>
-                      handleTenantNameChange(event.target.value)
-                    }
-                    placeholder="Pilih atau ketik nama penyewa"
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Pilih nama dari daftar agar transaksi terhubung ke penyewa
-                    yang benar.
-                  </p>
-                  <datalist id="financial-tenant-options">
-                    {tenantOptions.map(({ tenant, label }) => (
-                      <option
-                        key={tenant.id}
-                        value={label}
-                        label={tenant.email || undefined}
-                      />
-                    ))}
-                  </datalist>
-                </div>
-              ) : null}
-
-              {showDepositCustomerField ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Penyewa
-                  </label>
-                  <input
-                    list="financial-tenant-options"
-                    value={form.tenantName}
-                    onChange={(event) =>
-                      handleTenantNameChange(event.target.value)
-                    }
-                    placeholder="Pilih atau ketik nama penyewa"
-                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Pilih nama dari daftar atau ketik nama baru. Jika nama belum
-                    ada, akun penyewa akan dibuat otomatis.
-                  </p>
-                  <datalist id="financial-tenant-options">
-                    {tenantOptions.map(({ tenant, label }) => (
-                      <option
-                        key={tenant.id}
-                        value={label}
-                        label={tenant.email || undefined}
-                      />
-                    ))}
-                  </datalist>
-                </div>
-              ) : null}
-
-              {showRentalFields ? (
-                <>
+                {form.category === "expense" ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Unit (Opsional)
+                      Unit Operasional
                     </label>
                     <div className="mb-2">
                       <input
@@ -3372,46 +3133,181 @@ export default function AdminFinancialPage() {
                         }
                         disabled={!form.propertyId || isLoadingUnits}
                         className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
-                        placeholder="Cari unit, contoh: Aa1"
+                        placeholder="Cari unit operasional"
                       />
                     </div>
                     <select
-                      value={form.unitId}
-                      onChange={(event) => handleUnitChange(event.target.value)}
+                      value={
+                        form.expenseUnitKey ||
+                        (form.expenseUnitName ? "existing-unit" : "")
+                      }
+                      onChange={(event) => {
+                        const option = expenseOperationalUnits.find(
+                          (item) => item.key === event.target.value,
+                        );
+                        setForm((prev) => ({
+                          ...prev,
+                          expenseUnitKey: event.target.value,
+                          expenseUnitName: option?.name || "",
+                        }));
+                      }}
                       disabled={!form.propertyId || isLoadingUnits}
                       className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
                     >
                       <option value="">
-                        {isLoadingUnits
-                          ? "Memuat unit..."
-                          : "Tanpa unit spesifik"}
+                        {!form.propertyId
+                          ? "Pilih properti terlebih dahulu"
+                          : isLoadingUnits
+                            ? "Memuat unit..."
+                            : "Pilih unit operasional"}
                       </option>
-                      {form.unitId &&
-                      !filteredUnitOptions.some(
-                        (unit) => String(unit.unit_id) === form.unitId,
+                      {form.expenseUnitName &&
+                      !expenseOperationalUnits.some(
+                        (option) => option.key === form.expenseUnitKey,
                       ) ? (
-                        <option value={form.unitId}>
-                          {selectedUnit
-                            ? getFinancialUnitLabel(selectedUnit)
-                            : `Unit #${form.unitId}`}
+                        <option value={form.expenseUnitKey || "existing-unit"}>
+                          {form.expenseUnitName}
                         </option>
                       ) : null}
-                      {filteredUnitOptions.map((unit) => (
-                        <option key={unit.unit_id} value={unit.unit_id}>
-                          {getFinancialUnitLabel(unit)}
+                      {filteredExpenseOperationalUnits.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.name}
                         </option>
                       ))}
                     </select>
                     <p className="mt-1 text-xs text-slate-500">
-                      {unitOptionSearch && filteredUnitOptions.length === 0
-                        ? "Unit tidak ditemukan dalam properti ini."
-                        : `Pemilik: ${resolvedOwner?.name || "-"}`}
+                      {unitOptionSearch &&
+                      filteredExpenseOperationalUnits.length === 0
+                        ? "Unit operasional tidak ditemukan dalam properti ini."
+                        : "Pengeluaran dicatat sampai level unit operasional dan tidak dikaitkan dengan nomor kamar atau penyewa."}
                     </p>
                   </div>
+                ) : null}
 
+                {form.category === "expense" ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p className="mb-4 text-sm font-semibold text-slate-800">
+                      Detail Pengeluaran
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Jenis Pengeluaran
+                        </label>
+                        <select
+                          value={form.expenseType}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              expenseType: event.target
+                                .value as ExpenseTransactionType,
+                              customExpenseType:
+                                event.target.value === "other"
+                                  ? prev.customExpenseType
+                                  : "",
+                            }))
+                          }
+                          className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                        >
+                          {Object.entries(expenseTransactionTypeLabels).map(
+                            ([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                        {form.expenseType === "other" ? (
+                          <div className="mt-3">
+                            <label className="mb-1 block text-xs font-medium text-slate-600">
+                              Nama Kategori Pengeluaran
+                            </label>
+                            <input
+                              value={form.customExpenseType}
+                              onChange={(event) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  customExpenseType: event.target.value,
+                                }))
+                              }
+                              placeholder="Contoh: Biaya perizinan operasional"
+                              className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                              autoFocus
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                              Gunakan nama kategori yang konsisten untuk
+                              memudahkan pelaporan dan rekonsiliasi.
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Penerima / Vendor
+                        </label>
+                        <input
+                          value={form.payee}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              payee: event.target.value,
+                            }))
+                          }
+                          placeholder="Contoh: PLN, CV Maju Jaya"
+                          className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Metode Pembayaran
+                        </label>
+                        <select
+                          value={form.paymentMethod}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              paymentMethod: event.target
+                                .value as ExpensePaymentMethod,
+                            }))
+                          }
+                          className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                        >
+                          {Object.entries(expensePaymentMethodLabels).map(
+                            ([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          No. Referensi / Invoice{" "}
+                          <span className="font-normal text-slate-400">
+                            (Opsional)
+                          </span>
+                        </label>
+                        <input
+                          value={form.referenceNumber}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              referenceNumber: event.target.value,
+                            }))
+                          }
+                          placeholder="Contoh: INV-2026-0071"
+                          className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {shouldShowNonUnitTenantField(form) ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Nama Penyewa
+                      Penyewa
                     </label>
                     <input
                       list="financial-tenant-options"
@@ -3419,9 +3315,13 @@ export default function AdminFinancialPage() {
                       onChange={(event) =>
                         handleTenantNameChange(event.target.value)
                       }
-                      placeholder="Nama penyewa"
+                      placeholder="Pilih atau ketik nama penyewa"
                       className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                     />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Pilih nama dari daftar agar transaksi terhubung ke penyewa
+                      yang benar.
+                    </p>
                     <datalist id="financial-tenant-options">
                       {tenantOptions.map(({ tenant, label }) => (
                         <option
@@ -3432,184 +3332,295 @@ export default function AdminFinancialPage() {
                       ))}
                     </datalist>
                   </div>
+                ) : null}
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Check In
-                      </label>
-                      <input
-                        type="date"
-                        value={form.checkInDate}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            checkInDate: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-700">
-                        Check Out
-                      </label>
-                      <input
-                        type="date"
-                        value={form.checkOutDate}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            checkOutDate: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                      />
-                    </div>
+                {showDepositCustomerField ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Penyewa
+                    </label>
+                    <input
+                      list="financial-tenant-options"
+                      value={form.tenantName}
+                      onChange={(event) =>
+                        handleTenantNameChange(event.target.value)
+                      }
+                      placeholder="Pilih atau ketik nama penyewa"
+                      className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Pilih nama dari daftar atau ketik nama baru. Jika nama
+                      belum ada, akun penyewa akan dibuat otomatis.
+                    </p>
+                    <datalist id="financial-tenant-options">
+                      {tenantOptions.map(({ tenant, label }) => (
+                        <option
+                          key={tenant.id}
+                          value={label}
+                          label={tenant.email || undefined}
+                        />
+                      ))}
+                    </datalist>
                   </div>
-                </>
-              ) : null}
+                ) : null}
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Jumlah
-                </label>
-                <div className="flex h-11 overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[#1E2746]">
-                  <span className="inline-flex items-center border-r bg-slate-50 px-4 text-sm font-medium text-slate-600">
-                    Rp
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.amount}
+                {showRentalFields ? (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Unit (Opsional)
+                      </label>
+                      <div className="mb-2">
+                        <input
+                          value={unitOptionSearch}
+                          onChange={(event) =>
+                            setUnitOptionSearch(event.target.value)
+                          }
+                          disabled={!form.propertyId || isLoadingUnits}
+                          className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                          placeholder="Cari unit, contoh: Aa1"
+                        />
+                      </div>
+                      <select
+                        value={form.unitId}
+                        onChange={(event) =>
+                          handleUnitChange(event.target.value)
+                        }
+                        disabled={!form.propertyId || isLoadingUnits}
+                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                      >
+                        <option value="">
+                          {isLoadingUnits
+                            ? "Memuat unit..."
+                            : "Tanpa unit spesifik"}
+                        </option>
+                        {form.unitId &&
+                        !filteredUnitOptions.some(
+                          (unit) => String(unit.unit_id) === form.unitId,
+                        ) ? (
+                          <option value={form.unitId}>
+                            {selectedUnit
+                              ? getFinancialUnitLabel(selectedUnit)
+                              : `Unit #${form.unitId}`}
+                          </option>
+                        ) : null}
+                        {filteredUnitOptions.map((unit) => (
+                          <option key={unit.unit_id} value={unit.unit_id}>
+                            {getFinancialUnitLabel(unit)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {unitOptionSearch && filteredUnitOptions.length === 0
+                          ? "Unit tidak ditemukan dalam properti ini."
+                          : `Pemilik: ${resolvedOwner?.name || "-"}`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Nama Penyewa
+                      </label>
+                      <input
+                        list="financial-tenant-options"
+                        value={form.tenantName}
+                        onChange={(event) =>
+                          handleTenantNameChange(event.target.value)
+                        }
+                        placeholder="Nama penyewa"
+                        className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      />
+                      <datalist id="financial-tenant-options">
+                        {tenantOptions.map(({ tenant, label }) => (
+                          <option
+                            key={tenant.id}
+                            value={label}
+                            label={tenant.email || undefined}
+                          />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Check In
+                        </label>
+                        <input
+                          type="date"
+                          value={form.checkInDate}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              checkInDate: event.target.value,
+                            }))
+                          }
+                          className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Check Out
+                        </label>
+                        <input
+                          type="date"
+                          value={form.checkOutDate}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              checkOutDate: event.target.value,
+                            }))
+                          }
+                          className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Jumlah
+                  </label>
+                  <div className="flex h-11 overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[#1E2746]">
+                    <span className="inline-flex items-center border-r bg-slate-50 px-4 text-sm font-medium text-slate-600">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.amount}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          amount: formatRupiahInputValue(event.target.value),
+                        }))
+                      }
+                      placeholder="1.500.000"
+                      className="h-full min-w-0 flex-1 px-4 text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Deskripsi
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={form.description}
                     onChange={(event) =>
                       setForm((prev) => ({
                         ...prev,
-                        amount: formatRupiahInputValue(event.target.value),
+                        description: event.target.value,
                       }))
                     }
-                    placeholder="1.500.000"
-                    className="h-full min-w-0 flex-1 px-4 text-sm focus:outline-none"
+                    placeholder={
+                      form.category === "deposit"
+                        ? "Deposit dari booking yang dibatalkan"
+                        : form.category === "expense"
+                          ? "Contoh: Pembayaran listrik operasional bulan Juli"
+                          : form.category === "income" &&
+                              form.incomeType === "cancelled_booking_non_refund"
+                            ? "Booking dibatalkan (non-refundable)"
+                            : form.category === "income" &&
+                                form.incomeType === "other_income"
+                              ? "Contoh: Pemasukan parkir bulanan"
+                              : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
+                    }
+                    className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Deskripsi
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      description: event.target.value,
-                    }))
-                  }
-                  placeholder={
-                    form.category === "deposit"
-                      ? "Deposit dari booking yang dibatalkan"
-                      : form.category === "expense"
-                        ? "Contoh: Pembayaran listrik operasional bulan Juli"
-                        : form.category === "income" &&
-                            form.incomeType === "cancelled_booking_non_refund"
-                          ? "Booking dibatalkan (non-refundable)"
-                          : form.category === "income" &&
-                              form.incomeType === "other_income"
-                            ? "Contoh: Pemasukan parkir bulanan"
-                            : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
-                  }
-                  className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                />
-              </div>
-
-              {form.category !== "deposit" ? (
-                <>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Catatan (Opsional)
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={form.notes}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          notes: event.target.value,
-                        }))
-                      }
-                      placeholder="Catatan tambahan"
-                      className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Bukti Transaksi (Opsional)
-                    </label>
-                    <input
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/jpg,image/png"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          receiptFile: event.target.files?.[0] || null,
-                        }))
-                      }
-                      className="text-sm"
-                    />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Format: PDF, PNG, JPG, JPEG.
-                    </p>
-                    {formMode === "edit" && editingTransaction?.receipt_url ? (
-                      <a
-                        href={
-                          toAbsoluteAssetUrl(editingTransaction.receipt_url) ||
-                          editingTransaction.receipt_url
+                {form.category !== "deposit" ? (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Catatan (Opsional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={form.notes}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            notes: event.target.value,
+                          }))
                         }
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:underline"
-                      >
-                        Lihat lampiran saat ini
-                      </a>
-                    ) : null}
+                        placeholder="Catatan tambahan"
+                        className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Bukti Transaksi (Opsional)
+                      </label>
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/jpg,image/png"
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            receiptFile: event.target.files?.[0] || null,
+                          }))
+                        }
+                        className="text-sm"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Format: PDF, PNG, JPG, JPEG.
+                      </p>
+                      {formMode === "edit" &&
+                      editingTransaction?.receipt_url ? (
+                        <a
+                          href={
+                            toAbsoluteAssetUrl(
+                              editingTransaction.receipt_url,
+                            ) || editingTransaction.receipt_url
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          Lihat lampiran saat ini
+                        </a>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
+
+                {formError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {formError}
                   </div>
-                </>
-              ) : null}
+                )}
+              </div>
 
-              {formError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {formError}
-                </div>
-              )}
+              <div className="flex flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+                <button
+                  type="button"
+                  onClick={closeFormModal}
+                  disabled={isSubmitting}
+                  className="h-11 w-full rounded-xl border px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleSaveTransaction();
+                  }}
+                  disabled={isSubmitting}
+                  className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
             </div>
-
-            <div className="flex flex-col-reverse gap-3 border-t bg-slate-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
-              <button
-                type="button"
-                onClick={closeFormModal}
-                disabled={isSubmitting}
-                className="h-11 w-full rounded-xl border px-5 font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSaveTransaction();
-                }}
-                disabled={isSubmitting}
-                className="h-11 w-full rounded-xl bg-[#1E2746] px-6 font-medium text-white hover:bg-[#141B35] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {isSubmitting ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
