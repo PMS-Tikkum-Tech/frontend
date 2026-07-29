@@ -412,6 +412,36 @@ type ResolvedFinancialOwner = {
   name: string;
 };
 
+type ExpenseOperationalUnitOption = {
+  key: string;
+  name: string;
+  representativeUnit: AdminPropertyUnitRow;
+};
+
+const getExpenseOperationalUnits = (
+  units: AdminPropertyUnitRow[],
+): ExpenseOperationalUnitOption[] => {
+  const options = new Map<string, ExpenseOperationalUnitOption>();
+
+  units.forEach((unit) => {
+    const structureId = unit.building_id || unit.block_id;
+    const structureName = (unit.building_name || unit.block_name || "").trim();
+
+    if (!structureName) return;
+
+    const key = structureId
+      ? `structure-${structureId}`
+      : `name-${structureName.toLowerCase()}`;
+    if (!options.has(key)) {
+      options.set(key, { key, name: structureName, representativeUnit: unit });
+    }
+  });
+
+  return Array.from(options.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, "id"),
+  );
+};
+
 const resolveFinancialOwner = (
   unit?: AdminPropertyUnitRow | null,
   property?: AdminPropertyListItem | null,
@@ -541,10 +571,17 @@ type TransactionFormState = {
   depositId: string;
   propertyId: string;
   unitId: string;
+  expenseUnitKey: string;
+  expenseUnitName: string;
   tenantId: string;
   tenantName: string;
   category: TransactionFormCategory;
   incomeType: IncomeTransactionType;
+  expenseType: ExpenseTransactionType;
+  customExpenseType: string;
+  payee: string;
+  paymentMethod: ExpensePaymentMethod;
+  referenceNumber: string;
   transactionDate: string;
   checkInDate: string;
   checkOutDate: string;
@@ -554,14 +591,57 @@ type TransactionFormState = {
   receiptFile: File | null;
 };
 
+type ExpenseTransactionType =
+  | "utilities"
+  | "maintenance"
+  | "cleaning"
+  | "payroll"
+  | "supplies"
+  | "tax_and_fee"
+  | "marketing"
+  | "other";
+
+const expenseTransactionTypeLabels: Record<ExpenseTransactionType, string> = {
+  utilities: "Utilitas (listrik, air, internet)",
+  maintenance: "Perbaikan & Pemeliharaan",
+  cleaning: "Kebersihan & Keamanan",
+  payroll: "Gaji & Jasa Tenaga Kerja",
+  supplies: "Perlengkapan Operasional",
+  tax_and_fee: "Pajak, Iuran & Biaya Administrasi",
+  marketing: "Pemasaran & Komisi",
+  other: "Kategori Lainnya (Spesifikasikan)",
+};
+
+type ExpensePaymentMethod =
+  | "bank_transfer"
+  | "cash"
+  | "card"
+  | "ewallet"
+  | "other";
+
+const expensePaymentMethodLabels: Record<ExpensePaymentMethod, string> = {
+  bank_transfer: "Transfer Bank",
+  cash: "Tunai",
+  card: "Kartu Debit/Kredit",
+  ewallet: "E-Wallet",
+  other: "Lainnya",
+};
+
 const getInitialForm = (propertyId = ""): TransactionFormState => ({
   depositId: "",
   propertyId,
   unitId: "",
+  expenseUnitKey: "",
+  expenseUnitName: "",
   tenantId: "",
   tenantName: "",
   category: "income",
   incomeType: "unit_rental",
+  expenseType: "utilities",
+  customExpenseType: "",
+  payee: "",
+  paymentMethod: "bank_transfer",
+  referenceNumber: "",
   transactionDate: new Date().toISOString().slice(0, 10),
   checkInDate: "",
   checkOutDate: "",
@@ -577,6 +657,12 @@ type TransactionNoteFields = {
   checkInDate: string;
   checkOutDate: string;
   notes: string;
+  expenseType: ExpenseTransactionType | "";
+  customExpenseType: string;
+  payee: string;
+  paymentMethod: ExpensePaymentMethod | "";
+  referenceNumber: string;
+  expenseUnitName: string;
 };
 
 const getEmptyTransactionNoteFields = (): TransactionNoteFields => ({
@@ -585,6 +671,12 @@ const getEmptyTransactionNoteFields = (): TransactionNoteFields => ({
   checkInDate: "",
   checkOutDate: "",
   notes: "",
+  expenseType: "",
+  customExpenseType: "",
+  payee: "",
+  paymentMethod: "",
+  referenceNumber: "",
+  expenseUnitName: "",
 });
 
 const normalizeTransactionNoteLabel = (value: string) =>
@@ -650,6 +742,14 @@ const parseTransactionNotes = (
     catatan: "notes",
     keterangan: "notes",
     notes: "notes",
+    "jenis pengeluaran": "expenseType",
+    "penerima vendor": "payee",
+    "penerima/vendor": "payee",
+    penerima: "payee",
+    vendor: "payee",
+    "metode pembayaran": "paymentMethod",
+    "nomor referensi": "referenceNumber",
+    "unit operasional": "expenseUnitName",
   };
 
   value.split(/\r?\n/).forEach((line) => {
@@ -683,7 +783,28 @@ const parseTransactionNotes = (
       return;
     }
 
-    parsed[field] = match[2].trim();
+    if (field === "expenseType") {
+      const entry = Object.entries(expenseTransactionTypeLabels).find(
+        ([, label]) =>
+          normalizeTransactionNoteLabel(label) ===
+          normalizeTransactionNoteLabel(match[2]),
+      );
+      parsed.expenseType = (entry?.[0] as ExpenseTransactionType) || "other";
+      parsed.customExpenseType = entry ? "" : match[2].trim();
+      return;
+    }
+
+    if (field === "paymentMethod") {
+      const entry = Object.entries(expensePaymentMethodLabels).find(
+        ([, label]) =>
+          normalizeTransactionNoteLabel(label) ===
+          normalizeTransactionNoteLabel(match[2]),
+      );
+      parsed.paymentMethod = (entry?.[0] as ExpensePaymentMethod) || "other";
+      return;
+    }
+
+    parsed[field] = match[2].trim() as never;
   });
 
   if (unmatchedLines.length > 0) {
@@ -696,8 +817,7 @@ const parseTransactionNotes = (
 };
 
 const shouldShowRentalFields = (form: TransactionFormState) =>
-  form.category === "expense" ||
-  (form.category === "income" && form.incomeType === "unit_rental");
+  form.category === "income" && form.incomeType === "unit_rental";
 
 const shouldShowPropertyField = (form: TransactionFormState) =>
   form.category === "expense" ||
@@ -733,6 +853,21 @@ const buildTransactionNotes = (form: TransactionFormState) => {
       "Jenis Pemasukan",
       incomeTransactionTypeLabels[form.incomeType],
     ]);
+  }
+
+  if (form.category === "expense") {
+    noteRows.push(
+      ["Unit Operasional", form.expenseUnitName],
+      [
+        "Jenis Pengeluaran",
+        form.expenseType === "other" && form.customExpenseType.trim()
+          ? form.customExpenseType
+          : expenseTransactionTypeLabels[form.expenseType],
+      ],
+      ["Penerima/Vendor", form.payee],
+      ["Metode Pembayaran", expensePaymentMethodLabels[form.paymentMethod]],
+      ["Nomor Referensi", form.referenceNumber],
+    );
   }
 
   if (useRentalFields) {
@@ -791,6 +926,12 @@ const getTransactionDetails = (transaction: AdminFinancialTransaction) => {
     tenantName,
     checkInDate,
     checkOutDate,
+    expenseType: parsedNotes.expenseType,
+    customExpenseType: parsedNotes.customExpenseType,
+    payee: parsedNotes.payee,
+    paymentMethod: parsedNotes.paymentMethod,
+    referenceNumber: parsedNotes.referenceNumber,
+    expenseUnitName: parsedNotes.expenseUnitName,
     notes: parsedNotes.notes,
   };
 };
@@ -1160,7 +1301,34 @@ export default function AdminFinancialPage() {
     );
   }, [units, unitOptionSearch]);
 
-  const resolvedOwner = resolveFinancialOwner(selectedUnit, selectedProperty);
+  const expenseOperationalUnits = useMemo(
+    () => getExpenseOperationalUnits(units),
+    [units],
+  );
+
+  const filteredExpenseOperationalUnits = useMemo(() => {
+    const normalizedSearch = unitOptionSearch.trim().toLowerCase();
+    if (!normalizedSearch) return expenseOperationalUnits;
+
+    return expenseOperationalUnits.filter((option) =>
+      option.name.toLowerCase().includes(normalizedSearch),
+    );
+  }, [expenseOperationalUnits, unitOptionSearch]);
+
+  const selectedExpenseOperationalUnit = useMemo(
+    () =>
+      expenseOperationalUnits.find(
+        (option) => option.key === form.expenseUnitKey,
+      ),
+    [expenseOperationalUnits, form.expenseUnitKey],
+  );
+
+  const resolvedOwner = resolveFinancialOwner(
+    form.category === "expense"
+      ? selectedExpenseOperationalUnit?.representativeUnit
+      : selectedUnit,
+    selectedProperty,
+  );
 
   const viewTransactionDetails = viewTransaction
     ? getTransactionDetails(viewTransaction)
@@ -1176,6 +1344,32 @@ export default function AdminFinancialPage() {
         (option) => option.value !== "unit_rental",
       )
     : incomeTransactionTypeOptions;
+
+  useEffect(() => {
+    if (
+      form.category !== "expense" ||
+      form.expenseUnitKey ||
+      !form.expenseUnitName ||
+      expenseOperationalUnits.length === 0
+    ) {
+      return;
+    }
+
+    const matchedUnit = expenseOperationalUnits.find(
+      (option) =>
+        option.name.trim().toLowerCase() ===
+        form.expenseUnitName.trim().toLowerCase(),
+    );
+
+    if (matchedUnit) {
+      setForm((prev) => ({ ...prev, expenseUnitKey: matchedUnit.key }));
+    }
+  }, [
+    expenseOperationalUnits,
+    form.category,
+    form.expenseUnitKey,
+    form.expenseUnitName,
+  ]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1335,6 +1529,7 @@ export default function AdminFinancialPage() {
             unitId: "",
             checkInDate: "",
             checkOutDate: "",
+            customExpenseType: "",
             description:
               prev.description || "Booking dibatalkan (non-refundable)",
           }
@@ -1356,6 +1551,13 @@ export default function AdminFinancialPage() {
       ...(category === "expense"
         ? {
             depositId: "",
+            unitId: "",
+            expenseUnitKey: "",
+            expenseUnitName: "",
+            tenantId: "",
+            tenantName: "",
+            checkInDate: "",
+            checkOutDate: "",
           }
         : {}),
     }));
@@ -1442,6 +1644,8 @@ export default function AdminFinancialPage() {
       depositId: depositId ? String(depositId) : "",
       propertyId,
       unitId,
+      expenseUnitKey: "",
+      expenseUnitName: transactionDetails.expenseUnitName,
       tenantId:
         transaction.tenant?.id || transaction.tenant_id
           ? String(transaction.tenant?.id || transaction.tenant_id)
@@ -1450,6 +1654,11 @@ export default function AdminFinancialPage() {
       category:
         transactionType === "deposit" ? "deposit" : transaction.category,
       incomeType: transactionDetails.incomeType,
+      expenseType: transactionDetails.expenseType || "other",
+      customExpenseType: transactionDetails.customExpenseType,
+      payee: transactionDetails.payee,
+      paymentMethod: transactionDetails.paymentMethod || "bank_transfer",
+      referenceNumber: transactionDetails.referenceNumber,
       transactionDate: toDateInput(transaction.transaction_date),
       checkInDate: transactionDetails.checkInDate,
       checkOutDate: transactionDetails.checkOutDate,
@@ -1496,6 +1705,11 @@ export default function AdminFinancialPage() {
       return;
     }
 
+    if (form.category === "expense" && !form.expenseUnitName.trim()) {
+      setFormError("Pilih unit operasional terlebih dahulu.");
+      return;
+    }
+
     if (useNonUnitTenantField && !form.tenantId) {
       setFormError("Pilih penyewa terlebih dahulu.");
       return;
@@ -1513,6 +1727,20 @@ export default function AdminFinancialPage() {
 
     if (!Number.isFinite(amount) || amount <= 0) {
       setFormError("Jumlah transaksi harus lebih dari 0.");
+      return;
+    }
+
+    if (form.category === "expense" && form.payee.trim().length < 2) {
+      setFormError("Nama penerima atau vendor wajib diisi.");
+      return;
+    }
+
+    if (
+      form.category === "expense" &&
+      form.expenseType === "other" &&
+      form.customExpenseType.trim().length < 3
+    ) {
+      setFormError("Nama kategori pengeluaran wajib diisi minimal 3 karakter.");
       return;
     }
 
@@ -1901,7 +2129,9 @@ export default function AdminFinancialPage() {
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="inline-flex rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-medium">
-              {canManageFinancials ? "Modul Keuangan" : "Modul Keuangan - Hanya Lihat"}
+              {canManageFinancials
+                ? "Modul Keuangan"
+                : "Modul Keuangan - Hanya Lihat"}
             </p>
             <h1 className="mt-3 text-xl font-semibold sm:text-2xl md:text-3xl">
               Kelola Laporan Keuangan
@@ -2171,9 +2401,7 @@ export default function AdminFinancialPage() {
                 </dt>
                 <dd
                   className={`mt-0.5 break-words text-xs font-semibold sm:text-sm ${
-                    filteredNetAmount >= 0
-                      ? "text-blue-700"
-                      : "text-amber-700"
+                    filteredNetAmount >= 0 ? "text-blue-700" : "text-amber-700"
                   }`}
                 >
                   {formatCurrency(filteredNetAmount)}
@@ -2464,7 +2692,10 @@ export default function AdminFinancialPage() {
                           {transaction.property_label || "-"}
                         </p>
                         <p className="text-xs text-slate-500">
-                          Unit: {transaction.unit.name || "-"}
+                          Unit:{" "}
+                          {transactionType === "expense"
+                            ? details.expenseUnitName || "-"
+                            : transaction.unit.name || "-"}
                         </p>
                       </td>
 
@@ -2647,7 +2878,10 @@ export default function AdminFinancialPage() {
                       : "-")}
                   {viewTransaction.unit.name
                     ? ` • Unit ${viewTransaction.unit.name}`
-                    : ""}
+                    : viewTransactionType === "expense" &&
+                        viewTransactionDetails?.expenseUnitName
+                      ? ` • Unit ${viewTransactionDetails.expenseUnitName}`
+                      : ""}
                 </p>
               </div>
               <DetailRow
@@ -2676,6 +2910,19 @@ export default function AdminFinancialPage() {
                   }
                 />
               ) : null}
+              {viewTransactionType === "expense" && viewTransactionDetails ? (
+                <DetailRow
+                  label="Jenis Pengeluaran"
+                  value={
+                    viewTransactionDetails.customExpenseType ||
+                    (viewTransactionDetails.expenseType
+                      ? expenseTransactionTypeLabels[
+                          viewTransactionDetails.expenseType
+                        ]
+                      : "-")
+                  }
+                />
+              ) : null}
               {viewTransaction.property.name ||
               (viewTransactionType === "income" &&
                 viewTransactionDetails?.incomeType === "unit_rental") ? (
@@ -2685,11 +2932,17 @@ export default function AdminFinancialPage() {
                 />
               ) : null}
               {viewTransaction.unit.name ||
+              (viewTransactionType === "expense" &&
+                viewTransactionDetails?.expenseUnitName) ||
               (viewTransactionType === "income" &&
                 viewTransactionDetails?.incomeType === "unit_rental") ? (
                 <DetailRow
                   label="Unit"
-                  value={viewTransaction.unit.name || "-"}
+                  value={
+                    viewTransactionType === "expense"
+                      ? viewTransactionDetails?.expenseUnitName || "-"
+                      : viewTransaction.unit.name || "-"
+                  }
                 />
               ) : null}
               {viewTransactionDetails?.tenantName ? (
@@ -2839,6 +3092,8 @@ export default function AdminFinancialPage() {
                         ...prev,
                         propertyId: nextPropertyId,
                         unitId: "",
+                        expenseUnitKey: "",
+                        expenseUnitName: "",
                         tenantId: "",
                         tenantName: "",
                         checkInDate: "",
@@ -2856,6 +3111,190 @@ export default function AdminFinancialPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              ) : null}
+
+              {form.category === "expense" ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Unit Operasional
+                  </label>
+                  <div className="mb-2">
+                    <input
+                      value={unitOptionSearch}
+                      onChange={(event) =>
+                        setUnitOptionSearch(event.target.value)
+                      }
+                      disabled={!form.propertyId || isLoadingUnits}
+                      className="h-10 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                      placeholder="Cari unit operasional"
+                    />
+                  </div>
+                  <select
+                    value={
+                      form.expenseUnitKey ||
+                      (form.expenseUnitName ? "existing-unit" : "")
+                    }
+                    onChange={(event) => {
+                      const option = expenseOperationalUnits.find(
+                        (item) => item.key === event.target.value,
+                      );
+                      setForm((prev) => ({
+                        ...prev,
+                        expenseUnitKey: event.target.value,
+                        expenseUnitName: option?.name || "",
+                      }));
+                    }}
+                    disabled={!form.propertyId || isLoadingUnits}
+                    className="h-11 w-full rounded-xl border px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746] disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    <option value="">
+                      {!form.propertyId
+                        ? "Pilih properti terlebih dahulu"
+                        : isLoadingUnits
+                          ? "Memuat unit..."
+                          : "Pilih unit operasional"}
+                    </option>
+                    {form.expenseUnitName &&
+                    !expenseOperationalUnits.some(
+                      (option) => option.key === form.expenseUnitKey,
+                    ) ? (
+                      <option value={form.expenseUnitKey || "existing-unit"}>
+                        {form.expenseUnitName}
+                      </option>
+                    ) : null}
+                    {filteredExpenseOperationalUnits.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {unitOptionSearch &&
+                    filteredExpenseOperationalUnits.length === 0
+                      ? "Unit operasional tidak ditemukan dalam properti ini."
+                      : "Pengeluaran dicatat sampai level unit operasional dan tidak dikaitkan dengan nomor kamar atau penyewa."}
+                  </p>
+                </div>
+              ) : null}
+
+              {form.category === "expense" ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="mb-4 text-sm font-semibold text-slate-800">
+                    Detail Pengeluaran
+                  </p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Jenis Pengeluaran
+                      </label>
+                      <select
+                        value={form.expenseType}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            expenseType: event.target
+                              .value as ExpenseTransactionType,
+                            customExpenseType:
+                              event.target.value === "other"
+                                ? prev.customExpenseType
+                                : "",
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      >
+                        {Object.entries(expenseTransactionTypeLabels).map(
+                          ([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      {form.expenseType === "other" ? (
+                        <div className="mt-3">
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            Nama Kategori Pengeluaran
+                          </label>
+                          <input
+                            value={form.customExpenseType}
+                            onChange={(event) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                customExpenseType: event.target.value,
+                              }))
+                            }
+                            placeholder="Contoh: Biaya perizinan operasional"
+                            className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                            autoFocus
+                          />
+                          <p className="mt-1 text-xs text-slate-500">
+                            Gunakan nama kategori yang konsisten untuk
+                            memudahkan pelaporan dan rekonsiliasi.
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Penerima / Vendor
+                      </label>
+                      <input
+                        value={form.payee}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            payee: event.target.value,
+                          }))
+                        }
+                        placeholder="Contoh: PLN, CV Maju Jaya"
+                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Metode Pembayaran
+                      </label>
+                      <select
+                        value={form.paymentMethod}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            paymentMethod: event.target
+                              .value as ExpensePaymentMethod,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      >
+                        {Object.entries(expensePaymentMethodLabels).map(
+                          ([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        No. Referensi / Invoice{" "}
+                        <span className="font-normal text-slate-400">
+                          (Opsional)
+                        </span>
+                      </label>
+                      <input
+                        value={form.referenceNumber}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            referenceNumber: event.target.value,
+                          }))
+                        }
+                        placeholder="Contoh: INV-2026-0071"
+                        className="h-11 w-full rounded-xl border bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
@@ -3072,13 +3511,15 @@ export default function AdminFinancialPage() {
                   placeholder={
                     form.category === "deposit"
                       ? "Deposit dari booking yang dibatalkan"
-                      : form.category === "income" &&
-                          form.incomeType === "cancelled_booking_non_refund"
-                        ? "Booking dibatalkan (non-refundable)"
+                      : form.category === "expense"
+                        ? "Contoh: Pembayaran listrik operasional bulan Juli"
                         : form.category === "income" &&
-                            form.incomeType === "other_income"
-                          ? "Contoh: Pemasukan parkir bulanan"
-                          : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
+                            form.incomeType === "cancelled_booking_non_refund"
+                          ? "Booking dibatalkan (non-refundable)"
+                          : form.category === "income" &&
+                              form.incomeType === "other_income"
+                            ? "Contoh: Pemasukan parkir bulanan"
+                            : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
                   }
                   className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                 />
