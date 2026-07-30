@@ -1745,11 +1745,6 @@ export default function AdminFinancialPage() {
       return;
     }
 
-    if (description.length < 10) {
-      setFormError("Deskripsi minimal 10 karakter.");
-      return;
-    }
-
     if (formMode === "create" && usePropertyField && !resolvedOwner?.id) {
       setFormError(
         "Pemilik properti tidak ditemukan. Pilih properti atau unit yang sudah terhubung ke akun owner.",
@@ -3505,7 +3500,7 @@ export default function AdminFinancialPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Deskripsi
+                    Deskripsi (Opsional)
                   </label>
                   <textarea
                     rows={3}
@@ -3527,7 +3522,7 @@ export default function AdminFinancialPage() {
                             : form.category === "income" &&
                                 form.incomeType === "other_income"
                               ? "Contoh: Pemasukan parkir bulanan"
-                              : "Tuliskan deskripsi transaksi (minimal 10 karakter)"
+                              : "Tuliskan deskripsi transaksi"
                     }
                     className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2746]"
                   />
