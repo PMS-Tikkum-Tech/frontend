@@ -605,6 +605,7 @@ export interface AdminFinancialDashboardPayload {
   charts: {
     monthly_revenue_vs_expense: Array<{
       month: string;
+      period?: string;
       revenue: number;
       expense: number;
     }>;
@@ -612,6 +613,7 @@ export interface AdminFinancialDashboardPayload {
       category: string;
       amount: number;
       percentage: number;
+      transaction_count: number;
     }>;
   };
 }
@@ -1436,7 +1438,10 @@ export const buildPeriodParams = (period: string): QueryParams => {
       };
     case "year":
     default:
-      return {};
+      return {
+        date_from: `${year}-01-01`,
+        date_to: `${year}-12-31`,
+      };
   }
 };
 

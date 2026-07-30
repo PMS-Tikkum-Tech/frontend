@@ -185,12 +185,22 @@ export const useAdminDashboard = (period: string) => {
           (payment) => payment.status === "waiting" || payment.status === "overdue"
         ).length;
 
-        const revenueData: RevenueData[] =
-          dashboard.charts.monthly_revenue_vs_expense.map((entry) => ({
-            month: entry.month,
-            pemasukan: entry.revenue,
-            pengeluaran: entry.expense,
-          }));
+        const monthlyChartEntries = dashboard.charts.monthly_revenue_vs_expense;
+        const chartYears = new Set(
+          monthlyChartEntries
+            .map((entry) => entry.period?.slice(0, 4))
+            .filter(Boolean),
+        );
+        const revenueData: RevenueData[] = monthlyChartEntries.map((entry) => ({
+          month: entry.period
+            ? new Intl.DateTimeFormat("id-ID", {
+                month: "short",
+                ...(chartYears.size > 1 ? { year: "2-digit" } : {}),
+              }).format(new Date(`${entry.period}-01T00:00:00`))
+            : entry.month,
+          pemasukan: entry.revenue,
+          pengeluaran: entry.expense,
+        }));
 
         const paymentsByProperty = new Map<string, PaymentData>();
         payments.forEach((payment) => {
@@ -216,6 +226,10 @@ export const useAdminDashboard = (period: string) => {
 
         const paymentData = Array.from(paymentsByProperty.values());
 
+        const transitionalUnits = Math.max(
+          totalUnits - occupiedUnits - vacantUnits,
+          0,
+        );
         const occupancyData: OccupancyData[] =
           totalUnits > 0
             ? [
@@ -224,13 +238,21 @@ export const useAdminDashboard = (period: string) => {
                   value: Math.round((occupiedUnits / totalUnits) * 100),
                 },
                 {
-                  name: "Kosong",
+                  name: "Tersedia",
                   value: Math.round((vacantUnits / totalUnits) * 100),
                 },
+                ...(transitionalUnits > 0
+                  ? [
+                      {
+                        name: "Dalam Proses",
+                        value: Math.round((transitionalUnits / totalUnits) * 100),
+                      },
+                    ]
+                  : []),
               ]
             : [
                 { name: "Terisi", value: 0 },
-                { name: "Kosong", value: 0 },
+                { name: "Tersedia", value: 0 },
               ];
 
         const maintenanceByCategory = new Map<string, number>();

@@ -22,9 +22,11 @@ import {
   X,
 } from "lucide-react";
 import {
+  Bar,
+  BarChart,
   Cell,
-  Line,
-  LineChart,
+  CartesianGrid,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -81,11 +83,11 @@ import { parseUnitIdentity } from "@/lib/dashboard/property-structure";
 
 const COLORS = [
   "#1E2746",
-  "#3B4A8A",
-  "#6D78C3",
-  "#A7B0E5",
-  "#E0C46C",
-  "#16A34A",
+  "#2C62A5",
+  "#5B8DEF",
+  "#C7A84A",
+  "#7C3AED",
+  "#0F766E",
 ];
 
 const PAGE_SIZE = 10;
@@ -344,6 +346,12 @@ const toDateInput = (value?: string | null) => {
 
 const formatCurrency = (value: number) =>
   `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
+
+const formatCompactCurrency = (value: number) =>
+  `Rp ${new Intl.NumberFormat("id-ID", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0))}`;
 
 const formatRupiahInputValue = (value: number | string) => {
   const numericValue = String(value ?? "").replace(/\D/g, "");
@@ -973,10 +981,20 @@ export default function AdminFinancialPage() {
   >("newest");
   const [summary, setSummary] = useState<AdminFinancialSummary>(initialSummary);
   const [monthlyData, setMonthlyData] = useState<
-    Array<{ month: string; revenue: number; expense: number }>
+    Array<{
+      month: string;
+      period?: string;
+      revenue: number;
+      expense: number;
+    }>
   >([]);
   const [categoryData, setCategoryData] = useState<
-    Array<{ name: string; value: number }>
+    Array<{
+      name: string;
+      value: number;
+      percentage: number;
+      transactionCount: number;
+    }>
   >([]);
   const [transactions, setTransactions] = useState<AdminFinancialTransaction[]>(
     [],
@@ -1054,7 +1072,11 @@ export default function AdminFinancialPage() {
             propertiesResponse,
             tenantsResponse,
           ] = await Promise.all([
-            getAdminFinancialDashboard(),
+            getAdminFinancialDashboard({
+              date_from: startDate || undefined,
+              date_to: endDate || undefined,
+              property_id: propertyFilter || undefined,
+            }),
             getAllAdminFinancialTransactions(),
             getAllAdminProperties(),
             getAllAdminTenants().catch(() => ({ data: [] as AdminUser[] })),
@@ -1065,14 +1087,32 @@ export default function AdminFinancialPage() {
           }
 
           setSummary(dashboardResponse.data.summary);
+          const rawMonthlyData =
+            dashboardResponse.data.charts.monthly_revenue_vs_expense;
+          const chartYears = new Set(
+            rawMonthlyData
+              .map((item) => item.period?.slice(0, 4))
+              .filter(Boolean),
+          );
           setMonthlyData(
-            dashboardResponse.data.charts.monthly_revenue_vs_expense,
+            rawMonthlyData.map((item) => ({
+              ...item,
+              month: item.period
+                ? format(
+                    parseISO(`${item.period}-01`),
+                    chartYears.size > 1 ? "MMM yy" : "MMM",
+                    { locale: idLocale },
+                  )
+                : item.month,
+            })),
           );
           setCategoryData(
             dashboardResponse.data.charts.revenue_breakdown_by_category.map(
               (item) => ({
                 name: item.category,
                 value: item.amount,
+                percentage: item.percentage,
+                transactionCount: item.transaction_count,
               }),
             ),
           );
@@ -1113,7 +1153,7 @@ export default function AdminFinancialPage() {
       active = false;
       window.clearTimeout(timeoutId);
     };
-  }, [isDateRangeReady, refreshKey]);
+  }, [endDate, isDateRangeReady, propertyFilter, refreshKey, startDate]);
 
   const categoryFilterOptions = useMemo(
     () =>
@@ -1235,6 +1275,30 @@ export default function AdminFinancialPage() {
 
   const filteredNetAmount =
     filteredTransactionSummary.revenue - filteredTransactionSummary.expense;
+
+  const monthlyChartSummary = useMemo(
+    () =>
+      monthlyData.reduce(
+        (result, item) => {
+          result.revenue += Number(item.revenue || 0);
+          result.expense += Number(item.expense || 0);
+          return result;
+        },
+        { revenue: 0, expense: 0 },
+      ),
+    [monthlyData],
+  );
+  const monthlyChartNet =
+    monthlyChartSummary.revenue - monthlyChartSummary.expense;
+  const hasMonthlyChartData =
+    monthlyChartSummary.revenue > 0 || monthlyChartSummary.expense > 0;
+  const monthlyChartMinWidth = Math.max(620, monthlyData.length * 72);
+  const categoryTotal = categoryData.reduce(
+    (total, item) => total + Number(item.value || 0),
+    0,
+  );
+  const leadingIncomeCategory = categoryData[0] || null;
+  const chartPeriodLabel = formatFinancialDateRangeLabel(startDate, endDate);
 
   const depositSummary = useMemo(
     () =>
@@ -2481,117 +2545,272 @@ export default function AdminFinancialPage() {
       </div>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="h-[320px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:h-[380px] sm:p-6">
-          <h2 className="mb-1 font-semibold text-slate-800">
-            Pemasukan vs Pengeluaran Bulanan
-          </h2>
-          <p className="mb-4 text-xs text-slate-500">
-            Tren bulanan berdasarkan transaksi keuangan yang dimuat.
-          </p>
-
-          {isChartReady ? (
-            monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="84%">
-                <LineChart data={monthlyData}>
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#16A34A"
-                    strokeWidth={2}
-                    name="Pemasukan"
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="expense"
-                    stroke="#DC2626"
-                    strokeWidth={2}
-                    name="Pengeluaran"
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[84%] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
-                Belum ada data grafik transaksi.
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="h-1 bg-gradient-to-r from-[#1E2746] via-[#2C62A5] to-[#5B8DEF]" />
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900">
+                  Pemasukan vs Pengeluaran
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Perbandingan arus kas bulanan sesuai periode transaksi aktif.
+                </p>
               </div>
-            )
-          ) : (
-            <div className="h-[84%] animate-pulse rounded-xl bg-slate-100" />
-          )}
-        </div>
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#1E2746]/[0.07] px-3 py-1.5 text-[11px] font-semibold text-[#1E2746]">
+                <CalendarDays size={13} />
+                {chartPeriodLabel}
+              </span>
+            </div>
 
-        <div className="flex min-h-[420px] flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:h-[380px] md:min-h-0">
-          <h2 className="mb-1 font-semibold text-slate-800">
-            Komposisi Pendapatan
-          </h2>
-          <p className="mb-4 text-xs text-slate-500">
-            Distribusi pendapatan berdasarkan kategori transaksi.
-          </p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                  Pemasukan
+                </p>
+                <p className="mt-1 truncate text-sm font-bold text-[#1E2746]">
+                  {formatCompactCurrency(monthlyChartSummary.revenue)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                  Pengeluaran
+                </p>
+                <p className="mt-1 truncate text-sm font-bold text-[#1E2746]">
+                  {formatCompactCurrency(monthlyChartSummary.expense)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Arus Bersih
+                </p>
+                <p
+                  className={`mt-1 truncate text-sm font-bold ${
+                    monthlyChartNet >= 0 ? "text-emerald-700" : "text-red-700"
+                  }`}
+                >
+                  {formatCompactCurrency(monthlyChartNet)}
+                </p>
+              </div>
+            </div>
 
-          {isChartReady ? (
-            categoryData.length > 0 ? (
-              <div className="grid min-w-0 grid-cols-1 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_180px]">
-                <div className="h-[220px] min-w-0 md:h-full md:min-h-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        dataKey="value"
-                        nameKey="name"
-                        outerRadius="72%"
+            {isChartReady ? (
+              hasMonthlyChartData ? (
+                <div className="mt-5 overflow-x-auto pb-1">
+                  <div
+                    className="h-[270px]"
+                    style={{ minWidth: monthlyChartMinWidth }}
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={monthlyData}
+                        barGap={6}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                       >
-                        {categoryData.map((item, index) => (
-                          <Cell
-                            key={item.name}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="min-w-0 space-y-2 md:min-h-0 md:overflow-y-auto md:pr-1">
-                  {categoryData.map((item, index) => (
-                    <div
-                      key={`${item.name}-${index}`}
-                      className="flex min-w-0 items-start justify-between gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
-                    >
-                      <span className="flex min-w-0 items-start gap-2 text-slate-600">
-                        <span
-                          className="mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{
-                            backgroundColor: COLORS[index % COLORS.length],
+                        <defs>
+                          <linearGradient id="incomeBar" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2C62A5" />
+                            <stop offset="100%" stopColor="#5B8DEF" />
+                          </linearGradient>
+                          <linearGradient id="expenseBar" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#D97706" />
+                            <stop offset="100%" stopColor="#FBBF24" />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                          stroke="#E2E8F0"
+                          strokeDasharray="4 4"
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey="month"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: "#64748B", fontSize: 11 }}
+                          dy={8}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: "#64748B", fontSize: 10 }}
+                          tickFormatter={formatCompactCurrency}
+                          width={70}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "rgba(30, 39, 70, 0.04)" }}
+                          formatter={(value: number) => formatCurrency(value)}
+                          labelFormatter={(label) => `Periode ${label}`}
+                          contentStyle={{
+                            border: "1px solid #E2E8F0",
+                            borderRadius: "12px",
+                            boxShadow: "0 12px 28px rgba(30, 39, 70, 0.12)",
                           }}
                         />
-                        <span className="min-w-0 break-words leading-4">
-                          {item.name}
-                        </span>
+                        <Legend
+                          iconType="circle"
+                          iconSize={8}
+                          wrapperStyle={{ fontSize: "12px", paddingTop: "14px" }}
+                        />
+                        <Bar
+                          dataKey="revenue"
+                          name="Pemasukan"
+                          fill="url(#incomeBar)"
+                          maxBarSize={28}
+                          radius={[7, 7, 2, 2]}
+                        />
+                        <Bar
+                          dataKey="expense"
+                          name="Pengeluaran"
+                          fill="url(#expenseBar)"
+                          maxBarSize={28}
+                          radius={[7, 7, 2, 2]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-5 flex h-[270px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-center">
+                  <TrendingUp size={28} className="text-slate-300" />
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    Belum ada arus kas pada periode ini
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Grafik akan terisi setelah transaksi pemasukan atau pengeluaran dicatat.
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="mt-5 h-[270px] animate-pulse rounded-xl bg-slate-100" />
+            )}
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="h-1 bg-gradient-to-r from-[#1E2746] via-[#2C62A5] to-[#C7A84A]" />
+          <div className="flex h-full flex-col p-4 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900">
+                  Komposisi Pendapatan
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Kontribusi setiap sumber pendapatan pada periode aktif.
+                </p>
+              </div>
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#1E2746]/[0.07] px-3 py-1.5 text-[11px] font-semibold text-[#1E2746]">
+                <CalendarDays size={13} />
+                {chartPeriodLabel}
+              </span>
+            </div>
+
+            {leadingIncomeCategory ? (
+              <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white px-3.5 py-3 text-xs text-slate-600">
+                Kontributor terbesar: {" "}
+                <span className="font-semibold text-[#1E2746]">
+                  {leadingIncomeCategory.name}
+                </span>{" "}
+                <span className="font-semibold text-blue-700">
+                  ({leadingIncomeCategory.percentage.toLocaleString("id-ID", {
+                    maximumFractionDigits: 1,
+                  })}%)
+                </span>
+              </div>
+            ) : null}
+
+            {isChartReady ? (
+              categoryData.length > 0 ? (
+                <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[minmax(220px,0.9fr)_minmax(240px,1.1fr)] md:items-center">
+                  <div className="relative h-[250px] min-w-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius="58%"
+                          outerRadius="82%"
+                          paddingAngle={3}
+                          cornerRadius={6}
+                          stroke="#FFFFFF"
+                          strokeWidth={2}
+                        >
+                          {categoryData.map((item, index) => (
+                            <Cell
+                              key={item.name}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number) => formatCurrency(value)}
+                          contentStyle={{
+                            border: "1px solid #E2E8F0",
+                            borderRadius: "12px",
+                            boxShadow: "0 12px 28px rgba(30, 39, 70, 0.12)",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        Total
                       </span>
-                      <span className="shrink-0 text-right font-semibold leading-4 text-slate-700">
-                        {formatCurrency(item.value)}
+                      <span className="mt-1 max-w-[120px] truncate text-base font-bold text-[#1E2746]">
+                        {formatCompactCurrency(categoryTotal)}
                       </span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="min-w-0 space-y-2.5">
+                    {categoryData.map((item, index) => (
+                      <div
+                        key={`${item.name}-${index}`}
+                        className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5"
+                      >
+                        <div className="flex min-w-0 items-center justify-between gap-3">
+                          <span className="flex min-w-0 items-center gap-2.5 text-xs font-medium text-slate-700">
+                            <span
+                              className="inline-block h-3 w-3 shrink-0 rounded-full shadow-sm"
+                              style={{
+                                backgroundColor: COLORS[index % COLORS.length],
+                              }}
+                            />
+                            <span className="truncate">{item.name}</span>
+                          </span>
+                          <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-[#1E2746] shadow-sm">
+                            {item.percentage.toLocaleString("id-ID", {
+                              maximumFractionDigits: 1,
+                            })}%
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-end justify-between gap-3 pl-5.5">
+                          <span className="text-xs font-semibold text-[#1E2746]">
+                            {formatCurrency(item.value)}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {item.transactionCount.toLocaleString("id-ID")} transaksi
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-5 flex min-h-[330px] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-center">
+                  <Wallet size={28} className="text-slate-300" />
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    Belum ada pendapatan pada periode ini
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Komposisi akan muncul setelah transaksi pemasukan dicatat.
+                  </p>
+                </div>
+              )
             ) : (
-              <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500 md:min-h-0">
-                Belum ada data komposisi pendapatan.
-              </div>
-            )
-          ) : (
-            <div className="min-h-[280px] flex-1 animate-pulse rounded-xl bg-slate-100 md:min-h-0" />
-          )}
+              <div className="mt-5 min-h-[330px] flex-1 animate-pulse rounded-xl bg-slate-100" />
+            )}
+          </div>
         </div>
       </section>
 

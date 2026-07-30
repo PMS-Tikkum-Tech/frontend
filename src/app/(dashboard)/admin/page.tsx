@@ -25,9 +25,18 @@ import GlobalFilter from "@/components/dashboard/admin/filters/GlobalFilter";
 import ExportButton from "@/components/ui/ExportButton";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 
+const dashboardPeriodLabels: Record<string, string> = {
+  year: "Tahun Ini",
+  month: "Bulan Ini",
+  lastMonth: "Bulan Lalu",
+  quarter: "3 Bulan Terakhir",
+  lastYear: "Tahun Lalu",
+};
+
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState("year");
   const { data, isLoading, error, refresh } = useAdminDashboard(period);
+  const periodLabel = dashboardPeriodLabels[period] || "Periode Aktif";
 
   const periodRevenue = useMemo(() => {
     return data.revenueData.reduce((sum, item) => sum + item.pemasukan, 0);
@@ -261,17 +270,17 @@ export default function AdminDashboardPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
-          <RevenueChart data={data.revenueData} />
-          <PaymentChart data={data.paymentData} />
+          <RevenueChart data={data.revenueData} periodLabel={periodLabel} />
+          <PaymentChart data={data.paymentData} periodLabel={periodLabel} />
         </section>
 
         <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
           <OccupancyChart data={data.occupancyData} />
-          <MaintenanceChart data={data.maintenanceData} />
+          <MaintenanceChart data={data.maintenanceData} periodLabel={periodLabel} />
         </section>
 
         <section className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
-          <SourceChart data={data.sourceData} />
+          <SourceChart data={data.sourceData} periodLabel={periodLabel} />
           <ActivityList activities={data.activities} isLoading={isLoading} />
         </section>
       </div>
