@@ -91,7 +91,7 @@ const COLORS = [
 ];
 
 const PAGE_SIZE = 10;
-const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v2";
+const FINANCIAL_DATE_RANGE_STORAGE_KEY = "admin-financial-date-range-v3";
 
 type FinancialDateRange = {
   startDate: string;
@@ -103,7 +103,8 @@ type QuickDateRangeKey =
   | "today"
   | "thisWeek"
   | "thisMonth"
-  | "lastMonth";
+  | "lastMonth"
+  | "thisYear";
 
 const quickDateRanges: Array<{ key: QuickDateRangeKey; label: string }> = [
   { key: "all", label: "Semua Data" },
@@ -111,6 +112,7 @@ const quickDateRanges: Array<{ key: QuickDateRangeKey; label: string }> = [
   { key: "thisWeek", label: "Minggu Ini" },
   { key: "thisMonth", label: "Bulan Ini" },
   { key: "lastMonth", label: "Bulan Lalu" },
+  { key: "thisYear", label: `Tahun ${new Date().getFullYear()}` },
 ];
 
 const weekdayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
@@ -215,6 +217,11 @@ const getQuickDateRange = (rangeKey: QuickDateRangeKey): FinancialDateRange => {
         endDate: toFinancialDateKey(endOfMonth(lastMonth)),
       };
     }
+    case "thisYear":
+      return {
+        startDate: `${today.getFullYear()}-01-01`,
+        endDate: `${today.getFullYear()}-12-31`,
+      };
     case "thisMonth":
     default:
       return getCurrentMonthDateRange();
@@ -264,6 +271,30 @@ const formatFinancialDateRangeLabel = (startDate: string, endDate: string) => {
   return `${formatFinancialDateLabel(startDate)} → ${formatFinancialDateLabel(
     endDate,
   )}`;
+};
+
+const formatFinancialChartYearLabel = (
+  startDate: string,
+  endDate: string,
+  periods: Array<{ period?: string }>,
+) => {
+  const years = new Set<string>();
+  const parsedStart = parseFinancialDate(startDate);
+  const parsedEnd = parseFinancialDate(endDate);
+
+  if (parsedStart) years.add(String(parsedStart.getFullYear()));
+  if (parsedEnd) years.add(String(parsedEnd.getFullYear()));
+  periods.forEach((item) => {
+    if (item.period) years.add(item.period.slice(0, 4));
+  });
+
+  const sortedYears = Array.from(years).sort();
+  if (sortedYears.length === 1) return `Tahun ${sortedYears[0]}`;
+  if (sortedYears.length > 1) {
+    return `Tahun ${sortedYears[0]}–${sortedYears[sortedYears.length - 1]}`;
+  }
+
+  return "Semua Tahun";
 };
 
 const buildCalendarDates = (month: Date) =>
@@ -960,7 +991,7 @@ const isExpenseTransaction = (transaction: AdminFinancialTransaction) =>
 export default function AdminFinancialPage() {
   const { user } = useAuth();
   const canManageFinancials = user?.role === "finance";
-  const defaultDateRange = useMemo(() => getQuickDateRange("all"), []);
+  const defaultDateRange = useMemo(() => getQuickDateRange("thisYear"), []);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
@@ -1030,7 +1061,7 @@ export default function AdminFinancialPage() {
 
   useEffect(() => {
     const storedDateRange = getStoredFinancialDateRange();
-    const initialDateRange = storedDateRange || getQuickDateRange("all");
+    const initialDateRange = storedDateRange || getQuickDateRange("thisYear");
 
     setStartDate(initialDateRange.startDate);
     setEndDate(initialDateRange.endDate);
@@ -1089,20 +1120,13 @@ export default function AdminFinancialPage() {
           setSummary(dashboardResponse.data.summary);
           const rawMonthlyData =
             dashboardResponse.data.charts.monthly_revenue_vs_expense;
-          const chartYears = new Set(
-            rawMonthlyData
-              .map((item) => item.period?.slice(0, 4))
-              .filter(Boolean),
-          );
           setMonthlyData(
             rawMonthlyData.map((item) => ({
               ...item,
               month: item.period
-                ? format(
-                    parseISO(`${item.period}-01`),
-                    chartYears.size > 1 ? "MMM yy" : "MMM",
-                    { locale: idLocale },
-                  )
+                ? format(parseISO(`${item.period}-01`), "MMM", {
+                    locale: idLocale,
+                  })
                 : item.month,
             })),
           );
@@ -1298,7 +1322,11 @@ export default function AdminFinancialPage() {
     0,
   );
   const leadingIncomeCategory = categoryData[0] || null;
-  const chartPeriodLabel = formatFinancialDateRangeLabel(startDate, endDate);
+  const chartPeriodLabel = formatFinancialChartYearLabel(
+    startDate,
+    endDate,
+    monthlyData,
+  );
 
   const depositSummary = useMemo(
     () =>
@@ -1505,7 +1533,7 @@ export default function AdminFinancialPage() {
   };
 
   const handleResetFilters = () => {
-    const allDateRange = getQuickDateRange("all");
+    const allDateRange = getQuickDateRange("thisYear");
 
     setSearch("");
     setCategory("");

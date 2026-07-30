@@ -186,16 +186,10 @@ export const useAdminDashboard = (period: string) => {
         ).length;
 
         const monthlyChartEntries = dashboard.charts.monthly_revenue_vs_expense;
-        const chartYears = new Set(
-          monthlyChartEntries
-            .map((entry) => entry.period?.slice(0, 4))
-            .filter(Boolean),
-        );
         const revenueData: RevenueData[] = monthlyChartEntries.map((entry) => ({
           month: entry.period
             ? new Intl.DateTimeFormat("id-ID", {
                 month: "short",
-                ...(chartYears.size > 1 ? { year: "2-digit" } : {}),
               }).format(new Date(`${entry.period}-01T00:00:00`))
             : entry.month,
           pemasukan: entry.revenue,

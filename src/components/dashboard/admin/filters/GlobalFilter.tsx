@@ -6,6 +6,8 @@ interface Props {
 }
 
 export default function GlobalFilter({ value, onChange }: Props) {
+  const currentYear = new Date().getFullYear();
+
   return (
     <select
       value={value}
@@ -24,11 +26,11 @@ export default function GlobalFilter({ value, onChange }: Props) {
         sm:w-auto
       "
     >
-      <option value="year">Tahun Ini</option>
+      <option value="year">Tahun {currentYear}</option>
       <option value="month">Bulan Ini</option>
       <option value="lastMonth">Bulan Lalu</option>
       <option value="quarter">3 Bulan Terakhir</option>
-      <option value="lastYear">Tahun Lalu</option>
+      <option value="lastYear">Tahun {currentYear - 1}</option>
     </select>
   );
 }

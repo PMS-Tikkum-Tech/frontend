@@ -25,18 +25,33 @@ import GlobalFilter from "@/components/dashboard/admin/filters/GlobalFilter";
 import ExportButton from "@/components/ui/ExportButton";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 
-const dashboardPeriodLabels: Record<string, string> = {
-  year: "Tahun Ini",
-  month: "Bulan Ini",
-  lastMonth: "Bulan Lalu",
-  quarter: "3 Bulan Terakhir",
-  lastYear: "Tahun Lalu",
+const getDashboardPeriodLabel = (period: string) => {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const monthLabel = (date: Date) =>
+    new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(
+      date,
+    );
+
+  switch (period) {
+    case "month":
+      return monthLabel(today);
+    case "lastMonth":
+      return monthLabel(new Date(currentYear, today.getMonth() - 1, 1));
+    case "quarter":
+      return `Tahun ${currentYear}`;
+    case "lastYear":
+      return `Tahun ${currentYear - 1}`;
+    case "year":
+    default:
+      return `Tahun ${currentYear}`;
+  }
 };
 
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState("year");
   const { data, isLoading, error, refresh } = useAdminDashboard(period);
-  const periodLabel = dashboardPeriodLabels[period] || "Periode Aktif";
+  const periodLabel = getDashboardPeriodLabel(period);
 
   const periodRevenue = useMemo(() => {
     return data.revenueData.reduce((sum, item) => sum + item.pemasukan, 0);
