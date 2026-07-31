@@ -362,6 +362,19 @@ const formatDate = (value?: string | null) => {
 const getTransactionInputDate = (transaction: AdminFinancialTransaction) =>
   transaction.created_at || transaction.transaction_date || null;
 
+const getTransactionPeriodDate = (
+  transaction: AdminFinancialTransaction,
+) => {
+  const details = getTransactionDetails(transaction);
+
+  return (
+    details.checkInDate ||
+    details.checkOutDate ||
+    transaction.transaction_date ||
+    getTransactionInputDate(transaction)
+  );
+};
+
 const toDateInput = (value?: string | null) => {
   if (!value) {
     return "";
@@ -1008,8 +1021,13 @@ export default function AdminFinancialPage() {
   const [tempEndDate, setTempEndDate] = useState(defaultDateRange.endDate);
   const [isDateRangeReady, setIsDateRangeReady] = useState(false);
   const [sortBy, setSortBy] = useState<
-    "newest" | "oldest" | "amount_desc" | "amount_asc"
-  >("newest");
+    | "period_desc"
+    | "period_asc"
+    | "input_desc"
+    | "input_asc"
+    | "amount_desc"
+    | "amount_asc"
+  >("period_desc");
   const [summary, setSummary] = useState<AdminFinancialSummary>(initialSummary);
   const [monthlyData, setMonthlyData] = useState<
     Array<{
@@ -1250,22 +1268,42 @@ export default function AdminFinancialPage() {
     });
 
     return filtered.sort((a, b) => {
-      const dateA = new Date(getTransactionInputDate(a) || 0).getTime();
-      const dateB = new Date(getTransactionInputDate(b) || 0).getTime();
+      const periodDateA = new Date(getTransactionPeriodDate(a) || 0).getTime();
+      const periodDateB = new Date(getTransactionPeriodDate(b) || 0).getTime();
+      const inputDateA = new Date(getTransactionInputDate(a) || 0).getTime();
+      const inputDateB = new Date(getTransactionInputDate(b) || 0).getTime();
+      const stableNewestFirst = () =>
+        inputDateB - inputDateA || Number(b.id || 0) - Number(a.id || 0);
 
       if (sortBy === "amount_desc") {
-        return Number(b.amount || 0) - Number(a.amount || 0);
+        return (
+          Number(b.amount || 0) - Number(a.amount || 0) ||
+          periodDateB - periodDateA ||
+          stableNewestFirst()
+        );
       }
 
       if (sortBy === "amount_asc") {
-        return Number(a.amount || 0) - Number(b.amount || 0);
+        return (
+          Number(a.amount || 0) - Number(b.amount || 0) ||
+          periodDateB - periodDateA ||
+          stableNewestFirst()
+        );
       }
 
-      if (sortBy === "oldest") {
-        return dateA - dateB;
+      if (sortBy === "input_desc") {
+        return inputDateB - inputDateA || Number(b.id || 0) - Number(a.id || 0);
       }
 
-      return dateB - dateA;
+      if (sortBy === "input_asc") {
+        return inputDateA - inputDateB || Number(a.id || 0) - Number(b.id || 0);
+      }
+
+      if (sortBy === "period_asc") {
+        return periodDateA - periodDateB || stableNewestFirst();
+      }
+
+      return periodDateB - periodDateA || stableNewestFirst();
     });
   }, [
     transactions,
@@ -1545,7 +1583,7 @@ export default function AdminFinancialPage() {
     setEndDate(allDateRange.endDate);
     setTempStartDate(allDateRange.startDate);
     setTempEndDate(allDateRange.endDate);
-    setSortBy("newest");
+    setSortBy("period_desc");
     setCurrentPage(1);
   };
 
@@ -2436,16 +2474,20 @@ export default function AdminFinancialPage() {
                 onChange={(event) =>
                   setSortBy(
                     event.target.value as
-                      | "newest"
-                      | "oldest"
+                      | "period_desc"
+                      | "period_asc"
+                      | "input_desc"
+                      | "input_asc"
                       | "amount_desc"
                       | "amount_asc",
                   )
                 }
                 className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-blue-400 focus:bg-white focus:outline-none"
               >
-                <option value="newest">Input Terbaru</option>
-                <option value="oldest">Input Terlama</option>
+                <option value="period_desc">Periode Terbaru</option>
+                <option value="period_asc">Periode Terlama</option>
+                <option value="input_desc">Input Terbaru</option>
+                <option value="input_asc">Input Terlama</option>
                 <option value="amount_desc">Nominal Tertinggi</option>
                 <option value="amount_asc">Nominal Terendah</option>
               </select>
