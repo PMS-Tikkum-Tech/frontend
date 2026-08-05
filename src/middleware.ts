@@ -14,6 +14,42 @@ const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "dashboard.kikost.com": "https://api.kikost.com",
 };
 
+const buildContentSecurityPolicy = (nonce: string) => {
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const connectSources = ["'self'", "https://api.kikost.com"];
+  if (isDevelopment) {
+    connectSources.push("http://localhost:3002", "http://127.0.0.1:3002");
+  }
+
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${
+      isDevelopment ? " 'unsafe-eval'" : ""
+    }`,
+    `style-src 'self' 'nonce-${nonce}'${isDevelopment ? " 'unsafe-inline'" : ""}`,
+    `style-src-attr ${
+      isDevelopment
+        ? "'unsafe-inline'"
+        : "'unsafe-hashes' 'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='"
+    }`,
+    "img-src 'self' blob: data: https:",
+    "font-src 'self' data:",
+    `connect-src ${connectSources.join(" ")}`,
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+};
+
+const applyReportOnlyCsp = (response: NextResponse, policy: string) => {
+  response.headers.set("Content-Security-Policy-Report-Only", policy);
+  return response;
+};
+
 const getApiBaseUrl = (request: NextRequest) => {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (configured) return configured.replace(/\/$/, "");
@@ -56,6 +92,8 @@ const fetchValidatedRole = async (request: NextRequest): Promise<SessionRole | n
 };
 
 export async function middleware(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const contentSecurityPolicy = buildContentSecurityPolicy(nonce);
   const pathname = request.nextUrl.pathname;
   const requiredRole = requiredRoleFor(pathname);
   const hasRefreshSession = request.cookies.has(REFRESH_COOKIE);
@@ -65,7 +103,10 @@ export async function middleware(request: NextRequest) {
     if (!validatedRole && !hasRefreshSession) {
       const loginUrl = new URL("/auth", request.url);
       loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-      return NextResponse.redirect(loginUrl);
+      return applyReportOnlyCsp(
+        NextResponse.redirect(loginUrl),
+        contentSecurityPolicy,
+      );
     }
 
     if (
@@ -73,18 +114,33 @@ export async function middleware(request: NextRequest) {
       validatedRole !== requiredRole &&
       !(requiredRole === "admin" && validatedRole === "finance")
     ) {
-      return NextResponse.redirect(new URL(defaultRouteFor(validatedRole), request.url));
+      return applyReportOnlyCsp(
+        NextResponse.redirect(new URL(defaultRouteFor(validatedRole), request.url)),
+        contentSecurityPolicy,
+      );
     }
   }
 
   if (pathname === "/auth" && validatedRole) {
     const next = safeNextPath(request.nextUrl.searchParams.get("next"));
-    return NextResponse.redirect(new URL(next ?? defaultRouteFor(validatedRole), request.url));
+    return applyReportOnlyCsp(
+      NextResponse.redirect(
+        new URL(next ?? defaultRouteFor(validatedRole), request.url),
+      ),
+      contentSecurityPolicy,
+    );
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
+
+  return applyReportOnlyCsp(
+    NextResponse.next({ request: { headers: requestHeaders } }),
+    contentSecurityPolicy,
+  );
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/owner/:path*", "/tenant/:path*", "/auth"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

@@ -5,6 +5,10 @@ import Providers from "./providers";
 
 const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://kikost.com";
 
+// Nonce-based CSP requires request-time rendering so Next.js can attach the
+// per-request nonce to its framework scripts and inline styles.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_BASE_URL),
   icons: {
