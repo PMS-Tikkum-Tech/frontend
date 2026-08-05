@@ -41,7 +41,6 @@ const buildContentSecurityPolicy = (nonce: string) => {
     `connect-src ${connectSources.join(" ")}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
-    "upgrade-insecure-requests",
   ].join("; ");
 };
 

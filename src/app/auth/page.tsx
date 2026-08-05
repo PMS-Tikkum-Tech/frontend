@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
 import Link from "next/link";
@@ -145,32 +144,15 @@ function AuthPageContent() {
               </div>
             }
           >
-            <AnimatePresence mode="wait">
-              {mode === "login" && (
-                <motion.div
-                  key="login"
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -14 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <LoginForm />
-                </motion.div>
-              )}
-
-              {mode === "register" && (
-                <motion.div
-                  key="register"
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -14 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <RegisterForm />
-                </motion.div>
-              )}
-
-            </AnimatePresence>
+            {mode === "login" ? (
+              <div key="login" className="auth-panel-enter">
+                <LoginForm />
+              </div>
+            ) : (
+              <div key="register" className="auth-panel-enter">
+                <RegisterForm />
+              </div>
+            )}
           </Suspense>
         </section>
       </div>
