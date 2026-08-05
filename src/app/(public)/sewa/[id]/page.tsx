@@ -705,7 +705,7 @@ const groupUnitsByBuilding = (
 
 export default function SewaPropertyDetailPage() {
   const params = useParams<{ id: string }>();
-  const propertyId = Number(params?.id);
+  const propertyId = params?.id?.trim() || "";
   const { user } = useAuth();
   const isTenant = user?.role === "tenant";
   const isAdmin = user?.role === "admin" || user?.role === "finance";
@@ -745,7 +745,7 @@ export default function SewaPropertyDetailPage() {
   }, [property]);
 
   useEffect(() => {
-    if (!Number.isFinite(propertyId) || propertyId <= 0) {
+    if (!propertyId) {
       setError("ID properti tidak valid.");
       setAvailableUnits([]);
       setIsLoading(false);
@@ -767,7 +767,7 @@ export default function SewaPropertyDetailPage() {
         });
 
         let found =
-          firstPage.data.find((item) => item.id === propertyId) || null;
+          firstPage.data.find((item) => item.id.toString() === propertyId) || null;
         const totalPages = firstPage.meta?.total_pages || 1;
 
         for (let page = 2; !found && page <= totalPages; page += 1) {
@@ -776,7 +776,7 @@ export default function SewaPropertyDetailPage() {
             per_page: perPage,
             sort: "newest",
           });
-          found = nextPage.data.find((item) => item.id === propertyId) || null;
+          found = nextPage.data.find((item) => item.id.toString() === propertyId) || null;
         }
 
         if (!active) {

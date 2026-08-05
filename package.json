@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:security": "node scripts/security-regression.mjs",
     "start": "next start",
     "optimize:images": "node scripts/optimize-images.mjs",
     "lint": "eslint"
@@ -16,7 +17,6 @@
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "firebase": "^12.12.1",
     "framer-motion": "^12.34.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.1.0",

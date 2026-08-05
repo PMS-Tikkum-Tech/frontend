@@ -35,6 +35,8 @@ export interface OwnerPropertyBreakdownRow {
 }
 
 export interface OwnerMonthlyDetailRow {
+  propertyId: number;
+  periodKey: string;
   period: string;
   propertyName: string;
   totalBookings: number;
@@ -43,6 +45,20 @@ export interface OwnerMonthlyDetailRow {
   revenue: number;
   expense: number;
   profit: number;
+}
+
+export interface OwnerFinancialDetailRow {
+  id: string;
+  direction: "inflow" | "outflow";
+  amount: number;
+  occurredOn: string;
+  periodKey: string;
+  propertyId: number;
+  propertyName: string;
+  unitName: string;
+  bookingCode: string;
+  entryType: string;
+  description: string;
 }
 
 export interface OwnerLatestBookingRow {
@@ -64,6 +80,7 @@ interface OwnerDashboardData {
   occupancyData: OccupancyData[];
   propertyBreakdown: OwnerPropertyBreakdownRow[];
   monthlyDetails: OwnerMonthlyDetailRow[];
+  financialDetails: OwnerFinancialDetailRow[];
   latestBookings: OwnerLatestBookingRow[];
 }
 
@@ -86,6 +103,7 @@ const initialData: OwnerDashboardData = {
   ],
   propertyBreakdown: [],
   monthlyDetails: [],
+  financialDetails: [],
   latestBookings: [],
 };
 
@@ -107,6 +125,11 @@ const formatMonth = (value: Date) => {
     month: "short",
     year: "numeric",
   });
+};
+
+const toMonthKey = (value: Date) => {
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  return `${value.getFullYear()}-${month}`;
 };
 
 const toPeriodRange = (period: string) => {
@@ -263,6 +286,72 @@ export const useOwnerDashboard = (period: string) => {
           (entry) => entry.direction === "inflow",
         );
         const shouldFallbackToSettlements = ownerScopedCashflows.length === 0;
+
+        const financialDetails: OwnerFinancialDetailRow[] = (
+          shouldFallbackToSettlements
+            ? bookings
+                .filter(
+                  (booking) =>
+                    booking.status === "approved" &&
+                    getBookingOwnerRevenue(booking) > 0,
+                )
+                .map((booking) => {
+                  const date =
+                    parseDate(booking.created_at) ||
+                    parseDate(booking.start_date) ||
+                    periodRange.from;
+                  const propertyId = Number(booking.property?.id || 0);
+
+                  return {
+                    id: `booking-${booking.id}`,
+                    direction: "inflow" as const,
+                    amount: getBookingOwnerRevenue(booking),
+                    occurredOn: date.toISOString(),
+                    periodKey: toMonthKey(date),
+                    propertyId,
+                    propertyName:
+                      booking.property?.name ||
+                      (propertyId ? `Properti #${propertyId}` : "Tanpa properti"),
+                    unitName: getTenantUnitDisplayName(booking.unit),
+                    bookingCode: booking.booking_code || "-",
+                    entryType: "owner_income",
+                    description: `Pendapatan pemesanan ${booking.booking_code || `#${booking.id}`}`,
+                  };
+                })
+            : ownerScopedCashflows
+                .filter(
+                  (entry) =>
+                    entry.direction === "inflow" || entry.direction === "outflow",
+                )
+                .map((entry) => {
+                  const date =
+                    parseDate(entry.occurred_on) ||
+                    parseDate(entry.created_at) ||
+                    periodRange.from;
+                  const propertyId = Number(entry.property?.id || 0);
+
+                  return {
+                    id: `cashflow-${entry.id}`,
+                    direction: entry.direction as "inflow" | "outflow",
+                    amount: Number(entry.amount || 0),
+                    occurredOn: date.toISOString(),
+                    periodKey: toMonthKey(date),
+                    propertyId,
+                    propertyName:
+                      entry.property?.name ||
+                      entry.rental_booking?.property_name ||
+                      (propertyId ? `Properti #${propertyId}` : "Tanpa properti"),
+                    unitName:
+                      entry.unit?.name || entry.rental_booking?.unit_name || "-",
+                    bookingCode: entry.rental_booking?.booking_code || "-",
+                    entryType: entry.entry_type || "-",
+                    description: entry.description || entry.notes || "-",
+                  };
+                })
+        ).sort(
+          (a, b) =>
+            new Date(b.occurredOn).getTime() - new Date(a.occurredOn).getTime(),
+        );
 
         const propertyNameById = new Map<number, string>();
         bookings.forEach((item) => {
@@ -542,6 +631,8 @@ export const useOwnerDashboard = (period: string) => {
           const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
           const key = `${sortValue}-${propertyId}`;
           const existing = monthlyDetailMap.get(key) || {
+            propertyId,
+            periodKey: toMonthKey(date),
             period: formatMonth(date),
             propertyName:
               booking.property?.name ||
@@ -578,6 +669,8 @@ export const useOwnerDashboard = (period: string) => {
             const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
             const key = `${sortValue}-${propertyId}`;
             const existing = monthlyDetailMap.get(key) || {
+              propertyId,
+              periodKey: toMonthKey(date),
               period: formatMonth(date),
               propertyName:
                 booking.property?.name ||
@@ -609,6 +702,8 @@ export const useOwnerDashboard = (period: string) => {
             const sortValue = date.getFullYear() * 100 + (date.getMonth() + 1);
             const key = `${sortValue}-${propertyId}`;
             const existing = monthlyDetailMap.get(key) || {
+              propertyId,
+              periodKey: toMonthKey(date),
               period: formatMonth(date),
               propertyName:
                 entry.property?.name ||
@@ -651,6 +746,8 @@ export const useOwnerDashboard = (period: string) => {
                 : 0;
 
             return {
+              propertyId: row.propertyId,
+              periodKey: row.periodKey,
               period: row.period,
               propertyName: row.propertyName,
               totalBookings: row.totalBookings,
@@ -704,6 +801,7 @@ export const useOwnerDashboard = (period: string) => {
           occupancyData,
           propertyBreakdown,
           monthlyDetails,
+          financialDetails,
           latestBookings,
         });
       } catch (loadError) {

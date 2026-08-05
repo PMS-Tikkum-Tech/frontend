@@ -2671,7 +2671,11 @@ export default function AdminFinancialPage() {
                     className="h-[270px]"
                     style={{ minWidth: monthlyChartMinWidth }}
                   >
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                      initialDimension={{ width: monthlyChartMinWidth, height: 270 }}
+                    >
                       <BarChart
                         data={monthlyData}
                         barGap={6}
@@ -2792,7 +2796,11 @@ export default function AdminFinancialPage() {
               categoryData.length > 0 ? (
                 <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[minmax(220px,0.9fr)_minmax(240px,1.1fr)] md:items-center">
                   <div className="relative h-[250px] min-w-0">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                      initialDimension={{ width: 250, height: 250 }}
+                    >
                       <PieChart>
                         <Pie
                           data={categoryData}

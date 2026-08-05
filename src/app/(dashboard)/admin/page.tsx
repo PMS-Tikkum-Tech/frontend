@@ -25,7 +25,32 @@ import GlobalFilter from "@/components/dashboard/admin/filters/GlobalFilter";
 import ExportButton from "@/components/ui/ExportButton";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 
-const getDashboardPeriodLabel = (period: string) => {
+const toDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatCustomDate = (value: string) => {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
+
+const getDashboardPeriodLabel = (
+  period: string,
+  customDateFrom: string,
+  customDateTo: string,
+) => {
   const today = new Date();
   const currentYear = today.getFullYear();
   const monthLabel = (date: Date) =>
@@ -34,6 +59,10 @@ const getDashboardPeriodLabel = (period: string) => {
     );
 
   switch (period) {
+    case "custom":
+      return customDateFrom && customDateTo
+        ? `${formatCustomDate(customDateFrom)} – ${formatCustomDate(customDateTo)}`
+        : "Periode Custom";
     case "month":
       return monthLabel(today);
     case "lastMonth":
@@ -50,8 +79,32 @@ const getDashboardPeriodLabel = (period: string) => {
 
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState("year");
-  const { data, isLoading, error, refresh } = useAdminDashboard(period);
-  const periodLabel = getDashboardPeriodLabel(period);
+  const [customDateFrom, setCustomDateFrom] = useState(() => {
+    const today = new Date();
+    return toDateInput(new Date(today.getFullYear(), today.getMonth(), 1));
+  });
+  const [customDateTo, setCustomDateTo] = useState(() =>
+    toDateInput(new Date()),
+  );
+  const customRangeError =
+    period === "custom" && (!customDateFrom || !customDateTo)
+      ? "Tanggal mulai dan akhir wajib diisi."
+      : period === "custom" && customDateFrom > customDateTo
+        ? "Tanggal mulai tidak boleh melewati tanggal akhir."
+        : null;
+  const customRange = useMemo(
+    () => ({ dateFrom: customDateFrom, dateTo: customDateTo }),
+    [customDateFrom, customDateTo],
+  );
+  const { data, isLoading, error, refresh } = useAdminDashboard(
+    period,
+    customRange,
+  );
+  const periodLabel = getDashboardPeriodLabel(
+    period,
+    customDateFrom,
+    customDateTo,
+  );
 
   const periodRevenue = useMemo(() => {
     return data.revenueData.reduce((sum, item) => sum + item.pemasukan, 0);
@@ -138,12 +191,28 @@ export default function AdminDashboardPage() {
             </p>
 
             <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <div className="min-w-0">
-                <GlobalFilter value={period} onChange={setPeriod} />
+              <div
+                className={`min-w-0 ${
+                  period === "custom"
+                    ? "sm:col-span-2 xl:col-span-1 2xl:col-span-2"
+                    : ""
+                }`}
+              >
+                <GlobalFilter
+                  value={period}
+                  onChange={setPeriod}
+                  enableCustom
+                  customDateFrom={customDateFrom}
+                  customDateTo={customDateTo}
+                  onCustomDateFromChange={setCustomDateFrom}
+                  onCustomDateToChange={setCustomDateTo}
+                  customError={customRangeError}
+                />
               </div>
               <div className="min-w-0">
                 <ExportButton
                   period={period}
+                  periodLabel={periodLabel}
                   stats={statsForExport}
                   revenueData={data.revenueData}
                   paymentData={data.paymentData}

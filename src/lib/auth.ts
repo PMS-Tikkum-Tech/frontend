@@ -12,39 +12,11 @@ type LoginRequest = {
   password: string;
 };
 
-type GoogleLoginRequest = {
-  id_token: string;
-  google_access_token?: string;
-  phone_verification_token?: string;
-};
-
-type RegisterRequest = {
-  full_name: string;
-  email: string;
-  password: string;
-  firebase_phone_token: string;
-};
-
-type OtpRequestPayload = {
-  request_id: string;
-  phone_number: string;
-  expires_at?: string | null;
-  resend_available_at?: string | null;
-  debug_code?: string | null;
-};
-
-type OtpVerifyPayload = {
-  phone_number: string;
-  phone_verification_token: string;
-  expires_at?: string | null;
-};
-
 type EmailCodeRequestPayload = {
   request_id: string;
   email: string;
   expires_at?: string | null;
   resend_available_at?: string | null;
-  debug_code?: string | null;
 };
 
 type EmailCodeVerifyPayload = {
@@ -65,10 +37,6 @@ export type AuthResult = {
   expiresAt?: string | null;
   refreshTokenExpiresAt?: string | null;
 };
-
-export type FirebaseSyncResult =
-  | { requiresVerification: true; email: string }
-  | AuthResult;
 
 export const TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY =
   "kyra.pending.tenant.approval.notice";
@@ -151,76 +119,10 @@ export const login = async (data: LoginRequest): Promise<AuthResult> => {
   return mapAuthPayload(res.data.data);
 };
 
-export const loginWithGoogle = async (
-  data: GoogleLoginRequest
-): Promise<AuthResult> => {
-  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
-    "/api/v1/auth/google",
-    data
-  );
-
-  return mapAuthPayload(res.data.data);
-};
-
 export const refreshAuthSession = async (): Promise<AuthResult> => {
   const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
     "/api/v1/auth/refresh",
     {}
-  );
-
-  return mapAuthPayload(res.data.data);
-};
-
-export const requestTenantRegistrationOtp = async (phoneNumber: string) => {
-  const res = await axiosInstance.post<ApiResponse<OtpRequestPayload>>(
-    "/api/v1/auth/tenant/register/request_otp",
-    {
-      phone_number: phoneNumber,
-    }
-  );
-
-  return {
-    requestId: res.data.data.request_id,
-    phoneNumber: res.data.data.phone_number,
-    expiresAt: res.data.data.expires_at ?? null,
-    resendAvailableAt: res.data.data.resend_available_at ?? null,
-    debugCode: res.data.data.debug_code ?? null,
-  };
-};
-
-export const resendTenantRegistrationOtp = async (phoneNumber: string) => {
-  return requestTenantRegistrationOtp(phoneNumber);
-};
-
-export const verifyTenantRegistrationOtp = async (payload: {
-  phoneNumber: string;
-  code: string;
-}) => {
-  const res = await axiosInstance.post<ApiResponse<OtpVerifyPayload>>(
-    "/api/v1/auth/tenant/register/verify_otp",
-    {
-      phone_number: payload.phoneNumber,
-      code: payload.code,
-    }
-  );
-
-  return {
-    phoneNumber: res.data.data.phone_number,
-    phoneVerificationToken: res.data.data.phone_verification_token,
-    expiresAt: res.data.data.expires_at ?? null,
-  };
-};
-
-export const completeTenantPhoneRegistration = async (payload: {
-  phoneVerificationToken: string;
-  fullName?: string;
-}): Promise<AuthResult> => {
-  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
-    "/api/v1/auth/tenant/register/complete_phone",
-    {
-      phone_verification_token: payload.phoneVerificationToken,
-      full_name: payload.fullName?.trim() || undefined,
-    }
   );
 
   return mapAuthPayload(res.data.data);
@@ -239,7 +141,6 @@ export const requestTenantRegistrationEmailCode = async (email: string) => {
     email: res.data.data.email,
     expiresAt: res.data.data.expires_at ?? null,
     resendAvailableAt: res.data.data.resend_available_at ?? null,
-    debugCode: res.data.data.debug_code ?? null,
   };
 };
 
@@ -264,39 +165,45 @@ export const verifyTenantRegistrationEmailCode = async (payload: {
 
 export const completeTenantEmailRegistration = async (payload: {
   emailVerificationToken: string;
-  fullName?: string;
+  fullName: string;
+  password: string;
+  passwordConfirmation: string;
 }): Promise<AuthResult> => {
   const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
     "/api/v1/auth/tenant/register/complete_email",
     {
       email_verification_token: payload.emailVerificationToken,
-      full_name: payload.fullName?.trim() || undefined,
+      full_name: payload.fullName.trim(),
+      password: payload.password,
+      password_confirmation: payload.passwordConfirmation,
     }
   );
 
   return mapAuthPayload(res.data.data);
 };
 
-export const registerTenant = async (data: RegisterRequest): Promise<AuthResult> => {
-  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
-    "/api/v1/auth/tenant/register",
-    data
+export const requestPasswordReset = async (email: string): Promise<string> => {
+  const response = await axiosInstance.post<ApiResponse<never>>(
+    "/api/v1/auth/password/request",
+    { email }
   );
-  return mapAuthPayload(res.data.data);
+  return response.data.message;
 };
 
-export const syncFirebaseUser = async (idToken: string): Promise<FirebaseSyncResult> => {
-  const res = await axiosInstance.post<ApiResponse<
-    { requires_verification: true; email: string } | AuthPayload
-  >>("/api/v1/auth/firebase/sync", { id_token: idToken });
-
-  const data = res.data.data;
-
-  if ("requires_verification" in data && data.requires_verification) {
-    return { requiresVerification: true, email: data.email };
-  }
-
-  return mapAuthPayload(data as AuthPayload);
+export const resetPassword = async (payload: {
+  token: string;
+  password: string;
+  passwordConfirmation: string;
+}): Promise<string> => {
+  const response = await axiosInstance.post<ApiResponse<never>>(
+    "/api/v1/auth/password/reset",
+    {
+      token: payload.token,
+      password: payload.password,
+      password_confirmation: payload.passwordConfirmation,
+    }
+  );
+  return response.data.message;
 };
 
 export const getMe = async (): Promise<SessionUser> => {
