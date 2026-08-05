@@ -6,6 +6,11 @@ const nextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {
+    const connectSources = ["'self'", "https://api.kikost.com"];
+    if (isDevelopment) {
+      connectSources.push("http://localhost:3002", "http://127.0.0.1:3002");
+    }
+
     const securityHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -20,7 +25,7 @@ const nextConfig = {
           "frame-ancestors 'none'",
           "form-action 'self'",
           "script-src 'self'",
-          "connect-src 'self' https://api.kikost.com",
+          `connect-src ${connectSources.join(" ")}`,
           "upgrade-insecure-requests",
         ].join("; "),
       },
