@@ -21,6 +21,7 @@ type FinancialDetailSelection = {
   title: string;
   direction: "inflow" | "outflow";
   propertyId?: number;
+  unitId?: number;
 };
 
 const formatCurrency = (value: number) =>
@@ -54,7 +55,9 @@ export default function OwnerDashboardPage() {
         (entry) =>
           entry.direction === financialDetail.direction &&
           (financialDetail.propertyId === undefined ||
-            entry.propertyId === financialDetail.propertyId),
+            entry.propertyId === financialDetail.propertyId) &&
+          (financialDetail.unitId === undefined ||
+            entry.unitId === financialDetail.unitId),
       )
     : [];
 
@@ -152,13 +155,15 @@ export default function OwnerDashboardPage() {
         </h3>
 
         <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          <table className="min-w-[930px] w-full text-sm">
+          <table className="min-w-[1120px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
                 <th className="p-3 text-left font-semibold">Properti</th>
+                <th className="p-3 text-center font-semibold">Total Unit</th>
+                <th className="p-3 text-center font-semibold">Unit Terisi</th>
                 <th className="p-3 text-center font-semibold">Total Pemesanan</th>
                 <th className="p-3 text-center font-semibold">Pemesanan Aktif</th>
-                <th className="p-3 text-center font-semibold">Aktif (%)</th>
+                <th className="p-3 text-center font-semibold">Okupansi</th>
                 <th className="p-3 text-center font-semibold">Pendapatan</th>
                 <th className="p-3 text-center font-semibold">Pengeluaran</th>
                 <th className="p-3 text-center font-semibold">Laba</th>
@@ -168,13 +173,13 @@ export default function OwnerDashboardPage() {
             <tbody>
               {isLoading ? (
                 <tr className="border-t border-slate-100">
-                  <td colSpan={7} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Memuat data pemilik...
                   </td>
                 </tr>
               ) : data.propertyBreakdown.length === 0 ? (
                 <tr className="border-t border-slate-100">
-                  <td colSpan={7} className="p-4 text-center text-slate-500">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
                     Belum ada data properti.
                   </td>
                 </tr>
@@ -185,6 +190,8 @@ export default function OwnerDashboardPage() {
                     className="border-t border-slate-100 hover:bg-slate-50"
                   >
                     <td className="p-3 font-medium text-slate-800">{row.propertyName}</td>
+                    <td className="p-3 text-center text-slate-700">{row.totalUnits}</td>
+                    <td className="p-3 text-center text-slate-700">{row.occupiedUnits}</td>
                     <td className="p-3 text-center text-slate-700">{row.totalBookings}</td>
                     <td className="p-3 text-center text-slate-700">{row.activeBookings}</td>
                     <td className="p-3 text-center text-slate-700">
@@ -218,6 +225,106 @@ export default function OwnerDashboardPage() {
                     </td>
                     <td
                       className={`p-3 text-center font-medium ${
+                        row.profit >= 0 ? "text-emerald-700" : "text-red-700"
+                      }`}
+                    >
+                      {formatCurrency(row.profit)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-slate-800">
+            Laporan Keuangan Per Unit
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Seluruh unit yang Anda miliki tetap ditampilkan, termasuk unit yang
+            belum memiliki transaksi pada periode ini.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+          <table className="min-w-[1180px] w-full text-sm">
+            <thead className="bg-slate-50 text-slate-700">
+              <tr>
+                <th className="p-3 text-left font-semibold">Properti</th>
+                <th className="p-3 text-left font-semibold">Blok</th>
+                <th className="p-3 text-left font-semibold">Unit</th>
+                <th className="p-3 text-left font-semibold">Status</th>
+                <th className="p-3 text-left font-semibold">Penyewa</th>
+                <th className="p-3 text-right font-semibold">Harga Bulanan</th>
+                <th className="p-3 text-right font-semibold">Pendapatan</th>
+                <th className="p-3 text-right font-semibold">Pengeluaran</th>
+                <th className="p-3 text-right font-semibold">Laba</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr className="border-t border-slate-100">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
+                    Memuat laporan unit...
+                  </td>
+                </tr>
+              ) : data.unitBreakdown.length === 0 ? (
+                <tr className="border-t border-slate-100">
+                  <td colSpan={9} className="p-4 text-center text-slate-500">
+                    Belum ada unit yang terhubung ke akun owner ini.
+                  </td>
+                </tr>
+              ) : (
+                data.unitBreakdown.map((row) => (
+                  <tr
+                    key={row.unitId}
+                    className="border-t border-slate-100 hover:bg-slate-50"
+                  >
+                    <td className="p-3 font-medium text-slate-800">
+                      {row.propertyName}
+                    </td>
+                    <td className="p-3 text-slate-700">{row.buildingName}</td>
+                    <td className="p-3 text-slate-700">{row.unitName}</td>
+                    <td className="p-3">
+                      <UnitStatusBadge status={row.status} />
+                    </td>
+                    <td className="p-3 text-slate-700">{row.tenantName}</td>
+                    <td className="p-3 text-right text-slate-700">
+                      {formatCurrency(row.monthlyPrice)}
+                    </td>
+                    <td className="p-3 text-right">
+                      <FinancialDetailButton
+                        value={row.revenue}
+                        label={`Lihat detail pendapatan ${row.unitName}`}
+                        onClick={() =>
+                          setFinancialDetail({
+                            title: `Detail Pendapatan • ${row.propertyName} • ${row.unitName}`,
+                            direction: "inflow",
+                            propertyId: row.propertyId,
+                            unitId: row.unitId,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="p-3 text-right">
+                      <FinancialDetailButton
+                        value={row.expense}
+                        label={`Lihat detail pengeluaran ${row.unitName}`}
+                        onClick={() =>
+                          setFinancialDetail({
+                            title: `Detail Pengeluaran • ${row.propertyName} • ${row.unitName}`,
+                            direction: "outflow",
+                            propertyId: row.propertyId,
+                            unitId: row.unitId,
+                          })
+                        }
+                      />
+                    </td>
+                    <td
+                      className={`p-3 text-right font-semibold ${
                         row.profit >= 0 ? "text-emerald-700" : "text-red-700"
                       }`}
                     >
@@ -365,5 +472,30 @@ function FinancialDetailButton({
     >
       {formatCurrency(value)}
     </button>
+  );
+}
+
+function UnitStatusBadge({ status }: { status: string }) {
+  const labels: Record<string, string> = {
+    occupied: "Terisi",
+    vacant: "Tersedia",
+    maintenance: "Perawatan",
+    booking: "Dipesan",
+  };
+  const classes: Record<string, string> = {
+    occupied: "bg-emerald-100 text-emerald-700",
+    vacant: "bg-slate-100 text-slate-700",
+    maintenance: "bg-amber-100 text-amber-700",
+    booking: "bg-blue-100 text-blue-700",
+  };
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+        classes[status] || "bg-slate-100 text-slate-700"
+      }`}
+    >
+      {labels[status] || status || "-"}
+    </span>
   );
 }

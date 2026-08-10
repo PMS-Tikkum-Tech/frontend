@@ -78,6 +78,50 @@ export interface OwnerCashflowEntry {
   updated_at?: string | null;
 }
 
+export interface OwnerPropertyReportUnit {
+  id: number;
+  name: string;
+  unit_number?: string | null;
+  building_id?: number | null;
+  building_name?: string | null;
+  status: "vacant" | "occupied" | "maintenance" | "booking" | string;
+  price: number;
+  tenant?: {
+    id: number;
+    full_name: string;
+  } | null;
+}
+
+export interface OwnerPropertyFinancialEntry {
+  id: number;
+  direction: "inflow" | "outflow";
+  amount: number;
+  occurred_on: string;
+  description?: string | null;
+  notes?: string | null;
+  unit?: {
+    id: number;
+    name: string;
+  } | null;
+  rental_booking?: {
+    id: number;
+    booking_code: string;
+  } | null;
+}
+
+export interface OwnerPropertyReport {
+  id: number;
+  name: string;
+  address: string;
+  total_units: number;
+  occupied_units: number;
+  vacant_units: number;
+  maintenance_units: number;
+  booking_units: number;
+  units: OwnerPropertyReportUnit[];
+  financial_entries: OwnerPropertyFinancialEntry[];
+}
+
 const sanitizeParams = (params?: QueryParams) => {
   if (!params) {
     return undefined;
@@ -118,6 +162,22 @@ export const getOwnerCashflowEntries = async (
   return {
     data: response.data.data,
     meta: response.data.meta,
+    message: response.data.message,
+  };
+};
+
+export const getOwnerPropertyReports = async (
+  params?: QueryParams,
+): Promise<
+  ListResult<OwnerPropertyReport>
+> => {
+  const response = await axiosInstance.get<ApiResponse<OwnerPropertyReport[]>>(
+    "/api/v1/owner/property_reports",
+    { params: sanitizeParams(params) },
+  );
+
+  return {
+    data: response.data.data,
     message: response.data.message,
   };
 };

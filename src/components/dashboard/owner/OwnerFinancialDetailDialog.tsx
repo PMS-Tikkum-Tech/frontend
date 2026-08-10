@@ -30,6 +30,7 @@ const entryTypeLabels: Record<string, string> = {
   commission_income: "Komisi",
   owner_income: "Pendapatan Pemilik",
   manual_adjustment: "Penyesuaian Manual",
+  financial_transaction: "Transaksi Keuangan",
 };
 
 export default function OwnerFinancialDetailDialog({
