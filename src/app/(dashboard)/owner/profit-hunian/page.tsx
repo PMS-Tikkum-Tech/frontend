@@ -12,14 +12,37 @@ import {
 import RevenueChart from "@/components/dashboard/admin/charts/RevenueChart";
 import OccupancyChart from "@/components/dashboard/admin/charts/OccupancyChart";
 import GlobalFilter from "@/components/dashboard/admin/filters/GlobalFilter";
-import useOwnerDashboard from "@/hooks/useOwnerDashboard";
+import OwnerFinancialDetailDialog from "@/components/dashboard/owner/OwnerFinancialDetailDialog";
+import useOwnerDashboard, {
+  type OwnerFinancialDetailRow,
+} from "@/hooks/useOwnerDashboard";
+
+type FinancialDetailSelection = {
+  title: string;
+  direction: "inflow" | "outflow";
+  propertyId?: number;
+  periodKey?: string;
+};
 
 const formatCurrency = (value: number) =>
   `Rp ${Number(value || 0).toLocaleString("id-ID")}`;
 
 export default function OwnerProfitHunianPage() {
   const [period, setPeriod] = useState("year");
+  const [financialDetail, setFinancialDetail] =
+    useState<FinancialDetailSelection | null>(null);
   const { data, isLoading, error } = useOwnerDashboard(period);
+
+  const selectedFinancialEntries: OwnerFinancialDetailRow[] = financialDetail
+    ? data.financialDetails.filter(
+        (entry) =>
+          entry.direction === financialDetail.direction &&
+          (financialDetail.propertyId === undefined ||
+            entry.propertyId === financialDetail.propertyId) &&
+          (financialDetail.periodKey === undefined ||
+            entry.periodKey === financialDetail.periodKey),
+      )
+    : [];
 
   const safeRevenueData =
     data.revenueData.length > 0
@@ -70,16 +93,28 @@ export default function OwnerProfitHunianPage() {
         <SummaryCard
           title="Pendapatan"
           value={formatCurrency(data.stats.totalRevenue)}
-          subtitle="Total kas masuk"
+          subtitle="Klik untuk melihat detail kas masuk"
           icon={<TrendingUp size={18} />}
           tone="success"
+          onClick={() =>
+            setFinancialDetail({
+              title: "Detail Pendapatan",
+              direction: "inflow",
+            })
+          }
         />
         <SummaryCard
           title="Pengeluaran"
           value={formatCurrency(data.stats.totalExpense)}
-          subtitle="Total kas keluar"
+          subtitle="Klik untuk melihat detail kas keluar"
           icon={<ArrowDown size={18} />}
           tone="danger"
+          onClick={() =>
+            setFinancialDetail({
+              title: "Detail Pengeluaran",
+              direction: "outflow",
+            })
+          }
         />
         <SummaryCard
           title="Laba Bersih"
@@ -162,10 +197,30 @@ export default function OwnerProfitHunianPage() {
                       {row.occupancyRate.toLocaleString("id-ID")}%
                     </td>
                     <td className="p-3 text-center text-slate-700">
-                      {formatCurrency(row.revenue)}
+                      <FinancialDetailButton
+                        value={row.revenue}
+                        label={`Lihat detail pendapatan ${row.propertyName}`}
+                        onClick={() =>
+                          setFinancialDetail({
+                            title: `Detail Pendapatan • ${row.propertyName}`,
+                            direction: "inflow",
+                            propertyId: row.propertyId,
+                          })
+                        }
+                      />
                     </td>
                     <td className="p-3 text-center text-slate-700">
-                      {formatCurrency(row.expense)}
+                      <FinancialDetailButton
+                        value={row.expense}
+                        label={`Lihat detail pengeluaran ${row.propertyName}`}
+                        onClick={() =>
+                          setFinancialDetail({
+                            title: `Detail Pengeluaran • ${row.propertyName}`,
+                            direction: "outflow",
+                            propertyId: row.propertyId,
+                          })
+                        }
+                      />
                     </td>
                     <td
                       className={`p-3 text-center font-medium ${
@@ -229,10 +284,32 @@ export default function OwnerProfitHunianPage() {
                       {row.occupancyRate.toLocaleString("id-ID")}%
                     </td>
                     <td className="p-3 text-center text-slate-700">
-                      {formatCurrency(row.revenue)}
+                      <FinancialDetailButton
+                        value={row.revenue}
+                        label={`Lihat detail pendapatan ${row.propertyName} periode ${row.period}`}
+                        onClick={() =>
+                          setFinancialDetail({
+                            title: `Detail Pendapatan • ${row.propertyName} • ${row.period}`,
+                            direction: "inflow",
+                            propertyId: row.propertyId,
+                            periodKey: row.periodKey,
+                          })
+                        }
+                      />
                     </td>
                     <td className="p-3 text-center text-slate-700">
-                      {formatCurrency(row.expense)}
+                      <FinancialDetailButton
+                        value={row.expense}
+                        label={`Lihat detail pengeluaran ${row.propertyName} periode ${row.period}`}
+                        onClick={() =>
+                          setFinancialDetail({
+                            title: `Detail Pengeluaran • ${row.propertyName} • ${row.period}`,
+                            direction: "outflow",
+                            propertyId: row.propertyId,
+                            periodKey: row.periodKey,
+                          })
+                        }
+                      />
                     </td>
                     <td
                       className={`p-3 text-center font-medium ${
@@ -248,6 +325,15 @@ export default function OwnerProfitHunianPage() {
           </table>
         </div>
       </section>
+
+      {financialDetail ? (
+        <OwnerFinancialDetailDialog
+          title={financialDetail.title}
+          direction={financialDetail.direction}
+          entries={selectedFinancialEntries}
+          onClose={() => setFinancialDetail(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -258,12 +344,14 @@ function SummaryCard({
   subtitle,
   icon,
   tone = "default",
+  onClick,
 }: {
   title: string;
   value: string;
   subtitle: string;
   icon: React.ReactNode;
   tone?: "default" | "success" | "info" | "danger";
+  onClick?: () => void;
 }) {
   const toneClass =
     tone === "success"
@@ -280,8 +368,41 @@ function SummaryCard({
       <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
         {title}
       </p>
-      <p className="mt-1 text-lg font-semibold text-slate-800 sm:text-2xl">{value}</p>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="mt-1 block rounded text-left text-lg font-semibold text-slate-800 underline decoration-dotted underline-offset-4 transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-2xl"
+        >
+          {value}
+        </button>
+      ) : (
+        <p className="mt-1 text-lg font-semibold text-slate-800 sm:text-2xl">
+          {value}
+        </p>
+      )}
       <p className="mt-1 text-xs text-slate-600">{subtitle}</p>
     </div>
+  );
+}
+
+function FinancialDetailButton({
+  value,
+  label,
+  onClick,
+}: {
+  value: number;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="rounded font-medium text-blue-700 underline decoration-dotted underline-offset-4 transition hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      {formatCurrency(value)}
+    </button>
   );
 }
