@@ -18,7 +18,6 @@ interface NamedValueRow {
 
 interface Props {
   period: string;
-  periodLabel?: string;
   stats: { title: string; value: string }[];
   revenueData: RevenueData[];
   paymentData?: PaymentRow[];
@@ -29,7 +28,6 @@ interface Props {
 
 export default function ExportButton({
   period,
-  periodLabel,
   stats,
   revenueData,
   paymentData = [],
@@ -40,13 +38,12 @@ export default function ExportButton({
   const getPeriodLabel = (value: string) => {
     const labels: Record<string, string> = {
       month: "Bulan Ini",
-      lastMonth: "Bulan Lalu",
-      quarter: "3 Bulan Terakhir",
+      quarter: "Kuartal Ini",
       year: "Tahun Ini",
       lastYear: "Tahun Lalu",
     };
 
-    return periodLabel || labels[value] || value;
+    return labels[value] || value;
   };
 
   const formatCurrency = (value: number) => {

@@ -38,11 +38,7 @@ export default function MaintenanceChart({ data, periodLabel }: Props) {
           </div>
           <div className="grid min-h-[280px] items-center gap-4 sm:grid-cols-[minmax(210px,0.9fr)_minmax(200px,1.1fr)]">
             <div className="relative h-[240px] min-w-0">
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                initialDimension={{ width: 240, height: 240 }}
-              >
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={sortedData}

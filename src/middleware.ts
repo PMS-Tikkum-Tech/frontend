@@ -1,11 +1,42 @@
+// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  AUTH_COOKIE_KEY,
+  AUTH_EXPIRES_COOKIE_KEY,
+  AUTH_REFRESH_EXPIRES_COOKIE_KEY,
+  AUTH_REFRESH_TOKEN_COOKIE_KEY,
+  AUTH_ROLE_COOKIE_KEY,
+  AUTH_TOKEN_COOKIE_KEY,
+  getCookieMaxAgeSeconds,
+  isSessionExpired,
+} from "@/lib/auth-cookies";
 
 type SessionRole = "admin" | "finance" | "owner" | "tenant";
+type AuthMeResponse = {
+  data?: {
+    role?: string;
+  };
+};
 
-const ACCESS_COOKIE = "kyra_access_token";
-const REFRESH_COOKIE = "kyra_refresh_token";
-const VALID_ROLES = new Set<SessionRole>(["admin", "finance", "owner", "tenant"]);
+type AuthRefreshResponse = {
+  data?: {
+    token?: string;
+    refresh_token?: string;
+    expires_at?: string | null;
+    refresh_token_expires_at?: string | null;
+    user?: {
+      role?: string;
+    };
+  };
+};
+
+const VALID_ROLES = new Set<SessionRole>([
+  "admin",
+  "finance",
+  "owner",
+  "tenant",
+]);
 const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "kikost.com": "https://api.kikost.com",
   "www.kikost.com": "https://api.kikost.com",
@@ -13,133 +44,373 @@ const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "app.kikost.com": "https://api.kikost.com",
   "dashboard.kikost.com": "https://api.kikost.com",
 };
+const ROOT_HOSTNAMES = new Set(["kikost.com", "www.kikost.com"]);
+const BOOKING_HOSTNAMES = new Set(["booking.kikost.com"]);
+const APP_HOSTNAMES = new Set(["app.kikost.com", "dashboard.kikost.com"]);
 
-const buildContentSecurityPolicy = (nonce: string) => {
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const connectSources = ["'self'", "https://api.kikost.com"];
-  if (isDevelopment) {
-    connectSources.push("http://localhost:3002", "http://127.0.0.1:3002");
+const isSafeNextPath = (nextPath: string) => {
+  return nextPath.startsWith("/") && !nextPath.startsWith("//");
+};
+
+const getDefaultRouteByRole = (role: string) => {
+  if (role === "admin" || role === "finance") {
+    return "/admin";
   }
 
-  return [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "object-src 'none'",
-    "frame-ancestors 'none'",
-    "form-action 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${
-      isDevelopment ? " 'unsafe-eval'" : ""
-    }`,
-    `style-src 'self' 'nonce-${nonce}'${isDevelopment ? " 'unsafe-inline'" : ""}`,
-    `style-src-attr ${
-      isDevelopment
-        ? "'unsafe-inline'"
-        : "'unsafe-hashes' 'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='"
-    }`,
-    "img-src 'self' blob: data: https:",
-    "font-src 'self' data:",
-    `connect-src ${connectSources.join(" ")}`,
-    "worker-src 'self' blob:",
-    "manifest-src 'self'",
-  ].join("; ");
-};
-
-const applyReportOnlyCsp = (response: NextResponse, policy: string) => {
-  response.headers.set("Content-Security-Policy-Report-Only", policy);
-  return response;
-};
-
-const getApiBaseUrl = (request: NextRequest) => {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
-  if (["localhost", "127.0.0.1", "::1"].includes(request.nextUrl.hostname)) {
-    return "http://127.0.0.1:3002";
+  if (role === "owner") {
+    return "/owner";
   }
-  return PRODUCTION_API_BASE_URLS[request.nextUrl.hostname] ?? request.nextUrl.origin;
-};
 
-const requiredRoleFor = (pathname: string): SessionRole | null => {
-  if (pathname.startsWith("/admin")) return "admin";
-  if (pathname.startsWith("/owner")) return "owner";
-  if (pathname.startsWith("/tenant")) return "tenant";
-  return null;
-};
-
-const defaultRouteFor = (role: SessionRole) => {
-  if (role === "admin" || role === "finance") return "/admin";
-  if (role === "owner") return "/owner";
   return "/";
 };
 
-const safeNextPath = (value: string | null) =>
-  value && value.startsWith("/") && !value.startsWith("//") ? value : null;
+const getRequiredRole = (pathname: string) => {
+  if (pathname.startsWith("/admin")) {
+    return "admin";
+  }
 
-const fetchValidatedRole = async (request: NextRequest): Promise<SessionRole | null> => {
-  if (!request.cookies.has(ACCESS_COOKIE)) return null;
-  try {
-    const response = await fetch(`${getApiBaseUrl(request)}/api/v1/auth/me`, {
-      headers: { Accept: "application/json", Cookie: request.headers.get("cookie") ?? "" },
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-    const payload = await response.json() as { data?: { role?: string } };
-    const role = payload.data?.role;
-    return role && VALID_ROLES.has(role as SessionRole) ? role as SessionRole : null;
-  } catch {
+  if (pathname.startsWith("/owner")) {
+    return "owner";
+  }
+
+  if (pathname.startsWith("/tenant")) {
+    return "tenant";
+  }
+
+  return null;
+};
+
+const resolveRoleRoute = (role: SessionRole, nextPath?: string | null) => {
+  if (!nextPath || !isSafeNextPath(nextPath)) {
+    return getDefaultRouteByRole(role);
+  }
+
+  const pathWithoutQuery = nextPath.split("?")[0]?.split("#")[0] || nextPath;
+  if (pathWithoutQuery === "/tenant") {
+    return "/";
+  }
+
+  const requiredRole = getRequiredRole(pathWithoutQuery);
+
+  if (
+    !requiredRole ||
+    requiredRole === role ||
+    (requiredRole === "admin" && role === "finance")
+  ) {
+    return nextPath;
+  }
+
+  return getDefaultRouteByRole(role);
+};
+
+const decodeCookieValue = (value?: string | null) => {
+  if (!value) {
     return null;
+  }
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
   }
 };
 
-export async function middleware(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const contentSecurityPolicy = buildContentSecurityPolicy(nonce);
-  const pathname = request.nextUrl.pathname;
-  const requiredRole = requiredRoleFor(pathname);
-  const hasRefreshSession = request.cookies.has(REFRESH_COOKIE);
-  const validatedRole = await fetchValidatedRole(request);
+const getApiBaseUrl = (req: NextRequest) => {
+  const envBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (envBaseUrl) {
+    return envBaseUrl.replace(/\/$/, "");
+  }
 
-  if (requiredRole) {
-    if (!validatedRole && !hasRefreshSession) {
-      const loginUrl = new URL("/auth", request.url);
-      loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-      return applyReportOnlyCsp(
-        NextResponse.redirect(loginUrl),
-        contentSecurityPolicy,
+  const hostname = req.nextUrl.hostname;
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return `${req.nextUrl.protocol}//127.0.0.1:3001`;
+  }
+
+  const mappedProductionApiBaseUrl = PRODUCTION_API_BASE_URLS[hostname];
+  if (mappedProductionApiBaseUrl) {
+    return mappedProductionApiBaseUrl;
+  }
+
+  return req.nextUrl.origin;
+};
+
+const buildHostRedirect = (req: NextRequest, hostname: string, pathname: string) => {
+  const redirectUrl = new URL(pathname, `${req.nextUrl.protocol}//${hostname}`);
+  redirectUrl.search = req.nextUrl.search;
+  return redirectUrl;
+};
+
+const getSessionCookieDomain = (req: NextRequest) => {
+  const hostname = req.nextUrl.hostname.toLowerCase();
+  if (hostname === "kikost.com" || hostname.endsWith(".kikost.com")) {
+    return ".kikost.com";
+  }
+
+  return undefined;
+};
+
+const getSessionCookieOptions = (req: NextRequest, maxAge: number) => ({
+  path: "/",
+  maxAge,
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: req.nextUrl.protocol === "https:" || process.env.NODE_ENV === "production",
+  domain: getSessionCookieDomain(req),
+});
+
+const clearSessionCookies = (response: NextResponse, req: NextRequest) => {
+  [
+    AUTH_COOKIE_KEY,
+    AUTH_ROLE_COOKIE_KEY,
+    AUTH_TOKEN_COOKIE_KEY,
+    AUTH_EXPIRES_COOKIE_KEY,
+    AUTH_REFRESH_TOKEN_COOKIE_KEY,
+    AUTH_REFRESH_EXPIRES_COOKIE_KEY,
+  ].forEach((name) => {
+    response.cookies.set({
+      name,
+      value: "",
+      ...getSessionCookieOptions(req, 0),
+    });
+  });
+};
+
+const buildAuthRedirect = (req: NextRequest, nextPath: string) => {
+  const loginUrl = new URL("/auth", req.url);
+  loginUrl.searchParams.set("next", nextPath);
+
+  const response = NextResponse.redirect(loginUrl);
+  clearSessionCookies(response, req);
+  return response;
+};
+
+const applySessionCookies = (
+  response: NextResponse,
+  payload: NonNullable<AuthRefreshResponse["data"]>,
+  role: SessionRole,
+  req: NextRequest
+) => {
+  const accessMaxAge = getCookieMaxAgeSeconds(payload.expires_at);
+  const refreshMaxAge = getCookieMaxAgeSeconds(
+    payload.refresh_token_expires_at,
+    accessMaxAge
+  );
+
+  response.cookies.set({
+    name: AUTH_COOKIE_KEY,
+    value: "1",
+    ...getSessionCookieOptions(req, refreshMaxAge),
+  });
+  response.cookies.set({
+    name: AUTH_ROLE_COOKIE_KEY,
+    value: role,
+    ...getSessionCookieOptions(req, refreshMaxAge),
+  });
+  response.cookies.set({
+    name: AUTH_TOKEN_COOKIE_KEY,
+    value: payload.token || "",
+    ...getSessionCookieOptions(req, accessMaxAge),
+  });
+  response.cookies.set({
+    name: AUTH_EXPIRES_COOKIE_KEY,
+    value: payload.expires_at || "",
+    ...getSessionCookieOptions(req, accessMaxAge),
+  });
+  response.cookies.set({
+    name: AUTH_REFRESH_TOKEN_COOKIE_KEY,
+    value: payload.refresh_token || "",
+    ...getSessionCookieOptions(req, refreshMaxAge),
+  });
+  response.cookies.set({
+    name: AUTH_REFRESH_EXPIRES_COOKIE_KEY,
+    value: payload.refresh_token_expires_at || "",
+    ...getSessionCookieOptions(req, refreshMaxAge),
+  });
+};
+
+const refreshValidatedSession = async (
+  req: NextRequest
+): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
+  const hasRefreshCookie = Boolean(req.cookies.get(AUTH_REFRESH_TOKEN_COOKIE_KEY)?.value);
+  const refreshExpiresAt = decodeCookieValue(
+    req.cookies.get(AUTH_REFRESH_EXPIRES_COOKIE_KEY)?.value
+  );
+
+  if (!hasRefreshCookie || isSessionExpired(refreshExpiresAt)) {
+    return { role: null };
+  }
+
+  try {
+    const response = await fetch(`${getApiBaseUrl(req)}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: req.headers.get("cookie") ?? "",
+      },
+      body: JSON.stringify({}),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return { role: null };
+    }
+
+    const payload = (await response.json()) as AuthRefreshResponse;
+    const refreshed = payload.data;
+    const role = refreshed?.user?.role;
+
+    if (!refreshed || !role || !VALID_ROLES.has(role as SessionRole)) {
+      return { role: null };
+    }
+
+    return {
+      role: role as SessionRole,
+      refreshed,
+    };
+  } catch {
+    return { role: null };
+  }
+};
+
+const getValidatedSession = async (
+  req: NextRequest
+): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
+  const hasAccessCookie = Boolean(req.cookies.get(AUTH_TOKEN_COOKIE_KEY)?.value);
+  const expiresAt = decodeCookieValue(req.cookies.get(AUTH_EXPIRES_COOKIE_KEY)?.value);
+
+  if (!hasAccessCookie || isSessionExpired(expiresAt)) {
+    return refreshValidatedSession(req);
+  }
+
+  try {
+    const response = await fetch(`${getApiBaseUrl(req)}/api/v1/auth/me`, {
+      headers: {
+        Accept: "application/json",
+        Cookie: req.headers.get("cookie") ?? "",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return refreshValidatedSession(req);
+    }
+
+    const payload = (await response.json()) as AuthMeResponse;
+    const role = payload.data?.role;
+
+    if (!role || !VALID_ROLES.has(role as SessionRole)) {
+      return refreshValidatedSession(req);
+    }
+
+    return { role: role as SessionRole };
+  } catch {
+    return refreshValidatedSession(req);
+  }
+};
+
+export async function middleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+  const search = req.nextUrl.search;
+  const hostname = req.nextUrl.hostname;
+
+  if (ROOT_HOSTNAMES.has(hostname)) {
+    if (pathname.startsWith("/booking/v2")) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "booking.kikost.com", "/booking/v2")
       );
     }
 
     if (
-      validatedRole &&
-      validatedRole !== requiredRole &&
-      !(requiredRole === "admin" && validatedRole === "finance")
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/owner") ||
+      pathname.startsWith("/tenant")
     ) {
-      return applyReportOnlyCsp(
-        NextResponse.redirect(new URL(defaultRouteFor(validatedRole), request.url)),
-        contentSecurityPolicy,
+      return NextResponse.redirect(buildHostRedirect(req, "app.kikost.com", pathname));
+    }
+  }
+
+  if (BOOKING_HOSTNAMES.has(hostname)) {
+    if (pathname === "/") {
+      return NextResponse.redirect(
+        buildHostRedirect(req, hostname, "/booking/v2")
+      );
+    }
+
+    if (
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/owner") ||
+      pathname.startsWith("/tenant")
+    ) {
+      return NextResponse.redirect(buildHostRedirect(req, "app.kikost.com", pathname));
+    }
+  }
+
+  if (APP_HOSTNAMES.has(hostname)) {
+    if (pathname === "/") {
+      return NextResponse.redirect(buildHostRedirect(req, hostname, "/tenant"));
+    }
+
+    if (pathname.startsWith("/booking/v2")) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "booking.kikost.com", "/booking/v2")
       );
     }
   }
 
-  if (pathname === "/auth" && validatedRole) {
-    const next = safeNextPath(request.nextUrl.searchParams.get("next"));
-    return applyReportOnlyCsp(
-      NextResponse.redirect(
-        new URL(next ?? defaultRouteFor(validatedRole), request.url),
-      ),
-      contentSecurityPolicy,
-    );
+  if (pathname === "/tenant") {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
+  const requiredRole = getRequiredRole(pathname);
+  const validatedSession = await getValidatedSession(req);
+  const validatedRole = validatedSession.role;
 
-  return applyReportOnlyCsp(
-    NextResponse.next({ request: { headers: requestHeaders } }),
-    contentSecurityPolicy,
-  );
+  if (requiredRole) {
+    if (!validatedRole) {
+      return buildAuthRedirect(req, `${pathname}${search}`);
+    }
+
+    if (
+      validatedRole !== requiredRole &&
+      !(requiredRole === "admin" && validatedRole === "finance")
+    ) {
+      const response = NextResponse.redirect(
+        new URL(getDefaultRouteByRole(validatedRole), req.url)
+      );
+      if (validatedSession.refreshed) {
+        applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
+      }
+      return response;
+    }
+  }
+
+  if (pathname === "/auth") {
+    if (!validatedRole) {
+      const response = NextResponse.next();
+      clearSessionCookies(response, req);
+      return response;
+    }
+
+    const response = NextResponse.redirect(
+      new URL(
+        resolveRoleRoute(validatedRole, req.nextUrl.searchParams.get("next")),
+        req.url
+      )
+    );
+    if (validatedSession.refreshed) {
+      applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
+    }
+    return response;
+  }
+
+  const response = NextResponse.next();
+  if (validatedRole && validatedSession.refreshed) {
+    applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
+  }
+  return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/admin/:path*", "/owner/:path*", "/tenant/:path*", "/auth"],
 };

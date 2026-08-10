@@ -368,12 +368,7 @@ export default function ProfileImageCropDialog({
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <label
-                    htmlFor="profile-image-zoom"
-                    className="text-sm font-semibold text-slate-800"
-                  >
-                    Perbesar Foto
-                  </label>
+                  <p className="text-sm font-semibold text-slate-800">Perbesar Foto</p>
                   <p className="text-xs text-slate-500">
                     Perbesar untuk menentukan fokus wajah atau objek utama.
                   </p>
@@ -384,8 +379,6 @@ export default function ProfileImageCropDialog({
               </div>
 
               <input
-                id="profile-image-zoom"
-                name="profile_image_zoom"
                 type="range"
                 min="1"
                 max="3"

@@ -281,10 +281,7 @@ export default function AdminDashboardLayout({
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                   />
                   <input
-                    id="admin-global-search"
-                    name="admin_global_search"
                     type="text"
-                    aria-label="Cari di dashboard admin"
                     placeholder="Cari..."
                     className="w-full rounded-full border border-[#dedaff] bg-[#f8f8ff] py-2 pl-12 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#3423b8]"
                   />
@@ -313,8 +310,6 @@ export default function AdminDashboardLayout({
 
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <input
-                    id="admin-avatar-upload"
-                    name="admin_avatar"
                     ref={fileInputRef}
                     type="file"
                     accept="image/png,image/jpeg,image/jpg"

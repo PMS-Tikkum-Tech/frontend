@@ -57,11 +57,7 @@ export default function PaymentChart({ data, periodLabel }: Props) {
           </div>
           <div className="mt-3 overflow-x-auto pb-1">
             <div className="h-[260px]" style={{ minWidth: chartMinWidth }}>
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                initialDimension={{ width: chartMinWidth, height: 260 }}
-              >
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data} margin={{ top: 8, right: 8, left: -8 }}>
                   <CartesianGrid stroke="#E2E8F0" strokeDasharray="4 4" vertical={false} />
                   <XAxis

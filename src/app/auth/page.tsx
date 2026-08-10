@@ -1,18 +1,22 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
+import VerifyEmailForm from "@/components/auth/VerifyEmailForm";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { resolveRoleRoute } from "@/lib/auth";
 
-type AuthMode = "login" | "register";
+type AuthMode = "login" | "register" | "verify";
 
 const resolveMode = (mode: string | null): AuthMode => {
   if (mode === "register") {
     return "register";
+  }
+
+  if (mode === "verify") {
+    return "verify";
   }
 
   return "login";
@@ -35,7 +39,6 @@ export default function AuthPage() {
 function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
 
   const currentMode = useMemo(
@@ -47,18 +50,21 @@ function AuthPageContent() {
     setMode(currentMode);
   }, [currentMode]);
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.replace(resolveRoleRoute(user.role, searchParams.get("next")));
-    }
-  }, [isLoading, router, searchParams, user]);
-
   const setModeWithQuery = (nextMode: AuthMode) => {
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set("mode", nextMode);
 
+    if (nextMode !== "login" && nextMode !== "verify") {
+      nextParams.delete("otp_requested");
+      nextParams.delete("phone");
+      nextParams.delete("verification_email_sent");
+    }
+
     if (nextMode === "register") {
       nextParams.delete("registered");
+      nextParams.delete("debug_code");
+      nextParams.delete("phone");
+      nextParams.delete("verification_email_sent");
     }
 
     const query = nextParams.toString();
@@ -67,15 +73,22 @@ function AuthPageContent() {
   };
 
   const registered = searchParams.get("registered") === "1";
+  const verificationEmailSent =
+    searchParams.get("verification_email_sent") === "1";
+  const authEmail = searchParams.get("email");
   const title =
     mode === "register"
       ? "Buat Akun KIKOST"
-      : "Masuk ke Akun Anda";
+      : mode === "verify"
+        ? "Verifikasi Email"
+        : "Masuk ke Akun Anda";
 
   const description =
     mode === "register"
-      ? "Verifikasi email lalu buat kata sandi untuk akun tenant Anda."
-      : "Gunakan email dan kata sandi untuk melanjutkan.";
+      ? "Masukkan email Anda. Kami akan mengirimkan tautan masuk."
+      : mode === "verify"
+        ? "Metode pendaftaran telah diperbarui. Silakan gunakan formulir pendaftaran baru."
+        : "Gunakan email dan kata sandi untuk melanjutkan.";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-sky-100 to-blue-100">
@@ -131,6 +144,18 @@ function AuthPageContent() {
             <p className="mt-1 text-sm text-slate-500">{description}</p>
           </div>
 
+          {verificationEmailSent && (
+            <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              Email verifikasi sudah dikirim. Buka email kamu untuk melanjutkan
+              proses pendaftaran.
+              {authEmail && (
+                <p className="mt-1 text-xs text-sky-700">
+                  Email terdaftar: {authEmail}
+                </p>
+              )}
+            </div>
+          )}
+
           {registered && (
             <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               Pendaftaran berhasil. Silakan masuk.
@@ -144,15 +169,43 @@ function AuthPageContent() {
               </div>
             }
           >
-            {mode === "login" ? (
-              <div key="login" className="auth-panel-enter">
-                <LoginForm />
-              </div>
-            ) : (
-              <div key="register" className="auth-panel-enter">
-                <RegisterForm />
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {mode === "login" && (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <LoginForm />
+                </motion.div>
+              )}
+
+              {mode === "register" && (
+                <motion.div
+                  key="register"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <RegisterForm />
+                </motion.div>
+              )}
+
+              {mode === "verify" && (
+                <motion.div
+                  key="verify"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <VerifyEmailForm initialEmail={authEmail ?? undefined} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Suspense>
         </section>
       </div>

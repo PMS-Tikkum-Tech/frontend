@@ -1406,19 +1406,11 @@ export const mapPropertyToCard = (
   };
 };
 
-export const buildPeriodParams = (
-  period: string,
-  customRange?: { dateFrom?: string; dateTo?: string },
-): QueryParams => {
+export const buildPeriodParams = (period: string): QueryParams => {
   const now = new Date();
   const year = now.getFullYear();
 
   switch (period) {
-    case "custom":
-      return {
-        date_from: customRange?.dateFrom || undefined,
-        date_to: customRange?.dateTo || undefined,
-      };
     case "month":
       return { period: "this_month" };
     case "lastMonth": {

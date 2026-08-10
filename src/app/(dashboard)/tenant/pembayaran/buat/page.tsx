@@ -322,7 +322,7 @@ const resolveMonthlyPrice = (
   return unit.price || property.price_min || property.price_max || 0;
 };
 
-const findPropertyById = async (propertyId: string) => {
+const findPropertyById = async (propertyId: number) => {
   const perPage = 100;
   const firstPage = await getPublicProperties({
     page: 1,
@@ -330,7 +330,7 @@ const findPropertyById = async (propertyId: string) => {
     sort: "newest",
   });
 
-  let found = firstPage.data.find((item) => item.id.toString() === propertyId) || null;
+  let found = firstPage.data.find((item) => item.id === propertyId) || null;
   const totalPages = firstPage.meta?.total_pages || 1;
 
   for (let page = 2; !found && page <= totalPages; page += 1) {
@@ -340,13 +340,13 @@ const findPropertyById = async (propertyId: string) => {
       sort: "newest",
     });
 
-    found = nextPage.data.find((item) => item.id.toString() === propertyId) || null;
+    found = nextPage.data.find((item) => item.id === propertyId) || null;
   }
 
   return found;
 };
 
-const findUnitById = async (propertyId: string, unitId: string) => {
+const findUnitById = async (propertyId: number, unitId: number) => {
   const perPage = 100;
   const firstPage = await getPublicPropertyUnits(propertyId, {
     page: 1,
@@ -354,7 +354,7 @@ const findUnitById = async (propertyId: string, unitId: string) => {
     sort: "price_asc",
   });
 
-  let found = firstPage.data.find((item) => item.id.toString() === unitId) || null;
+  let found = firstPage.data.find((item) => item.id === unitId) || null;
   const totalPages = firstPage.meta?.total_pages || 1;
 
   for (let page = 2; !found && page <= totalPages; page += 1) {
@@ -364,7 +364,7 @@ const findUnitById = async (propertyId: string, unitId: string) => {
       sort: "price_asc",
     });
 
-    found = nextPage.data.find((item) => item.id.toString() === unitId) || null;
+    found = nextPage.data.find((item) => item.id === unitId) || null;
   }
 
   return found;
@@ -391,8 +391,8 @@ export default function TenantCreatePaymentPage() {
 function TenantCreatePaymentPageContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
-  const propertyId = searchParams.get("property_id")?.trim() || "";
-  const unitId = searchParams.get("unit_id")?.trim() || "";
+  const propertyId = Number(searchParams.get("property_id"));
+  const unitId = Number(searchParams.get("unit_id"));
   const isBookingV2Flow = searchParams.get("booking_version") === "v2";
   const minCheckInDate = useMemo(() => toDateInput(new Date()), []);
   const defaultCheckInDate = useMemo(() => {
@@ -444,11 +444,11 @@ function TenantCreatePaymentPageContent() {
       return;
     }
 
-    if (draft.propertyId && draft.propertyId.toString() !== propertyId) {
+    if (draft.propertyId && draft.propertyId !== propertyId) {
       return;
     }
 
-    if (draft.unitId && draft.unitId.toString() !== unitId) {
+    if (draft.unitId && draft.unitId !== unitId) {
       return;
     }
 
@@ -565,7 +565,7 @@ function TenantCreatePaymentPageContent() {
   useEffect(() => {
     let active = true;
 
-    if (!propertyId) {
+    if (!Number.isFinite(propertyId) || propertyId <= 0) {
       setLoadingError("Properti belum dipilih. Silakan kembali ke detail properti.");
       setIsLoading(false);
       return () => {
@@ -573,7 +573,7 @@ function TenantCreatePaymentPageContent() {
       };
     }
 
-    if (!unitId) {
+    if (!Number.isFinite(unitId) || unitId <= 0) {
       setLoadingError("Unit belum dipilih. Klik tombol Pilih pada unit yang tersedia.");
       setIsLoading(false);
       return () => {
@@ -943,7 +943,7 @@ function TenantCreatePaymentPageContent() {
             <ArrowLeft size={14} />
             Kembali ke Halaman Sewa
           </Link>
-          {propertyId ? (
+          {Number.isFinite(propertyId) && propertyId > 0 ? (
             <Link
               href={`/sewa/${propertyId}`}
               className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"

@@ -109,12 +109,7 @@ const formatRelativeTime = (timestamp?: string | null) => {
   return `${diffDays} hari lalu`;
 };
 
-export const useAdminDashboard = (
-  period: string,
-  customRange?: { dateFrom: string; dateTo: string },
-) => {
-  const customDateFrom = customRange?.dateFrom;
-  const customDateTo = customRange?.dateTo;
+export const useAdminDashboard = (period: string) => {
   const [data, setData] = useState<AdminDashboardData>(initialData);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,24 +117,9 @@ export const useAdminDashboard = (
 
   useEffect(() => {
     let active = true;
-    const isCustomRangeValid =
-      period !== "custom" ||
-      Boolean(
-        customDateFrom &&
-          customDateTo &&
-          customDateFrom <= customDateTo,
-      );
-    const periodParams = buildPeriodParams(period, {
-      dateFrom: customDateFrom,
-      dateTo: customDateTo,
-    });
+    const periodParams = buildPeriodParams(period);
 
     const loadDashboard = async () => {
-      if (!isCustomRangeValid) {
-        setIsLoading(false);
-        return;
-      }
-
       setIsLoading(true);
       setError(null);
 
@@ -334,7 +314,7 @@ export const useAdminDashboard = (
     return () => {
       active = false;
     };
-  }, [customDateFrom, customDateTo, period, refreshKey]);
+  }, [period, refreshKey]);
 
   const refresh = () => {
     setRefreshKey((prev) => prev + 1);

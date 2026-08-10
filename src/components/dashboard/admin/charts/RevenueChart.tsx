@@ -59,11 +59,7 @@ export default function RevenueChart({
       {hasData ? (
         <div className="mt-4 overflow-x-auto pb-1">
           <div className="h-[270px]" style={{ minWidth: chartMinWidth }}>
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              initialDimension={{ width: chartMinWidth, height: 270 }}
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} barGap={6} margin={{ top: 8, right: 8, left: 0 }}>
                 <defs>
                   <linearGradient id="dashboardIncomeBar" x1="0" y1="0" x2="0" y2="1">

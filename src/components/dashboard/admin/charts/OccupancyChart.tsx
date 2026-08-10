@@ -29,11 +29,7 @@ export default function OccupancyChart({ data }: Props) {
       {total > 0 ? (
         <div className="mt-4 grid min-h-[300px] items-center gap-4 sm:grid-cols-[minmax(220px,0.9fr)_minmax(180px,1.1fr)]">
           <div className="relative h-[250px] min-w-0">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              initialDimension={{ width: 250, height: 250 }}
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={data}

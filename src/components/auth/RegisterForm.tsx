@@ -12,30 +12,34 @@ import {
 import { getEmailValidationMessage, sanitizeEmailInput } from "@/lib/form-validation";
 import { useAuth } from "@/context/AuthContext";
 
-const fieldClass = "w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50 disabled:text-slate-500";
+const fieldClass =
+  "w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50 disabled:text-slate-500";
 
 const getBackendErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    if (!error.response) return "Tidak bisa terhubung ke layanan. Pastikan sistem aktif.";
-    const payload = error.response.data as { message?: string; errors?: string[] };
-    return payload.errors?.[0] ?? payload.message ?? "Terjadi kesalahan. Silakan coba lagi.";
+    if (!error.response)
+      return "Tidak bisa terhubung ke layanan. Pastikan sistem aktif.";
+    const payload = error.response?.data as
+      | { message?: string; errors?: string[] }
+      | undefined;
+    return (
+      payload?.errors?.[0] ?? payload?.message ?? "Terjadi kesalahan. Silakan coba lagi."
+    );
   }
+  if (error instanceof Error) return error.message;
   return "Terjadi kesalahan. Silakan coba lagi.";
 };
 
-type Step = "email" | "otp" | "profile";
+type Step = "email" | "otp";
 
 export default function RegisterForm() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [verificationToken, setVerificationToken] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setSession } = useAuth();
@@ -43,11 +47,12 @@ export default function RegisterForm() {
   const handleRequestCode = async () => {
     setServerError(null);
     const sanitized = sanitizeEmailInput(email);
-    const emailError = getEmailValidationMessage(sanitized, { label: "Email", required: true });
-    if (emailError) {
-      setServerError(emailError);
-      return;
-    }
+    const emailError = getEmailValidationMessage(sanitized, {
+      label: "Email",
+      required: true,
+    });
+    if (emailError) { setServerError(emailError); return; }
+
     setIsSubmitting(true);
     try {
       await requestTenantRegistrationEmailCode(sanitized);
@@ -60,55 +65,33 @@ export default function RegisterForm() {
   };
 
   const handleVerifyCode = async () => {
-    const normalizedCode = code.replace(/\D/g, "");
-    if (normalizedCode.length !== 6) {
+    setServerError(null);
+    const trimmedCode = code.replace(/\D/g, "");
+    if (trimmedCode.length !== 6) {
       setServerError("Kode verifikasi harus 6 digit angka.");
       return;
     }
+
     setIsSubmitting(true);
-    setServerError(null);
     try {
       const verified = await verifyTenantRegistrationEmailCode({
         email: sanitizeEmailInput(email),
-        code: normalizedCode,
+        code: trimmedCode,
       });
-      setVerificationToken(verified.emailVerificationToken);
-      setStep("profile");
-    } catch (error) {
-      setServerError(getBackendErrorMessage(error));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleComplete = async () => {
-    if (fullName.trim().length < 2) {
-      setServerError("Nama lengkap minimal 2 karakter.");
-      return;
-    }
-    if (password.length < 12 || new TextEncoder().encode(password).length > 72) {
-      setServerError("Kata sandi minimal 12 karakter dan maksimal 72 byte.");
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      setServerError("Konfirmasi kata sandi tidak cocok.");
-      return;
-    }
-    setIsSubmitting(true);
-    setServerError(null);
-    try {
-      const result = await completeTenantEmailRegistration({
-        emailVerificationToken: verificationToken,
-        fullName,
-        password,
-        passwordConfirmation,
+      const authResult = await completeTenantEmailRegistration({
+        emailVerificationToken: verified.emailVerificationToken,
       });
+
       setSession({
-        user: result.user,
-        expiresAt: result.expiresAt,
-        refreshTokenExpiresAt: result.refreshTokenExpiresAt,
+        user: authResult.user,
+        expiresAt: authResult.expiresAt,
+        refreshTokenExpiresAt: authResult.refreshTokenExpiresAt,
       });
-      router.push(resolveRoleRoute(result.user.role, searchParams.get("next")));
+
+      router.push(
+        resolveRoleRoute(authResult.user.role, searchParams.get("next"))
+      );
       router.refresh();
     } catch (error) {
       setServerError(getBackendErrorMessage(error));
@@ -118,8 +101,8 @@ export default function RegisterForm() {
   };
 
   const handleResend = useCallback(async () => {
-    setIsResending(true);
     setServerError(null);
+    setIsResending(true);
     try {
       await requestTenantRegistrationEmailCode(sanitizeEmailInput(email));
     } catch (error) {
@@ -129,57 +112,112 @@ export default function RegisterForm() {
     }
   }, [email]);
 
-  if (step === "profile") {
-    return (
-      <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void handleComplete(); }}>
-        <div>
-          <label htmlFor="register-full-name" className="mb-1 block text-sm font-medium">Nama lengkap</label>
-          <input id="register-full-name" name="full_name" autoComplete="name" maxLength={100} value={fullName} onChange={(event) => setFullName(event.target.value)} className={fieldClass} />
-        </div>
-        <div>
-          <label htmlFor="register-password" className="mb-1 block text-sm font-medium">Kata sandi</label>
-          <input id="register-password" name="password" type="password" autoComplete="new-password" minLength={12} maxLength={72} value={password} onChange={(event) => setPassword(event.target.value)} className={fieldClass} />
-          <p className="mt-1 text-xs text-slate-500">Gunakan passphrase 12 karakter atau lebih (maksimal 72 byte).</p>
-        </div>
-        <div>
-          <label htmlFor="register-password-confirmation" className="mb-1 block text-sm font-medium">Konfirmasi kata sandi</label>
-          <input id="register-password-confirmation" name="password_confirmation" type="password" autoComplete="new-password" minLength={12} maxLength={72} value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} className={fieldClass} />
-        </div>
-        {serverError && <p role="alert" className="text-sm text-red-600">{serverError}</p>}
-        <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-          {isSubmitting ? "Membuat akun..." : "Buat akun"}
-        </button>
-      </form>
-    );
-  }
-
+  // ── OTP step ─────────────────────────────────────────────────────────────
   if (step === "otp") {
     return (
-      <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void handleVerifyCode(); }}>
-        <p className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">Kode 6 digit dikirim ke <strong>{sanitizeEmailInput(email)}</strong>.</p>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <p className="font-medium">Cek email Anda</p>
+          <p className="mt-1 text-xs">
+            Kode 6 digit dikirim ke <strong>{sanitizeEmailInput(email)}</strong>.
+            Berlaku 5 menit.
+          </p>
+        </div>
+
         <div>
-          <label htmlFor="register-email-code" className="mb-1 block text-sm font-medium">Kode verifikasi</label>
-          <input id="register-email-code" name="verification_code" type="text" inputMode="numeric" maxLength={6} autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className={`${fieldClass} text-center text-lg tracking-widest`} />
+          <label className="mb-1 block text-sm font-medium text-slate-800">
+            Kode Verifikasi
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            autoComplete="one-time-code"
+            disabled={isSubmitting}
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value.replace(/\D/g, ""));
+              setServerError(null);
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") void handleVerifyCode(); }}
+            placeholder="123456"
+            className={`${fieldClass} text-center text-lg tracking-widest`}
+          />
         </div>
-        {serverError && <p role="alert" className="text-sm text-red-600">{serverError}</p>}
-        <button type="submit" disabled={isSubmitting || isResending} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isSubmitting ? "Memverifikasi..." : "Verifikasi email"}</button>
-        <div className="flex justify-center gap-4 text-sm">
-          <button type="button" onClick={() => void handleResend()} disabled={isResending} className="text-sky-700">{isResending ? "Mengirim..." : "Kirim ulang"}</button>
-          <button type="button" onClick={() => setStep("email")} className="text-slate-500">Ganti email</button>
+
+        {serverError && (
+          <p className="text-center text-sm text-red-600">{serverError}</p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleVerifyCode}
+          disabled={isSubmitting || isResending}
+          className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+        >
+          {isSubmitting ? "Memverifikasi..." : "Verifikasi & Masuk"}
+        </button>
+
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={isResending || isSubmitting}
+            className="text-sm font-medium text-sky-700 hover:text-sky-800 disabled:opacity-50"
+          >
+            {isResending ? "Mengirim ulang..." : "Kirim ulang kode"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setStep("email"); setCode(""); setServerError(null); }}
+            disabled={isSubmitting || isResending}
+            className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-50"
+          >
+            Ganti email
+          </button>
         </div>
-      </form>
+      </div>
     );
   }
 
+  // ── Email step ───────────────────────────────────────────────────────────
   return (
-    <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void handleRequestCode(); }}>
+    <div className="space-y-4">
       <div>
-        <label htmlFor="register-email" className="mb-1 block text-sm font-medium">Email</label>
-        <input id="register-email" name="email" type="email" autoComplete="email" inputMode="email" maxLength={254} value={email} onChange={(event) => setEmail(sanitizeEmailInput(event.target.value))} className={fieldClass} />
-        <p className="mt-1 text-xs text-slate-500">Kami akan mengirim kode verifikasi. Role akun ditentukan server.</p>
+        <label className="mb-1 block text-sm font-medium text-slate-800">
+          Email
+        </label>
+        <input
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          disabled={isSubmitting}
+          value={email}
+          onChange={(e) => {
+            setEmail(sanitizeEmailInput(e.target.value));
+            setServerError(null);
+          }}
+          onKeyDown={(e) => { if (e.key === "Enter") void handleRequestCode(); }}
+          placeholder="nama@email.com"
+          className={fieldClass}
+        />
+        <p className="mt-1 text-[11px] text-gray-400">
+          Kode verifikasi 6 digit akan dikirim ke email ini.
+        </p>
       </div>
-      {serverError && <p role="alert" className="text-sm text-red-600">{serverError}</p>}
-      <button type="submit" disabled={isSubmitting} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isSubmitting ? "Mengirim kode..." : "Lanjutkan"}</button>
-    </form>
+
+      {serverError && (
+        <p className="text-center text-sm text-red-600">{serverError}</p>
+      )}
+
+      <button
+        type="button"
+        onClick={handleRequestCode}
+        disabled={isSubmitting}
+        className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+      >
+        {isSubmitting ? "Mengirim kode..." : "Daftar"}
+      </button>
+    </div>
   );
 }

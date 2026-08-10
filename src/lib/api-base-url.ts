@@ -1,4 +1,4 @@
-const DEFAULT_LOCAL_API_BASE_URL = "http://127.0.0.1:3002";
+const DEFAULT_LOCAL_API_BASE_URL = "http://127.0.0.1:3001";
 
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
 const PRODUCTION_API_BASE_URLS: Record<string, string> = {
@@ -10,9 +10,7 @@ const PRODUCTION_API_BASE_URLS: Record<string, string> = {
 };
 
 const normalizeLocalhost = (hostname: string) => {
-  if (hostname === "::1") return "[::1]";
-
-  if (hostname === "0.0.0.0") {
+  if (hostname === "localhost" || hostname === "::1" || hostname === "0.0.0.0") {
     return "127.0.0.1";
   }
 
@@ -22,18 +20,6 @@ const normalizeLocalhost = (hostname: string) => {
 export const resolveApiBaseUrl = () => {
   const envBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (envBaseUrl) {
-    if (typeof window !== "undefined" && LOCAL_HOSTNAMES.has(window.location.hostname)) {
-      try {
-        const configuredUrl = new URL(envBaseUrl);
-        if (LOCAL_HOSTNAMES.has(configuredUrl.hostname)) {
-          configuredUrl.hostname = window.location.hostname;
-          return configuredUrl.toString().replace(/\/$/, "");
-        }
-      } catch {
-        // Invalid environment values fall through to the existing value.
-      }
-    }
-
     return envBaseUrl.replace(/\/$/, "");
   }
 
@@ -41,7 +27,7 @@ export const resolveApiBaseUrl = () => {
     const hostname = window.location.hostname;
     if (LOCAL_HOSTNAMES.has(hostname)) {
       const apiHost = normalizeLocalhost(hostname);
-      return `${window.location.protocol}//${apiHost}:3002`;
+      return `${window.location.protocol}//${apiHost}:3001`;
     }
 
     const mappedProductionApiBaseUrl = PRODUCTION_API_BASE_URLS[hostname];

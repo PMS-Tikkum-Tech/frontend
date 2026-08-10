@@ -1,7 +1,7 @@
 "use client";
 
 import Image, { type ImageProps } from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const DEFAULT_IMAGE_FALLBACK_SRC = "/bg.jpg";
 
@@ -36,6 +36,10 @@ export default function SafeImage({
   );
   const srcKey = typeof normalizedSrc === "string" ? normalizedSrc : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFailedSrc(null);
+  }, [srcKey]);
 
   const imageSrc =
     srcKey && failedSrc === srcKey && srcKey !== fallbackSrc

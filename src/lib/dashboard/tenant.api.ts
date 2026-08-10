@@ -1,5 +1,5 @@
 import axios from "axios";
-import axiosInstance from "@/lib/axios";
+import axiosInstance, { AUTH_SESSION_STORAGE_KEY } from "@/lib/axios";
 import { resolveApiBaseUrl } from "@/lib/api-base-url";
 import type { ApiPaginationMeta } from "@/types/api";
 import type { BackendUser } from "@/types/auth";
@@ -263,7 +263,7 @@ export interface TenantStaySummary {
 }
 
 export type TenantVisitRequestPayload = {
-  property_id: string | number;
+  property_id: number;
   preferred_date?: string;
   preferred_time?: string;
   note?: string;
@@ -296,11 +296,10 @@ export type PublicPropertyAvailabilityStatus =
   | "fully_occupied"
   | "unavailable";
 
-export type PublicPropertySummary = Omit<TenantPropertySummary, "id"> & {
-  id: number;
+export interface PublicPropertySummary extends TenantPropertySummary {
   created_at?: string | null;
   updated_at?: string | null;
-};
+}
 
 export interface PublicPropertyUnitSummary {
   id: number;
@@ -345,8 +344,8 @@ export type TenantMaintenanceCreatePayload = {
 };
 
 export type TenantBookingPaymentPayload = {
-  property_id: string | number;
-  unit_id: string | number;
+  property_id: number;
+  unit_id: number;
   check_in_date: string;
   end_date?: string;
   duration_months: number;
@@ -358,7 +357,7 @@ export type TenantBookingPaymentPayload = {
 };
 
 type ManualRentalCatalogUnit = {
-  id: string | number;
+  id: number;
   name?: string | null;
   unit_number?: string | number | null;
   room_number?: string | number | null;
@@ -385,7 +384,7 @@ type ManualRentalCatalogUnit = {
   video_url?: string | null;
   video_360_url?: string | null;
   property?: {
-    id: string | number;
+    id: number;
     name?: string | null;
     address?: string | null;
     description?: string | null;
@@ -475,7 +474,7 @@ const getPriceRangeFromValues = (values: unknown[]) => {
 };
 
 type PublicPropertyApiItem = {
-  id: string | number;
+  id: number;
   name?: string | null;
   address?: string | null;
   latitude?: number | string | null;
@@ -792,6 +791,38 @@ const dedupeMediaPaths = (...groups: unknown[]) => {
   );
 };
 
+const getClientSessionRole = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawSession = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    if (!rawSession) {
+      return null;
+    }
+
+    const session = JSON.parse(rawSession) as {
+      user?: { role?: unknown };
+    };
+    const role = session.user?.role;
+
+    return typeof role === "string" ? role : null;
+  } catch {
+    return null;
+  }
+};
+
+const getPublicApi = async <T, M = ApiPaginationMeta>(
+  path: string,
+  params?: QueryParams
+) => {
+  return axios.get<ApiResponse<T, M>>(`${resolveApiBaseUrl()}${path}`, {
+    params: sanitizeParams(params),
+    withCredentials: true,
+  });
+};
+
 const paginateArray = <T>(items: T[], page: number, perPage: number) => {
   const totalCount = items.length;
   const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / perPage);
@@ -837,6 +868,22 @@ const buildCatalogQuery = (params?: QueryParams, page = 1, perPage = 100) => {
     unit_type: params?.unit_type,
     min_price: params?.min_price,
     max_price: params?.max_price,
+    sort,
+  });
+};
+
+const buildAdminPropertyQuery = (
+  params?: QueryParams,
+  page = getNumberParam(params?.page, 1),
+  perPage = getNumberParam(params?.per_page, 100)
+) => {
+  const sort = params?.sort?.toString() === "oldest" ? "oldest" : "newest";
+
+  return sanitizeParams({
+    page,
+    per_page: perPage,
+    search: params?.search,
+    property_type: params?.property_type,
     sort,
   });
 };
@@ -901,7 +948,7 @@ const normalizePublicProperty = (
   );
 
   return {
-    id: property.id as number,
+    id: property.id,
     name: getStringValue(property.name) || `Properti #${property.id}`,
     address: getStringValue(property.address),
     latitude: getNumberValue(property.latitude),
@@ -979,7 +1026,7 @@ const fetchAllCatalogProperties = async (params?: QueryParams) => {
   const properties: PublicPropertyApiItem[] = [...firstResponse.data.data];
   const totalPages = firstResponse.data.meta?.total_pages || 0;
   const unitPriceRangeByProperty = new Map<
-    string | number,
+    number,
     { price_min: number; price_max: number; has_promo: boolean }
   >();
 
@@ -1037,7 +1084,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
   params?: QueryParams
 ): Promise<ListResult<PublicPropertySummary>> => {
   const catalogResponse = await fetchAllCatalogUnits(params);
-  const propertyMap = new Map<string | number, PublicPropertySummary>();
+  const propertyMap = new Map<number, PublicPropertySummary>();
 
   catalogResponse.data.forEach((unit) => {
     const property = unit.property;
@@ -1060,7 +1107,7 @@ const aggregatePublicPropertiesFromCatalogUnits = async (
 
     if (!existing) {
       propertyMap.set(property.id, {
-        id: property.id as number,
+        id: property.id,
         name: getStringValue(property.name) || `Properti #${property.id}`,
         address: getStringValue(property.address),
         latitude: getNumberValue(property.latitude),
@@ -1167,7 +1214,7 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
   );
 
   return {
-    id: unit.id as number,
+    id: unit.id,
     name: getStringValue(unit.name) || `Unit ${unit.id}`,
     unit_number: unit.unit_number ?? unit.room_number ?? unit.number ?? null,
     room_number: unit.room_number ?? null,
@@ -1200,6 +1247,140 @@ const toPublicUnitSummary = (unit: ManualRentalCatalogUnit): PublicPropertyUnitS
   };
 };
 
+const fetchAdminPropertiesForPublic = async (
+  params?: QueryParams
+): Promise<ListResult<PublicPropertySummary>> => {
+  const perPage = 100;
+  const response = await getPublicApi<PublicPropertyApiItem[]>(
+    "/api/v1/properties",
+    buildAdminPropertyQuery(params, 1, perPage)
+  );
+  const properties = [...response.data.data];
+  const totalPages = response.data.meta?.total_pages || 1;
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const nextResponse = await getPublicApi<PublicPropertyApiItem[]>(
+      "/api/v1/properties",
+      buildAdminPropertyQuery(params, page, response.data.meta?.per_page || perPage)
+    );
+    properties.push(...nextResponse.data.data);
+  }
+
+  return {
+    data: properties.map(normalizePublicProperty),
+    meta: response.data.meta,
+    message: response.data.message,
+  };
+};
+
+const mergePublicProperties = (
+  source: PublicPropertySummary[],
+  fallback: PublicPropertySummary[],
+  options?: {
+    preferFallbackMedia?: boolean;
+    preferFallbackMasterData?: boolean;
+    preferFallbackPrice?: boolean;
+  }
+) => {
+  const fallbackMap = new Map<number, PublicPropertySummary>();
+  fallback.forEach((item) => {
+    fallbackMap.set(item.id, item);
+  });
+
+  return source.map((item) => {
+    const fallbackItem = fallbackMap.get(item.id);
+    if (!fallbackItem) {
+      return item;
+    }
+
+    const masterProperty = options?.preferFallbackMasterData
+      ? fallbackItem
+      : item;
+    const secondaryProperty = options?.preferFallbackMasterData
+      ? item
+      : fallbackItem;
+    const mediaProperty = options?.preferFallbackMedia ? fallbackItem : item;
+    const secondaryMediaProperty = options?.preferFallbackMedia
+      ? item
+      : fallbackItem;
+    const primaryPhotoUrls = mediaProperty.photo_urls || mediaProperty.roomphoto_urls;
+    const secondaryPhotoUrls =
+      secondaryMediaProperty.photo_urls || secondaryMediaProperty.roomphoto_urls;
+
+    return {
+      ...item,
+      name:
+        getStringValue(masterProperty.name) ||
+        getStringValue(secondaryProperty.name) ||
+        `Properti #${item.id}`,
+      address: masterProperty.address || secondaryProperty.address || null,
+      latitude: masterProperty.latitude ?? secondaryProperty.latitude ?? null,
+      longitude: masterProperty.longitude ?? secondaryProperty.longitude ?? null,
+      property_type:
+        masterProperty.property_type || secondaryProperty.property_type || null,
+      condition: masterProperty.condition || secondaryProperty.condition || null,
+      description:
+        masterProperty.description || secondaryProperty.description || null,
+      rules: masterProperty.rules || secondaryProperty.rules || null,
+      facilities:
+        masterProperty.facilities && masterProperty.facilities.length > 0
+          ? masterProperty.facilities
+          : secondaryProperty.facilities || [],
+      owner_name: masterProperty.owner_name || secondaryProperty.owner_name || null,
+      total_units: item.total_units ?? fallbackItem.total_units,
+      occupied_units: item.occupied_units ?? fallbackItem.occupied_units,
+      vacant_units: item.vacant_units ?? fallbackItem.vacant_units,
+      maintenance_units:
+        item.maintenance_units ?? fallbackItem.maintenance_units,
+      blocked_units: item.blocked_units ?? fallbackItem.blocked_units,
+      available_units: item.available_units ?? fallbackItem.available_units,
+      total_tenants: item.total_tenants ?? fallbackItem.total_tenants,
+      availability_status:
+        item.availability_status ?? fallbackItem.availability_status ?? null,
+      price_min:
+        options?.preferFallbackPrice &&
+        fallbackItem.price_min != null &&
+        fallbackItem.price_min > 0
+          ? fallbackItem.price_min
+          : item.price_min,
+      price_max:
+        options?.preferFallbackPrice &&
+        fallbackItem.price_max != null &&
+        fallbackItem.price_max > 0
+          ? fallbackItem.price_max
+          : item.price_max,
+      photo_url:
+        mediaProperty.photo_url ||
+        primaryPhotoUrls?.[0] ||
+        secondaryMediaProperty.photo_url ||
+        secondaryPhotoUrls?.[0] ||
+        null,
+      photo_urls:
+        primaryPhotoUrls && primaryPhotoUrls.length > 0
+          ? primaryPhotoUrls
+          : secondaryPhotoUrls || [],
+      roomphoto_urls:
+        mediaProperty.roomphoto_urls && mediaProperty.roomphoto_urls.length > 0
+          ? mediaProperty.roomphoto_urls
+          : secondaryMediaProperty.roomphoto_urls || secondaryPhotoUrls || [],
+      video_urls:
+        mediaProperty.video_urls && mediaProperty.video_urls.length > 0
+          ? mediaProperty.video_urls
+          : secondaryMediaProperty.video_urls || [],
+      video_url:
+        mediaProperty.video_url ||
+        mediaProperty.video_urls?.[0] ||
+        secondaryMediaProperty.video_url ||
+        secondaryMediaProperty.video_urls?.[0] ||
+        null,
+      video_360_url:
+        mediaProperty.video_360_url || secondaryMediaProperty.video_360_url || null,
+      photo_360_url:
+        mediaProperty.photo_360_url || secondaryMediaProperty.photo_360_url || null,
+    };
+  });
+};
+
 const getPublicPropertiesFromCatalog = async (
   params?: QueryParams
 ): Promise<ListResult<PublicPropertySummary>> => {
@@ -1224,12 +1405,12 @@ const getPublicPropertiesFromCatalog = async (
 };
 
 const getPublicPropertyUnitsFromCatalog = async (
-  propertyId: string,
+  propertyNumericId: number,
   params?: QueryParams
 ): Promise<ListResult<PublicPropertyUnitSummary>> => {
   const catalogResponse = await fetchAllCatalogUnits(params);
   let units = catalogResponse.data
-    .filter((unit) => unit.property?.id.toString() === propertyId)
+    .filter((unit) => unit.property?.id === propertyNumericId)
     .map(toPublicUnitSummary);
   const sort = params?.sort?.toString();
 
@@ -1991,8 +2172,65 @@ export const getPublicProperties = async (
     };
   };
 
+  const clientRole = getClientSessionRole();
+  const hasClientSession = clientRole != null;
+  const isAdminSession = clientRole === "admin" || clientRole === "finance";
+
+  if (!hasClientSession) {
+    try {
+      return await getPublicPropertiesFromCatalog(params);
+    } catch (catalogError) {
+      if (!isStatusError(catalogError, [401, 403, 404, 405])) {
+        throw catalogError;
+      }
+
+      return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
+    }
+  }
+
+  if (isAdminSession) {
+    try {
+      const adminResponse = await fetchAdminPropertiesForPublic(params);
+
+      try {
+        const catalogResponse = await getPublicPropertiesFromCatalog(params);
+        return {
+          data: mergePublicProperties(adminResponse.data, catalogResponse.data, {
+            preferFallbackPrice: true,
+          }),
+          meta: adminResponse.meta,
+          message: adminResponse.message,
+        };
+      } catch {
+        return adminResponse;
+      }
+    } catch (adminError) {
+      if (!isStatusError(adminError, [401, 403, 404, 405])) {
+        throw adminError;
+      }
+    }
+  }
+
   try {
-    return await getPublicPropertiesFromCatalog(params);
+    const catalogResponse = await getPublicPropertiesFromCatalog(params);
+
+    try {
+      const adminResponse = await fetchAdminPropertiesForPublic(params);
+      return {
+        data: mergePublicProperties(catalogResponse.data, adminResponse.data, {
+          preferFallbackMedia: true,
+          preferFallbackMasterData: true,
+        }),
+        meta: catalogResponse.meta,
+        message: catalogResponse.message,
+      };
+    } catch (adminError) {
+      if (!isStatusError(adminError, [401, 403, 404, 405])) {
+        throw adminError;
+      }
+
+      return catalogResponse;
+    }
   } catch (error) {
     if (isStatusError(error, [401, 403, 404, 405])) {
       return emptyResult(PUBLIC_PROPERTY_LOGIN_REQUIRED_MESSAGE);
@@ -2006,11 +2244,11 @@ export const getPublicPropertyUnits = (
   propertyId: number | string,
   params?: QueryParams
 ): Promise<ListResult<PublicPropertyUnitSummary>> => {
-  const normalizedPropertyId = propertyId.toString().trim();
+  const propertyNumericId = Number(propertyId);
   const page = getNumberParam(params?.page, 1);
   const perPage = getNumberParam(params?.per_page, 20);
 
-  if (!normalizedPropertyId) {
+  if (!Number.isFinite(propertyNumericId)) {
     const paginated = paginateArray<PublicPropertyUnitSummary>([], page, perPage);
     return Promise.resolve({
       data: paginated.data,
@@ -2019,7 +2257,7 @@ export const getPublicPropertyUnits = (
     });
   }
 
-  return getPublicPropertyUnitsFromCatalog(normalizedPropertyId, params).catch(
+  return getPublicPropertyUnitsFromCatalog(propertyNumericId, params).catch(
     (error: unknown) => {
       if (isStatusError(error, [401, 403, 404, 405])) {
         const paginated = paginateArray<PublicPropertyUnitSummary>([], page, perPage);

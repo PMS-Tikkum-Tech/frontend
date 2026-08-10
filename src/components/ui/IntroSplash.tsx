@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const INTRO_STORAGE_KEY = "kikost_intro_seen";
 const INTRO_MESSAGE = "Selamat datang di KIKOST";
-const INTRO_EXCLUDED_PATHS = ["/auth"];
+const INTRO_EXCLUDED_PATHS = ["/verifikasi-email", "/__/auth/action"];
 
 export default function IntroSplash() {
   const pathname = usePathname();

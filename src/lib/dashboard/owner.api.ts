@@ -58,14 +58,6 @@ export interface OwnerCashflowEntry {
   amount: number;
   occurred_on?: string | null;
   description?: string | null;
-  notes?: string | null;
-  rental_booking?: {
-    id?: number | null;
-    booking_code?: string | null;
-    status?: string | null;
-    property_name?: string | null;
-    unit_name?: string | null;
-  } | null;
   property?: {
     id?: number | null;
     name?: string | null;
