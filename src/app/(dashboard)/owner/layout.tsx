@@ -9,6 +9,7 @@ import {
   BarChart3,
   LogOut,
   Menu,
+  Pencil,
   Search,
   X,
 } from "lucide-react";
@@ -36,11 +37,21 @@ export default function OwnerDashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [isAvatarCropOpen, setIsAvatarCropOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
-    router.push("/auth");
-    router.refresh();
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      router.replace("/auth");
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const avatarUrl = (() => {
@@ -197,10 +208,11 @@ export default function OwnerDashboardLayout({
                 onClick={() => {
                   void handleLogout();
                 }}
-                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-300 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
+                disabled={isLoggingOut}
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm text-slate-300 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 disabled:cursor-wait disabled:opacity-60"
               >
                 <LogOut size={18} />
-                Keluar
+                {isLoggingOut ? "Sedang keluar..." : "Keluar"}
               </button>
             </div>
           </div>
@@ -277,6 +289,12 @@ export default function OwnerDashboardLayout({
                         {(user?.name?.charAt(0) || "O").toUpperCase()}
                       </div>
                     )}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-[#3423b8] text-white shadow-sm"
+                    >
+                      <Pencil size={9} strokeWidth={2.5} />
+                    </span>
                   </button>
 
                   <div className="hidden min-w-0 text-sm sm:block">
@@ -292,6 +310,22 @@ export default function OwnerDashboardLayout({
                     ) : null}
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleLogout();
+                  }}
+                  disabled={isLoggingOut}
+                  aria-label={isLoggingOut ? "Sedang keluar" : "Keluar dari akun"}
+                  title="Keluar dari akun"
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60 sm:px-4"
+                >
+                  <LogOut size={17} />
+                  <span className="hidden sm:inline">
+                    {isLoggingOut ? "Keluar..." : "Keluar"}
+                  </span>
+                </button>
               </div>
             </div>
           </header>

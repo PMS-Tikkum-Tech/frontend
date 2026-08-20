@@ -17,6 +17,7 @@ import {
   House,
   LogOut,
   Menu,
+  Pencil,
   Search,
   X,
 } from "lucide-react";
@@ -341,6 +342,12 @@ export default function AdminDashboardLayout({
                         {(user?.name?.charAt(0) || "A").toUpperCase()}
                       </div>
                     )}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-[#3423b8] text-white shadow-sm"
+                    >
+                      <Pencil size={9} strokeWidth={2.5} />
+                    </span>
                   </button>
 
                   <div className="hidden min-w-0 text-sm sm:block">
