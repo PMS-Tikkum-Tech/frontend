@@ -4,14 +4,9 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Building2,
-  CalendarRange,
   CalendarClock,
   Home,
-  Mail,
-  MapPin,
-  Phone,
   TrendingUp,
-  UserRound,
   Wallet,
 } from "lucide-react";
 import RevenueChart from "@/components/dashboard/admin/charts/RevenueChart";
@@ -250,103 +245,84 @@ export default function OwnerDashboardPage() {
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-start gap-3">
             <span className="rounded-xl bg-blue-100 p-2.5 text-blue-700">
-              <UserRound size={20} />
+              <Home size={20} />
             </span>
             <div>
               <h3 className="font-semibold text-slate-900">
-                Laporan Keuangan Per Penghuni
+                Laporan Keuangan Per Unit
               </h3>
               <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-500">
-                Rincian unit, masa sewa, pemasukan, dan pengeluaran setiap
-                penghuni aktif pada periode terpilih.
+                Setiap unit milik Anda dijabarkan beserta pemasukan dan
+                pengeluarannya pada periode terpilih.
               </p>
             </div>
           </div>
           {!isLoading ? (
             <span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-              {data.tenantBreakdown.length} penghuni aktif
+              {data.unitBreakdown.length} unit dimiliki
             </span>
           ) : null}
         </div>
 
         {isLoading ? (
           <div className="flex min-h-40 items-center justify-center px-4 py-8 text-sm text-slate-500">
-            Memuat laporan penghuni...
+            Memuat laporan unit...
           </div>
-        ) : data.tenantBreakdown.length === 0 ? (
+        ) : data.unitBreakdown.length === 0 ? (
           <div className="flex min-h-52 flex-col items-center justify-center px-6 py-10 text-center">
             <span className="rounded-2xl bg-slate-100 p-3 text-slate-400">
-              <UserRound size={28} />
+              <Home size={28} />
             </span>
             <p className="mt-3 font-medium text-slate-700">
-              Belum ada penghuni aktif
+              Belum ada unit yang dimiliki
             </p>
             <p className="mt-1 text-sm text-slate-500">
-              Penghuni akan tampil setelah unit milik Anda memiliki sewa aktif.
+              Unit akan tampil setelah terhubung dengan akun owner ini.
             </p>
           </div>
         ) : (
           <>
             <div className="grid gap-3 p-3 sm:p-4 lg:hidden">
-              {data.tenantBreakdown.map((row) => (
+              {data.unitBreakdown.map((row) => (
                 <article
-                  key={row.tenantId}
+                  key={row.unitId}
                   className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 p-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                        <UserRound size={18} />
+                        <Home size={18} />
                       </span>
                       <div className="min-w-0">
                         <h4 className="truncate font-semibold text-slate-900">
-                          {row.tenantName}
+                          {row.unitName}
                         </h4>
                         <p className="mt-0.5 truncate text-xs text-slate-500">
-                          {row.propertyNames}
+                          {row.propertyName}
                         </p>
                       </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                      Aktif
-                    </span>
+                    <UnitStatusBadge status={row.status} />
                   </div>
 
                   <div className="space-y-4 p-4">
-                    <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Mail size={15} className="shrink-0 text-slate-400" />
-                        <span className="truncate">{row.tenantEmail}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone size={15} className="shrink-0 text-slate-400" />
-                        <span>{row.tenantPhone}</span>
-                      </div>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Home size={15} className="shrink-0 text-slate-400" />
-                        <span className="truncate">{row.unitNames}</span>
-                      </div>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <MapPin size={15} className="shrink-0 text-slate-400" />
-                        <span className="truncate">
-                          {row.buildingNames === "-"
-                            ? "Tanpa blok"
-                            : `Blok ${row.buildingNames}`}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
-                      <CalendarRange
-                        size={16}
-                        className="mt-0.5 shrink-0 text-slate-400"
-                      />
-                      <div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2.5">
                         <p className="text-xs font-medium text-slate-500">
-                          Masa sewa
+                          Blok
                         </p>
-                        <p className="mt-0.5 font-medium text-slate-700">
-                          {formatDate(row.leaseStart)} – {formatDate(row.leaseEnd)}
+                        <p className="mt-0.5 truncate text-sm font-medium text-slate-700">
+                          {row.buildingName === "-"
+                            ? "Tanpa blok"
+                            : row.buildingName}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                        <p className="text-xs font-medium text-slate-500">
+                          Penghuni
+                        </p>
+                        <p className="mt-0.5 truncate text-sm font-medium text-slate-700">
+                          {row.tenantName}
                         </p>
                       </div>
                     </div>
@@ -366,13 +342,13 @@ export default function OwnerDashboardPage() {
                         </p>
                         <FinancialDetailButton
                           value={row.revenue}
-                          label={`Lihat detail pemasukan ${row.tenantName}`}
+                          label={`Lihat detail pemasukan ${row.unitName}`}
                           tone="income"
                           onClick={() =>
                             setFinancialDetail({
-                              title: `Detail Pemasukan • ${row.tenantName}`,
+                              title: `Detail Pemasukan • ${row.unitName}`,
                               direction: "inflow",
-                              tenantId: row.tenantId,
+                              unitId: row.unitId,
                             })
                           }
                         />
@@ -383,13 +359,13 @@ export default function OwnerDashboardPage() {
                         </p>
                         <FinancialDetailButton
                           value={row.expense}
-                          label={`Lihat detail pengeluaran ${row.tenantName}`}
+                          label={`Lihat detail pengeluaran ${row.unitName}`}
                           tone="expense"
                           onClick={() =>
                             setFinancialDetail({
-                              title: `Detail Pengeluaran • ${row.tenantName}`,
+                              title: `Detail Pengeluaran • ${row.unitName}`,
                               direction: "outflow",
-                              tenantId: row.tenantId,
+                              unitId: row.unitId,
                             })
                           }
                         />
@@ -400,7 +376,9 @@ export default function OwnerDashboardPage() {
                         </span>
                         <span
                           className={`text-sm font-semibold ${
-                            row.profit >= 0 ? "text-emerald-300" : "text-red-300"
+                            row.profit >= 0
+                              ? "text-emerald-300"
+                              : "text-red-300"
                           }`}
                         >
                           {formatCurrency(row.profit)}
@@ -413,20 +391,23 @@ export default function OwnerDashboardPage() {
             </div>
 
             <div className="hidden overflow-x-auto lg:block [-ms-overflow-style:none] [scrollbar-width:none]">
-              <table className="w-full min-w-[1280px] text-sm">
+              <table className="w-full min-w-[1180px] text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-5 py-3.5 text-left font-semibold">
+                      Unit
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
+                      Properti
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
+                      Blok
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
+                      Status
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
                       Penghuni
-                    </th>
-                    <th className="px-4 py-3.5 text-left font-semibold">
-                      Kontak
-                    </th>
-                    <th className="px-4 py-3.5 text-left font-semibold">
-                      Properti & Unit
-                    </th>
-                    <th className="px-4 py-3.5 text-left font-semibold">
-                      Masa Sewa
                     </th>
                     <th className="px-4 py-3.5 text-right font-semibold">
                       Harga Bulanan
@@ -443,60 +424,34 @@ export default function OwnerDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data.tenantBreakdown.map((row) => (
+                  {data.unitBreakdown.map((row) => (
                     <tr
-                      key={row.tenantId}
+                      key={row.unitId}
                       className="transition-colors hover:bg-slate-50/80"
                     >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                            <UserRound size={16} />
+                            <Home size={16} />
                           </span>
-                          <div>
-                            <p className="font-semibold text-slate-900">
-                              {row.tenantName}
-                            </p>
-                            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                              Sewa aktif
-                            </span>
-                          </div>
+                          <p className="font-semibold text-slate-900">
+                            {row.unitName}
+                          </p>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-xs text-slate-600">
-                        <div className="flex max-w-48 items-center gap-2">
-                          <Mail size={14} className="shrink-0 text-slate-400" />
-                          <span className="truncate">{row.tenantEmail}</span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <Phone size={14} className="shrink-0 text-slate-400" />
-                          <span>{row.tenantPhone}</span>
-                        </div>
+                      <td className="px-4 py-4 font-medium text-slate-800">
+                        {row.propertyName}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">
+                        {row.buildingName === "-"
+                          ? "Tanpa blok"
+                          : row.buildingName}
                       </td>
                       <td className="px-4 py-4">
-                        <p className="max-w-52 truncate font-medium text-slate-800">
-                          {row.propertyNames}
-                        </p>
-                        <p className="mt-1 max-w-52 truncate text-xs text-slate-500">
-                          {row.unitNames}
-                          {row.buildingNames === "-"
-                            ? ""
-                            : ` • Blok ${row.buildingNames}`}
-                        </p>
+                        <UnitStatusBadge status={row.status} />
                       </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <CalendarRange
-                            size={14}
-                            className="shrink-0 text-slate-400"
-                          />
-                          <div>
-                            <p>{formatDate(row.leaseStart)}</p>
-                            <p className="mt-0.5 text-slate-400">
-                              s.d. {formatDate(row.leaseEnd)}
-                            </p>
-                          </div>
-                        </div>
+                      <td className="px-4 py-4 text-slate-600">
+                        {row.tenantName}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right font-medium text-slate-700">
                         {formatCurrency(row.monthlyPrice)}
@@ -504,13 +459,13 @@ export default function OwnerDashboardPage() {
                       <td className="whitespace-nowrap px-4 py-4 text-right">
                         <FinancialDetailButton
                           value={row.revenue}
-                          label={`Lihat detail pemasukan ${row.tenantName}`}
+                          label={`Lihat detail pemasukan ${row.unitName}`}
                           tone="income"
                           onClick={() =>
                             setFinancialDetail({
-                              title: `Detail Pemasukan • ${row.tenantName}`,
+                              title: `Detail Pemasukan • ${row.unitName}`,
                               direction: "inflow",
-                              tenantId: row.tenantId,
+                              unitId: row.unitId,
                             })
                           }
                         />
@@ -518,13 +473,13 @@ export default function OwnerDashboardPage() {
                       <td className="whitespace-nowrap px-4 py-4 text-right">
                         <FinancialDetailButton
                           value={row.expense}
-                          label={`Lihat detail pengeluaran ${row.tenantName}`}
+                          label={`Lihat detail pengeluaran ${row.unitName}`}
                           tone="expense"
                           onClick={() =>
                             setFinancialDetail({
-                              title: `Detail Pengeluaran • ${row.tenantName}`,
+                              title: `Detail Pengeluaran • ${row.unitName}`,
                               direction: "outflow",
-                              tenantId: row.tenantId,
+                              unitId: row.unitId,
                             })
                           }
                         />
@@ -692,5 +647,47 @@ function FinancialDetailButton({
     >
       {formatCurrency(value)}
     </button>
+  );
+}
+
+const unitStatusLabels: Record<string, string> = {
+  vacant: "Kosong",
+  occupied: "Terisi",
+  booking: "Dipesan",
+  booked: "Dipesan",
+  reserved: "Dipesan",
+  maintenance: "Perawatan",
+  cleaning: "Pembersihan",
+  renovation: "Renovasi",
+};
+
+const unitStatusClasses: Record<string, string> = {
+  vacant: "border-sky-200 bg-sky-50 text-sky-700",
+  occupied: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  booking: "border-violet-200 bg-violet-50 text-violet-700",
+  booked: "border-violet-200 bg-violet-50 text-violet-700",
+  reserved: "border-violet-200 bg-violet-50 text-violet-700",
+  maintenance: "border-amber-200 bg-amber-50 text-amber-700",
+  cleaning: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  renovation: "border-orange-200 bg-orange-50 text-orange-700",
+};
+
+function UnitStatusBadge({ status }: { status: string }) {
+  const normalizedStatus = status.trim().toLowerCase();
+  const label =
+    unitStatusLabels[normalizedStatus] ||
+    (normalizedStatus
+      ? normalizedStatus.replaceAll("_", " ")
+      : "Tidak diketahui");
+  const badgeClass =
+    unitStatusClasses[normalizedStatus] ||
+    "border-slate-200 bg-slate-50 text-slate-600";
+
+  return (
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${badgeClass}`}
+    >
+      {label}
+    </span>
   );
 }

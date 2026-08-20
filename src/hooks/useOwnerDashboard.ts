@@ -70,16 +70,15 @@ export interface OwnerFinancialDetailRow {
   description: string;
 }
 
-export interface OwnerTenantBreakdownRow {
+export interface OwnerUnitBreakdownRow {
+  unitId: number;
+  propertyId: number;
+  propertyName: string;
+  unitName: string;
+  buildingName: string;
+  status: string;
   tenantId: number;
   tenantName: string;
-  tenantEmail: string;
-  tenantPhone: string;
-  propertyNames: string;
-  unitNames: string;
-  buildingNames: string;
-  leaseStart: string;
-  leaseEnd: string;
   monthlyPrice: number;
   revenue: number;
   expense: number;
@@ -106,7 +105,7 @@ interface OwnerDashboardData {
   propertyBreakdown: OwnerPropertyBreakdownRow[];
   monthlyDetails: OwnerMonthlyDetailRow[];
   financialDetails: OwnerFinancialDetailRow[];
-  tenantBreakdown: OwnerTenantBreakdownRow[];
+  unitBreakdown: OwnerUnitBreakdownRow[];
   latestBookings: OwnerLatestBookingRow[];
 }
 
@@ -130,7 +129,7 @@ const initialData: OwnerDashboardData = {
   propertyBreakdown: [],
   monthlyDetails: [],
   financialDetails: [],
-  tenantBreakdown: [],
+  unitBreakdown: [],
   latestBookings: [],
 };
 
@@ -791,16 +790,16 @@ export const useOwnerDashboard = (period: string) => {
             };
           });
 
-        const cashflowSummaryByTenant = new Map<
+        const cashflowSummaryByUnit = new Map<
           number,
           { revenue: number; expense: number }
         >();
         financialDetails.forEach((entry) => {
-          if (!entry.tenantId) {
+          if (!entry.unitId) {
             return;
           }
 
-          const existing = cashflowSummaryByTenant.get(entry.tenantId) || {
+          const existing = cashflowSummaryByUnit.get(entry.unitId) || {
             revenue: 0,
             expense: 0,
           };
@@ -809,93 +808,39 @@ export const useOwnerDashboard = (period: string) => {
           } else {
             existing.expense += entry.amount;
           }
-          cashflowSummaryByTenant.set(entry.tenantId, existing);
+          cashflowSummaryByUnit.set(entry.unitId, existing);
         });
 
-        type TenantAggregate = {
-          tenantId: number;
-          tenantName: string;
-          tenantEmail: string;
-          tenantPhone: string;
-          propertyNames: Set<string>;
-          unitNames: Set<string>;
-          buildingNames: Set<string>;
-          leaseStarts: string[];
-          leaseEnds: string[];
-          monthlyPrice: number;
-        };
-        const tenantAggregateMap = new Map<number, TenantAggregate>();
+        const unitBreakdown: OwnerUnitBreakdownRow[] = propertyReports
+          .flatMap((property) =>
+            property.units.map((unit) => {
+              const cashflowSummary = cashflowSummaryByUnit.get(unit.id) || {
+                revenue: 0,
+                expense: 0,
+              };
 
-        propertyReports.forEach((property) => {
-          property.units.forEach((unit) => {
-            const tenant = unit.tenant;
-            if (!tenant) {
-              return;
-            }
-
-            const existing = tenantAggregateMap.get(tenant.id) || {
-              tenantId: tenant.id,
-              tenantName: tenant.full_name || "-",
-              tenantEmail: tenant.email || "-",
-              tenantPhone: tenant.phone_number || "-",
-              propertyNames: new Set<string>(),
-              unitNames: new Set<string>(),
-              buildingNames: new Set<string>(),
-              leaseStarts: [],
-              leaseEnds: [],
-              monthlyPrice: 0,
-            };
-
-            existing.propertyNames.add(property.name);
-            existing.unitNames.add(unit.name);
-            existing.buildingNames.add(unit.building_name || "-");
-            existing.monthlyPrice += Number(unit.price || 0);
-            if (tenant.lease_start) {
-              existing.leaseStarts.push(tenant.lease_start);
-            }
-            if (tenant.lease_end) {
-              existing.leaseEnds.push(tenant.lease_end);
-            }
-            tenantAggregateMap.set(tenant.id, existing);
-          });
-        });
-
-        const tenantBreakdown: OwnerTenantBreakdownRow[] = Array.from(
-          tenantAggregateMap.values(),
-        )
-          .map((tenant) => {
-            const cashflowSummary = cashflowSummaryByTenant.get(
-              tenant.tenantId,
-            ) || {
-              revenue: 0,
-              expense: 0,
-            };
-
-            return {
-              tenantId: tenant.tenantId,
-              tenantName: tenant.tenantName,
-              tenantEmail: tenant.tenantEmail,
-              tenantPhone: tenant.tenantPhone,
-              propertyNames: Array.from(tenant.propertyNames)
-                .sort((a, b) => a.localeCompare(b, "id"))
-                .join(", "),
-              unitNames: Array.from(tenant.unitNames)
-                .sort((a, b) => a.localeCompare(b, "id"))
-                .join(", "),
-              buildingNames: Array.from(tenant.buildingNames)
-                .sort((a, b) => a.localeCompare(b, "id"))
-                .join(", "),
-              leaseStart: tenant.leaseStarts.sort()[0] || "-",
-              leaseEnd: tenant.leaseEnds.sort().at(-1) || "-",
-              monthlyPrice: tenant.monthlyPrice,
-              revenue: cashflowSummary.revenue,
-              expense: cashflowSummary.expense,
-              profit: cashflowSummary.revenue - cashflowSummary.expense,
-            };
-          })
+              return {
+                unitId: unit.id,
+                propertyId: property.id,
+                propertyName: property.name,
+                unitName: unit.name,
+                buildingName: unit.building_name || "-",
+                status: unit.status,
+                tenantId: Number(unit.tenant?.id || 0),
+                tenantName: unit.tenant?.full_name || "-",
+                monthlyPrice: Number(unit.price || 0),
+                revenue: cashflowSummary.revenue,
+                expense: cashflowSummary.expense,
+                profit: cashflowSummary.revenue - cashflowSummary.expense,
+              };
+            }),
+          )
           .sort((a, b) => {
-            const nameOrder = a.tenantName.localeCompare(b.tenantName, "id");
-            return nameOrder || a.tenantId - b.tenantId;
+            const propertyOrder = a.propertyName.localeCompare(
+              b.propertyName,
+              "id",
+            );
+            return propertyOrder || a.unitName.localeCompare(b.unitName, "id");
           });
 
         const latestBookings: OwnerLatestBookingRow[] = [...bookings]
@@ -941,7 +886,7 @@ export const useOwnerDashboard = (period: string) => {
           propertyBreakdown,
           monthlyDetails,
           financialDetails,
-          tenantBreakdown,
+          unitBreakdown,
           latestBookings,
         });
       } catch (loadError) {
