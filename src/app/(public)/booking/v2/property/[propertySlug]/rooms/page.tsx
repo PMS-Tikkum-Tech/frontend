@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
-export default function BookingV2PropertyRoomsAliasPage({
+export default async function BookingV2PropertyRoomsAliasPage({
   params,
 }: {
-  params: { propertySlug: string };
+  params: Promise<{ propertySlug: string }>;
 }) {
-  redirect(`/booking/v2/${params.propertySlug}/rooms`);
+  const { propertySlug } = await params;
+  redirect(`/booking/v2/${propertySlug}/rooms`);
 }

@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
-export default function BookingV2PropertyCheckoutAliasPage({
+export default async function BookingV2PropertyCheckoutAliasPage({
   params,
 }: {
-  params: { propertySlug: string };
+  params: Promise<{ propertySlug: string }>;
 }) {
-  redirect(`/booking/v2/${params.propertySlug}/summary`);
+  const { propertySlug } = await params;
+  redirect(`/booking/v2/${propertySlug}/summary`);
 }

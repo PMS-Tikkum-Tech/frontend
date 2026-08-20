@@ -4,5 +4,9 @@ node_modules
 .git
 .env.local
 .env
+backend
+backups
+screenlog*
+*.tgz
 *.md
 README*

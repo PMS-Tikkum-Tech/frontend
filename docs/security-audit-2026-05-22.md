@@ -4,6 +4,10 @@ Scope: defensive code review for common web app risks, including auth, JWT, CORS
 
 This is not a guarantee that the system is fully secure. It is an archive of risks found from source review and `npm audit --omit=dev`.
 
+Current status (2026-08-19): the legacy Xendit integration described below was
+removed after the product adopted manual transfer-proof verification. The
+finding remains in this document only as historical audit evidence.
+
 ## Priority Findings
 
 1. Critical - Xendit webhook payment status is not verified.

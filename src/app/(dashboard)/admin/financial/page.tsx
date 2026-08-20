@@ -439,6 +439,19 @@ const getFinancialUnitLabel = (unit: AdminPropertyUnitRow) => {
   return `${parsedIdentity.buildingName} / ${displayUnitName}`;
 };
 
+const compareFinancialUnits = (
+  firstUnit: AdminPropertyUnitRow,
+  secondUnit: AdminPropertyUnitRow,
+) => {
+  const labelComparison = getFinancialUnitLabel(firstUnit).localeCompare(
+    getFinancialUnitLabel(secondUnit),
+    "id",
+    { numeric: true, sensitivity: "base" },
+  );
+
+  return labelComparison || firstUnit.unit_id - secondUnit.unit_id;
+};
+
 const getFinancialUnitSearchText = (unit: AdminPropertyUnitRow) => {
   const label = getFinancialUnitLabel(unit);
   const compactLabel = label.replace(/[\s/\\|•·:_-]+/g, "");
@@ -490,9 +503,17 @@ const getExpenseOperationalUnits = (
     }
   });
 
-  return Array.from(options.values()).sort((a, b) =>
-    a.name.localeCompare(b.name, "id"),
-  );
+  return Array.from(options.values()).sort((a, b) => {
+    const nameComparison = a.name.localeCompare(b.name, "id", {
+      numeric: true,
+      sensitivity: "base",
+    });
+
+    return (
+      nameComparison ||
+      compareFinancialUnits(a.representativeUnit, b.representativeUnit)
+    );
+  });
 };
 
 const resolveFinancialOwner = (
@@ -1422,14 +1443,13 @@ export default function AdminFinancialPage() {
 
   const filteredUnitOptions = useMemo(() => {
     const normalizedSearch = unitOptionSearch.trim().toLowerCase();
+    const matchingUnits = normalizedSearch
+      ? units.filter((unit) =>
+          getFinancialUnitSearchText(unit).includes(normalizedSearch),
+        )
+      : units;
 
-    if (!normalizedSearch) {
-      return units;
-    }
-
-    return units.filter((unit) =>
-      getFinancialUnitSearchText(unit).includes(normalizedSearch),
-    );
+    return [...matchingUnits].sort(compareFinancialUnits);
   }, [units, unitOptionSearch]);
 
   const expenseOperationalUnits = useMemo(

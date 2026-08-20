@@ -1,1 +1,35 @@
  HEAD /auth 200 in 11ms
+Your RubyGems version (3.0.3.1) has a bug that prevents `required_ruby_version` from working for Bundler. Any scripts that use `gem install bundler` will break as soon as Bundler drops support for your Ruby version. Please upgrade RubyGems to avoid future breakage and silence this warning by running `gem update --system 3.2.3`
+Could not locate Gemfile or .bundle/ directory
+
+> kyra-stay-frontend@0.1.0 dev
+> next dev
+
+[1G[0K  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1336ms
+ ○ Compiling / ...
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 2.6s (1670 modules)
+ HEAD / 200 in 2707ms
+ ✓ Compiled /src/middleware in 83ms (73 modules)
+ ○ Compiling /auth ...
+ ✓ Compiled /auth in 660ms (1702 modules)
+ HEAD /auth 200 in 777ms
+ HEAD / 200 in 39ms
+ HEAD / 200 in 56ms
+ ⚠ Found a change in next.config.mjs. Restarting the server to apply the changes...
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1117ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1174ms (1653 modules)
+ HEAD / 200 in 1345ms

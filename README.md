@@ -76,6 +76,15 @@ Contoh domain KIKOST:
 NEXT_PUBLIC_API_URL=https://api.kikost.com
 ```
 
+Untuk deployment Dockerfile di Coolify, tandai seluruh variabel
+`NEXT_PUBLIC_*` yang dipakai sebagai **Build Variable**. Next.js memasukkan
+nilai tersebut ke browser bundle ketika `next build`; mengubah runtime variable
+tanpa rebuild tidak akan mengubah frontend. Docker build sengaja dihentikan jika
+`NEXT_PUBLIC_API_URL` kosong agar image yang mengarah ke API yang salah tidak
+sempat dipublikasikan.
+
+Health check frontend dapat memakai path `/` pada internal port `3000`.
+
 Setelah env diubah, lakukan rebuild dan redeploy frontend karena variabel `NEXT_PUBLIC_*` dibaca saat build Next.js.
 
 Struktur domain yang disarankan:

@@ -621,7 +621,6 @@ export interface AdminFinancialDashboardPayload {
 export interface AdminPayment {
   id: number;
   invoice_id: string;
-  xendit_invoice_id?: string | null;
   property: {
     id: number;
     name?: string | null;
@@ -2091,7 +2090,6 @@ export const mapAdminManualRentalBookingToPayment = (
   return {
     id: booking.id,
     invoice_id: booking.booking_code || `BOOKING-${booking.id}`,
-    xendit_invoice_id: null,
     property: {
       id: booking.property?.id || 0,
       name: booking.property?.name || null,
@@ -2319,17 +2317,6 @@ export const deleteAdminPayment = async (
   );
 
   return {
-    message: response.data.message,
-  };
-};
-
-export const pushAdminPaymentInvoice = async (id: number | string) => {
-  const response = await axiosInstance.post<ApiResponse<AdminPayment>>(
-    `/api/v1/payments/${id}/push_invoice`,
-  );
-
-  return {
-    data: response.data.data,
     message: response.data.message,
   };
 };

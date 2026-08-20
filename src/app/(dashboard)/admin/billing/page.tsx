@@ -679,7 +679,7 @@ const fetchProofAsFile = async (proofUrl: string): Promise<File | null> => {
       return null;
     }
 
-    const response = await fetch(absoluteUrl);
+    const response = await fetch(absoluteUrl, { credentials: "include" });
     if (!response.ok) {
       return null;
     }
@@ -1279,7 +1279,7 @@ export default function AdminBillingPage() {
     setNotice(null);
 
     try {
-      const response = await fetch(proofUrl);
+      const response = await fetch(proofUrl, { credentials: "include" });
       if (!response.ok) {
         throw new Error("Gagal mengambil file bukti transfer.");
       }
@@ -2732,10 +2732,6 @@ export default function AdminBillingPage() {
                     <InvoiceMetaRow
                       label="Direview"
                       value={formatDateTime(viewPayment.reviewed_at)}
-                    />
-                    <InvoiceMetaRow
-                      label="Referensi Gateway"
-                      value={viewPayment.xendit_invoice_id || "-"}
                     />
                     <InvoiceMetaRow
                       label="Referensi Sewa"

@@ -37,7 +37,6 @@ type ApiErrorPayload = {
 export interface TenantPayment {
   id: number;
   invoice_id: string;
-  xendit_invoice_id?: string | null;
   property: {
     id: number;
     name?: string | null;
@@ -1495,7 +1494,6 @@ const mapManualBookingToTenantPayment = (
   return {
     id: booking.id,
     invoice_id: booking.booking_code || `BOOKING-${booking.id}`,
-    xendit_invoice_id: null,
     property: {
       id: booking.property?.id || 0,
       name: booking.property?.name || null,
