@@ -74,6 +74,11 @@ export interface OwnerCashflowEntry {
     id?: number | null;
     name?: string | null;
   } | null;
+  tenant?: {
+    id?: number | null;
+    full_name?: string | null;
+    email?: string | null;
+  } | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -89,6 +94,10 @@ export interface OwnerPropertyReportUnit {
   tenant?: {
     id: number;
     full_name: string;
+    email?: string | null;
+    phone_number?: string | null;
+    lease_start?: string | null;
+    lease_end?: string | null;
   } | null;
 }
 
@@ -99,6 +108,11 @@ export interface OwnerPropertyFinancialEntry {
   occurred_on: string;
   description?: string | null;
   notes?: string | null;
+  tenant?: {
+    id: number;
+    full_name: string;
+    email?: string | null;
+  } | null;
   unit?: {
     id: number;
     name: string;

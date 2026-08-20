@@ -4,9 +4,14 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Building2,
+  CalendarRange,
   CalendarClock,
   Home,
+  Mail,
+  MapPin,
+  Phone,
   TrendingUp,
+  UserRound,
   Wallet,
 } from "lucide-react";
 import RevenueChart from "@/components/dashboard/admin/charts/RevenueChart";
@@ -22,6 +27,7 @@ type FinancialDetailSelection = {
   direction: "inflow" | "outflow";
   propertyId?: number;
   unitId?: number;
+  tenantId?: number;
 };
 
 const formatCurrency = (value: number) =>
@@ -57,7 +63,9 @@ export default function OwnerDashboardPage() {
           (financialDetail.propertyId === undefined ||
             entry.propertyId === financialDetail.propertyId) &&
           (financialDetail.unitId === undefined ||
-            entry.unitId === financialDetail.unitId),
+            entry.unitId === financialDetail.unitId) &&
+          (financialDetail.tenantId === undefined ||
+            entry.tenantId === financialDetail.tenantId),
       )
     : [];
 
@@ -238,104 +246,307 @@ export default function OwnerDashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
-        <div className="mb-4">
-          <h3 className="text-base font-semibold text-slate-800">
-            Laporan Keuangan Per Unit
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Seluruh unit yang Anda miliki tetap ditampilkan, termasuk unit yang
-            belum memiliki transaksi pada periode ini.
-          </p>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-start gap-3">
+            <span className="rounded-xl bg-blue-100 p-2.5 text-blue-700">
+              <UserRound size={20} />
+            </span>
+            <div>
+              <h3 className="font-semibold text-slate-900">
+                Laporan Keuangan Per Penghuni
+              </h3>
+              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-500">
+                Rincian unit, masa sewa, pemasukan, dan pengeluaran setiap
+                penghuni aktif pada periode terpilih.
+              </p>
+            </div>
+          </div>
+          {!isLoading ? (
+            <span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              {data.tenantBreakdown.length} penghuni aktif
+            </span>
+          ) : null}
         </div>
 
-        <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          <table className="min-w-[1180px] w-full text-sm">
-            <thead className="bg-slate-50 text-slate-700">
-              <tr>
-                <th className="p-3 text-left font-semibold">Properti</th>
-                <th className="p-3 text-left font-semibold">Blok</th>
-                <th className="p-3 text-left font-semibold">Unit</th>
-                <th className="p-3 text-left font-semibold">Status</th>
-                <th className="p-3 text-left font-semibold">Penyewa</th>
-                <th className="p-3 text-right font-semibold">Harga Bulanan</th>
-                <th className="p-3 text-right font-semibold">Pendapatan</th>
-                <th className="p-3 text-right font-semibold">Pengeluaran</th>
-                <th className="p-3 text-right font-semibold">Laba</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr className="border-t border-slate-100">
-                  <td colSpan={9} className="p-4 text-center text-slate-500">
-                    Memuat laporan unit...
-                  </td>
-                </tr>
-              ) : data.unitBreakdown.length === 0 ? (
-                <tr className="border-t border-slate-100">
-                  <td colSpan={9} className="p-4 text-center text-slate-500">
-                    Belum ada unit yang terhubung ke akun owner ini.
-                  </td>
-                </tr>
-              ) : (
-                data.unitBreakdown.map((row) => (
-                  <tr
-                    key={row.unitId}
-                    className="border-t border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="p-3 font-medium text-slate-800">
-                      {row.propertyName}
-                    </td>
-                    <td className="p-3 text-slate-700">{row.buildingName}</td>
-                    <td className="p-3 text-slate-700">{row.unitName}</td>
-                    <td className="p-3">
-                      <UnitStatusBadge status={row.status} />
-                    </td>
-                    <td className="p-3 text-slate-700">{row.tenantName}</td>
-                    <td className="p-3 text-right text-slate-700">
-                      {formatCurrency(row.monthlyPrice)}
-                    </td>
-                    <td className="p-3 text-right">
-                      <FinancialDetailButton
-                        value={row.revenue}
-                        label={`Lihat detail pendapatan ${row.unitName}`}
-                        onClick={() =>
-                          setFinancialDetail({
-                            title: `Detail Pendapatan • ${row.propertyName} • ${row.unitName}`,
-                            direction: "inflow",
-                            propertyId: row.propertyId,
-                            unitId: row.unitId,
-                          })
-                        }
+        {isLoading ? (
+          <div className="flex min-h-40 items-center justify-center px-4 py-8 text-sm text-slate-500">
+            Memuat laporan penghuni...
+          </div>
+        ) : data.tenantBreakdown.length === 0 ? (
+          <div className="flex min-h-52 flex-col items-center justify-center px-6 py-10 text-center">
+            <span className="rounded-2xl bg-slate-100 p-3 text-slate-400">
+              <UserRound size={28} />
+            </span>
+            <p className="mt-3 font-medium text-slate-700">
+              Belum ada penghuni aktif
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Penghuni akan tampil setelah unit milik Anda memiliki sewa aktif.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 p-3 sm:p-4 lg:hidden">
+              {data.tenantBreakdown.map((row) => (
+                <article
+                  key={row.tenantId}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 p-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                        <UserRound size={18} />
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="truncate font-semibold text-slate-900">
+                          {row.tenantName}
+                        </h4>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {row.propertyNames}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                      Aktif
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 p-4">
+                    <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Mail size={15} className="shrink-0 text-slate-400" />
+                        <span className="truncate">{row.tenantEmail}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone size={15} className="shrink-0 text-slate-400" />
+                        <span>{row.tenantPhone}</span>
+                      </div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Home size={15} className="shrink-0 text-slate-400" />
+                        <span className="truncate">{row.unitNames}</span>
+                      </div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <MapPin size={15} className="shrink-0 text-slate-400" />
+                        <span className="truncate">
+                          {row.buildingNames === "-"
+                            ? "Tanpa blok"
+                            : `Blok ${row.buildingNames}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                      <CalendarRange
+                        size={16}
+                        className="mt-0.5 shrink-0 text-slate-400"
                       />
-                    </td>
-                    <td className="p-3 text-right">
-                      <FinancialDetailButton
-                        value={row.expense}
-                        label={`Lihat detail pengeluaran ${row.unitName}`}
-                        onClick={() =>
-                          setFinancialDetail({
-                            title: `Detail Pengeluaran • ${row.propertyName} • ${row.unitName}`,
-                            direction: "outflow",
-                            propertyId: row.propertyId,
-                            unitId: row.unitId,
-                          })
-                        }
-                      />
-                    </td>
-                    <td
-                      className={`p-3 text-right font-semibold ${
-                        row.profit >= 0 ? "text-emerald-700" : "text-red-700"
-                      }`}
-                    >
-                      {formatCurrency(row.profit)}
-                    </td>
+                      <div>
+                        <p className="text-xs font-medium text-slate-500">
+                          Masa sewa
+                        </p>
+                        <p className="mt-0.5 font-medium text-slate-700">
+                          {formatDate(row.leaseStart)} – {formatDate(row.leaseEnd)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="col-span-2 flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5">
+                        <span className="text-xs font-medium text-slate-500">
+                          Harga bulanan
+                        </span>
+                        <span className="text-sm font-semibold text-slate-800">
+                          {formatCurrency(row.monthlyPrice)}
+                        </span>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+                          Pemasukan
+                        </p>
+                        <FinancialDetailButton
+                          value={row.revenue}
+                          label={`Lihat detail pemasukan ${row.tenantName}`}
+                          tone="income"
+                          onClick={() =>
+                            setFinancialDetail({
+                              title: `Detail Pemasukan • ${row.tenantName}`,
+                              direction: "inflow",
+                              tenantId: row.tenantId,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="rounded-xl border border-red-100 bg-red-50/70 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600">
+                          Pengeluaran
+                        </p>
+                        <FinancialDetailButton
+                          value={row.expense}
+                          label={`Lihat detail pengeluaran ${row.tenantName}`}
+                          tone="expense"
+                          onClick={() =>
+                            setFinancialDetail({
+                              title: `Detail Pengeluaran • ${row.tenantName}`,
+                              direction: "outflow",
+                              tenantId: row.tenantId,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="col-span-2 flex items-center justify-between rounded-xl bg-slate-900 px-3 py-3 text-white">
+                        <span className="text-xs font-medium text-slate-300">
+                          Laba bersih
+                        </span>
+                        <span
+                          className={`text-sm font-semibold ${
+                            row.profit >= 0 ? "text-emerald-300" : "text-red-300"
+                          }`}
+                        >
+                          {formatCurrency(row.profit)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto lg:block [-ms-overflow-style:none] [scrollbar-width:none]">
+              <table className="w-full min-w-[1280px] text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3.5 text-left font-semibold">
+                      Penghuni
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
+                      Kontak
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
+                      Properti & Unit
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold">
+                      Masa Sewa
+                    </th>
+                    <th className="px-4 py-3.5 text-right font-semibold">
+                      Harga Bulanan
+                    </th>
+                    <th className="px-4 py-3.5 text-right font-semibold">
+                      Pemasukan
+                    </th>
+                    <th className="px-4 py-3.5 text-right font-semibold">
+                      Pengeluaran
+                    </th>
+                    <th className="px-5 py-3.5 text-right font-semibold">
+                      Laba
+                    </th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.tenantBreakdown.map((row) => (
+                    <tr
+                      key={row.tenantId}
+                      className="transition-colors hover:bg-slate-50/80"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                            <UserRound size={16} />
+                          </span>
+                          <div>
+                            <p className="font-semibold text-slate-900">
+                              {row.tenantName}
+                            </p>
+                            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                              Sewa aktif
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-xs text-slate-600">
+                        <div className="flex max-w-48 items-center gap-2">
+                          <Mail size={14} className="shrink-0 text-slate-400" />
+                          <span className="truncate">{row.tenantEmail}</span>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <Phone size={14} className="shrink-0 text-slate-400" />
+                          <span>{row.tenantPhone}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="max-w-52 truncate font-medium text-slate-800">
+                          {row.propertyNames}
+                        </p>
+                        <p className="mt-1 max-w-52 truncate text-xs text-slate-500">
+                          {row.unitNames}
+                          {row.buildingNames === "-"
+                            ? ""
+                            : ` • Blok ${row.buildingNames}`}
+                        </p>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <CalendarRange
+                            size={14}
+                            className="shrink-0 text-slate-400"
+                          />
+                          <div>
+                            <p>{formatDate(row.leaseStart)}</p>
+                            <p className="mt-0.5 text-slate-400">
+                              s.d. {formatDate(row.leaseEnd)}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-right font-medium text-slate-700">
+                        {formatCurrency(row.monthlyPrice)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-right">
+                        <FinancialDetailButton
+                          value={row.revenue}
+                          label={`Lihat detail pemasukan ${row.tenantName}`}
+                          tone="income"
+                          onClick={() =>
+                            setFinancialDetail({
+                              title: `Detail Pemasukan • ${row.tenantName}`,
+                              direction: "inflow",
+                              tenantId: row.tenantId,
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-right">
+                        <FinancialDetailButton
+                          value={row.expense}
+                          label={`Lihat detail pengeluaran ${row.tenantName}`}
+                          tone="expense"
+                          onClick={() =>
+                            setFinancialDetail({
+                              title: `Detail Pengeluaran • ${row.tenantName}`,
+                              direction: "outflow",
+                              tenantId: row.tenantId,
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-right">
+                        <span
+                          className={`inline-flex rounded-lg px-2.5 py-1.5 font-semibold ${
+                            row.profit >= 0
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {formatCurrency(row.profit)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
@@ -458,44 +669,28 @@ function FinancialDetailButton({
   value,
   label,
   onClick,
+  tone = "default",
 }: {
   value: number;
   label: string;
   onClick: () => void;
+  tone?: "default" | "income" | "expense";
 }) {
+  const toneClass =
+    tone === "income"
+      ? "mt-1 inline-flex whitespace-nowrap bg-emerald-100/80 px-2 py-1 font-semibold text-emerald-700 hover:bg-emerald-200/80 hover:text-emerald-900"
+      : tone === "expense"
+        ? "mt-1 inline-flex whitespace-nowrap bg-red-100/80 px-2 py-1 font-semibold text-red-700 hover:bg-red-200/80 hover:text-red-900"
+        : "font-medium text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900";
+
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="rounded font-medium text-blue-700 underline decoration-dotted underline-offset-4 transition hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={`rounded transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${toneClass}`}
     >
       {formatCurrency(value)}
     </button>
-  );
-}
-
-function UnitStatusBadge({ status }: { status: string }) {
-  const labels: Record<string, string> = {
-    occupied: "Terisi",
-    vacant: "Tersedia",
-    maintenance: "Perawatan",
-    booking: "Dipesan",
-  };
-  const classes: Record<string, string> = {
-    occupied: "bg-emerald-100 text-emerald-700",
-    vacant: "bg-slate-100 text-slate-700",
-    maintenance: "bg-amber-100 text-amber-700",
-    booking: "bg-blue-100 text-blue-700",
-  };
-
-  return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-        classes[status] || "bg-slate-100 text-slate-700"
-      }`}
-    >
-      {labels[status] || status || "-"}
-    </span>
   );
 }

@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Home,
   ReceiptText,
+  UserRound,
   X,
 } from "lucide-react";
 import type { OwnerFinancialDetailRow } from "@/hooks/useOwnerDashboard";
@@ -165,6 +166,16 @@ export default function OwnerFinancialDetailDialog({
                       <dt className="sr-only">Unit</dt>
                       <dd>{entry.unitName}</dd>
                     </div>
+                    {entry.tenantId > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <UserRound
+                          size={15}
+                          className="shrink-0 text-slate-400"
+                        />
+                        <dt className="sr-only">Penghuni</dt>
+                        <dd>{entry.tenantName}</dd>
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-2">
                       <ReceiptText size={15} className="shrink-0 text-slate-400" />
                       <dt className="sr-only">Kode pemesanan</dt>

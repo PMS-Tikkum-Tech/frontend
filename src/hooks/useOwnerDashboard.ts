@@ -8,6 +8,7 @@ import {
   getOwnerPropertyReports,
   type OwnerCashflowEntry,
   type OwnerManualRentalBooking,
+  type OwnerPropertyReportUnit,
 } from "@/lib/dashboard/owner.api";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 import type { OccupancyData, RevenueData } from "@/types/dashboard";
@@ -60,6 +61,8 @@ export interface OwnerFinancialDetailRow {
   periodKey: string;
   propertyId: number;
   unitId: number;
+  tenantId: number;
+  tenantName: string;
   propertyName: string;
   unitName: string;
   bookingCode: string;
@@ -67,14 +70,16 @@ export interface OwnerFinancialDetailRow {
   description: string;
 }
 
-export interface OwnerUnitBreakdownRow {
-  unitId: number;
-  propertyId: number;
-  propertyName: string;
-  unitName: string;
-  buildingName: string;
-  status: string;
+export interface OwnerTenantBreakdownRow {
+  tenantId: number;
   tenantName: string;
+  tenantEmail: string;
+  tenantPhone: string;
+  propertyNames: string;
+  unitNames: string;
+  buildingNames: string;
+  leaseStart: string;
+  leaseEnd: string;
   monthlyPrice: number;
   revenue: number;
   expense: number;
@@ -101,7 +106,7 @@ interface OwnerDashboardData {
   propertyBreakdown: OwnerPropertyBreakdownRow[];
   monthlyDetails: OwnerMonthlyDetailRow[];
   financialDetails: OwnerFinancialDetailRow[];
-  unitBreakdown: OwnerUnitBreakdownRow[];
+  tenantBreakdown: OwnerTenantBreakdownRow[];
   latestBookings: OwnerLatestBookingRow[];
 }
 
@@ -125,7 +130,7 @@ const initialData: OwnerDashboardData = {
   propertyBreakdown: [],
   monthlyDetails: [],
   financialDetails: [],
-  unitBreakdown: [],
+  tenantBreakdown: [],
   latestBookings: [],
 };
 
@@ -311,6 +316,17 @@ export const useOwnerDashboard = (period: string) => {
         );
         const shouldFallbackToSettlements = ownerScopedCashflows.length === 0;
         const propertyReports = propertyReportsResponse.data;
+        const tenantByUnitId = new Map<
+          number,
+          NonNullable<OwnerPropertyReportUnit["tenant"]>
+        >();
+        propertyReports.forEach((property) => {
+          property.units.forEach((unit) => {
+            if (unit.tenant) {
+              tenantByUnitId.set(unit.id, unit.tenant);
+            }
+          });
+        });
 
         const cashflowFinancialDetails: OwnerFinancialDetailRow[] =
           shouldFallbackToSettlements
@@ -326,6 +342,8 @@ export const useOwnerDashboard = (period: string) => {
                     parseDate(booking.start_date) ||
                     periodRange.from;
                   const propertyId = Number(booking.property?.id || 0);
+                  const unitId = Number(booking.unit?.id || 0);
+                  const currentTenant = tenantByUnitId.get(unitId);
 
                   return {
                     id: `booking-${booking.id}`,
@@ -334,7 +352,14 @@ export const useOwnerDashboard = (period: string) => {
                     occurredOn: date.toISOString(),
                     periodKey: toMonthKey(date),
                     propertyId,
-                    unitId: Number(booking.unit?.id || 0),
+                    unitId,
+                    tenantId: Number(
+                      booking.tenant?.id || currentTenant?.id || 0,
+                    ),
+                    tenantName:
+                      booking.tenant?.full_name ||
+                      currentTenant?.full_name ||
+                      "-",
                     propertyName:
                       booking.property?.name ||
                       (propertyId ? `Properti #${propertyId}` : "Tanpa properti"),
@@ -355,6 +380,8 @@ export const useOwnerDashboard = (period: string) => {
                     parseDate(entry.created_at) ||
                     periodRange.from;
                   const propertyId = Number(entry.property?.id || 0);
+                  const unitId = Number(entry.unit?.id || 0);
+                  const currentTenant = tenantByUnitId.get(unitId);
 
                   return {
                     id: `cashflow-${entry.id}`,
@@ -363,7 +390,14 @@ export const useOwnerDashboard = (period: string) => {
                     occurredOn: date.toISOString(),
                     periodKey: toMonthKey(date),
                     propertyId,
-                    unitId: Number(entry.unit?.id || 0),
+                    unitId,
+                    tenantId: Number(
+                      entry.tenant?.id || currentTenant?.id || 0,
+                    ),
+                    tenantName:
+                      entry.tenant?.full_name ||
+                      currentTenant?.full_name ||
+                      "-",
                     propertyName:
                       entry.property?.name ||
                       entry.rental_booking?.property_name ||
@@ -403,6 +437,8 @@ export const useOwnerDashboard = (period: string) => {
               )
               .map((entry) => {
                 const date = parseDate(entry.occurred_on) || periodRange.from;
+                const unitId = Number(entry.unit?.id || 0);
+                const currentTenant = tenantByUnitId.get(unitId);
 
                 return {
                   id: `financial-${entry.id}`,
@@ -411,7 +447,14 @@ export const useOwnerDashboard = (period: string) => {
                   occurredOn: date.toISOString(),
                   periodKey: toMonthKey(date),
                   propertyId: property.id,
-                  unitId: Number(entry.unit?.id || 0),
+                  unitId,
+                  tenantId: Number(
+                    entry.tenant?.id || currentTenant?.id || 0,
+                  ),
+                  tenantName:
+                    entry.tenant?.full_name ||
+                    currentTenant?.full_name ||
+                    "-",
                   propertyName: property.name,
                   unitName: entry.unit?.name || "Operasional properti",
                   bookingCode: entry.rental_booking?.booking_code || "-",
@@ -748,16 +791,16 @@ export const useOwnerDashboard = (period: string) => {
             };
           });
 
-        const cashflowSummaryByUnit = new Map<
+        const cashflowSummaryByTenant = new Map<
           number,
           { revenue: number; expense: number }
         >();
         financialDetails.forEach((entry) => {
-          if (!entry.unitId) {
+          if (!entry.tenantId) {
             return;
           }
 
-          const existing = cashflowSummaryByUnit.get(entry.unitId) || {
+          const existing = cashflowSummaryByTenant.get(entry.tenantId) || {
             revenue: 0,
             expense: 0,
           };
@@ -766,38 +809,93 @@ export const useOwnerDashboard = (period: string) => {
           } else {
             existing.expense += entry.amount;
           }
-          cashflowSummaryByUnit.set(entry.unitId, existing);
+          cashflowSummaryByTenant.set(entry.tenantId, existing);
         });
 
-        const unitBreakdown: OwnerUnitBreakdownRow[] = propertyReports
-          .flatMap((property) =>
-            property.units.map((unit) => {
-              const cashflowSummary = cashflowSummaryByUnit.get(unit.id) || {
-                revenue: 0,
-                expense: 0,
-              };
+        type TenantAggregate = {
+          tenantId: number;
+          tenantName: string;
+          tenantEmail: string;
+          tenantPhone: string;
+          propertyNames: Set<string>;
+          unitNames: Set<string>;
+          buildingNames: Set<string>;
+          leaseStarts: string[];
+          leaseEnds: string[];
+          monthlyPrice: number;
+        };
+        const tenantAggregateMap = new Map<number, TenantAggregate>();
 
-              return {
-                unitId: unit.id,
-                propertyId: property.id,
-                propertyName: property.name,
-                unitName: unit.name,
-                buildingName: unit.building_name || "-",
-                status: unit.status,
-                tenantName: unit.tenant?.full_name || "-",
-                monthlyPrice: Number(unit.price || 0),
-                revenue: cashflowSummary.revenue,
-                expense: cashflowSummary.expense,
-                profit: cashflowSummary.revenue - cashflowSummary.expense,
-              };
-            }),
-          )
+        propertyReports.forEach((property) => {
+          property.units.forEach((unit) => {
+            const tenant = unit.tenant;
+            if (!tenant) {
+              return;
+            }
+
+            const existing = tenantAggregateMap.get(tenant.id) || {
+              tenantId: tenant.id,
+              tenantName: tenant.full_name || "-",
+              tenantEmail: tenant.email || "-",
+              tenantPhone: tenant.phone_number || "-",
+              propertyNames: new Set<string>(),
+              unitNames: new Set<string>(),
+              buildingNames: new Set<string>(),
+              leaseStarts: [],
+              leaseEnds: [],
+              monthlyPrice: 0,
+            };
+
+            existing.propertyNames.add(property.name);
+            existing.unitNames.add(unit.name);
+            existing.buildingNames.add(unit.building_name || "-");
+            existing.monthlyPrice += Number(unit.price || 0);
+            if (tenant.lease_start) {
+              existing.leaseStarts.push(tenant.lease_start);
+            }
+            if (tenant.lease_end) {
+              existing.leaseEnds.push(tenant.lease_end);
+            }
+            tenantAggregateMap.set(tenant.id, existing);
+          });
+        });
+
+        const tenantBreakdown: OwnerTenantBreakdownRow[] = Array.from(
+          tenantAggregateMap.values(),
+        )
+          .map((tenant) => {
+            const cashflowSummary = cashflowSummaryByTenant.get(
+              tenant.tenantId,
+            ) || {
+              revenue: 0,
+              expense: 0,
+            };
+
+            return {
+              tenantId: tenant.tenantId,
+              tenantName: tenant.tenantName,
+              tenantEmail: tenant.tenantEmail,
+              tenantPhone: tenant.tenantPhone,
+              propertyNames: Array.from(tenant.propertyNames)
+                .sort((a, b) => a.localeCompare(b, "id"))
+                .join(", "),
+              unitNames: Array.from(tenant.unitNames)
+                .sort((a, b) => a.localeCompare(b, "id"))
+                .join(", "),
+              buildingNames: Array.from(tenant.buildingNames)
+                .sort((a, b) => a.localeCompare(b, "id"))
+                .join(", "),
+              leaseStart: tenant.leaseStarts.sort()[0] || "-",
+              leaseEnd: tenant.leaseEnds.sort().at(-1) || "-",
+              monthlyPrice: tenant.monthlyPrice,
+              revenue: cashflowSummary.revenue,
+              expense: cashflowSummary.expense,
+              profit: cashflowSummary.revenue - cashflowSummary.expense,
+            };
+          })
           .sort((a, b) => {
-            const propertyOrder = a.propertyName.localeCompare(
-              b.propertyName,
-              "id",
-            );
-            return propertyOrder || a.unitName.localeCompare(b.unitName, "id");
+            const nameOrder = a.tenantName.localeCompare(b.tenantName, "id");
+            return nameOrder || a.tenantId - b.tenantId;
           });
 
         const latestBookings: OwnerLatestBookingRow[] = [...bookings]
@@ -843,7 +941,7 @@ export const useOwnerDashboard = (period: string) => {
           propertyBreakdown,
           monthlyDetails,
           financialDetails,
-          unitBreakdown,
+          tenantBreakdown,
           latestBookings,
         });
       } catch (loadError) {
