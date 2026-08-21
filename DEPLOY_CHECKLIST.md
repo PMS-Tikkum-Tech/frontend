@@ -6,8 +6,18 @@
 - Build pack: Dockerfile
 - Internal port: `3000`
 - Health path: `/`
-- Domain: `https://kikost.com` and any approved frontend subdomains
+- Attach all canonical frontend domains to the same Coolify application before
+  deploying the hostname-routing build:
+  - `https://kikost.com`
+  - `https://www.kikost.com` (redirect-only)
+  - `https://booking.kikost.com`
+  - `https://app.kikost.com`
+  - `https://dashboard.kikost.com` (redirect-only)
+- Confirm Coolify has issued a trusted certificate for every hostname. A
+  Traefik default certificate means the domain is not ready for deployment.
 - Set `NEXT_PUBLIC_API_URL=https://api.kikost.com` as a Coolify Build Variable
+- Set `NEXT_PUBLIC_SITE_URL=https://kikost.com` as a Coolify Build Variable.
+  The production Docker build rejects any other API/site origin.
 - Set every enabled Firebase, Google Maps, support, and booking
   `NEXT_PUBLIC_*` variable as a Build Variable
 - Rebuild the image whenever a `NEXT_PUBLIC_*` value changes
@@ -24,8 +34,11 @@
   `DATABASE_URL` or the documented individual PostgreSQL variables
 - Required for email flows: `SMTP_ADDRESS`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
   `SMTP_PORT`, `SMTP_DOMAIN`, and `MAIL_FROM`
-- Set `FRONTEND_URL=https://kikost.com`, `AUTH_COOKIE_DOMAIN=.kikost.com`, and
-  the exact HTTPS frontend origins in `CORS_ORIGINS`
+- Set `FRONTEND_URL=https://app.kikost.com` and
+  `AUTH_COOKIE_DOMAIN=.kikost.com`.
+- Set `CORS_ORIGINS` to only the canonical applications that execute frontend
+  code: `https://kikost.com,https://booking.kikost.com,https://app.kikost.com`.
+  Do not include redirect-only domains.
 
 ## Backend worker application
 
@@ -44,10 +57,12 @@
 6. Run the transfer-proof URL rotation dry-run and apply command documented in
    `backend/COOLIFY_DEPLOY.md` when it has not yet run in production.
 7. Deploy the Sidekiq worker.
-8. Build the frontend with the production `NEXT_PUBLIC_*` values.
-9. Verify the public domains, CORS, login/logout, tenant proof upload, admin
+8. Attach all frontend hostnames in Coolify and wait until every TLS
+   certificate is valid.
+9. Build the frontend with the production `NEXT_PUBLIC_*` values.
+10. Verify the public domains, CORS, login/logout, tenant proof upload, admin
    approval, image delivery, and HTTPS headers.
-10. Keep the previous images and database/storage backup until verification is
+11. Keep the previous images and database/storage backup until verification is
     complete; roll back all three together if needed.
 
 ## Current local storage status

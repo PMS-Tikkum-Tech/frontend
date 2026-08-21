@@ -74,7 +74,21 @@ export const TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY =
   "kyra.pending.tenant.approval.notice";
 
 const isSafeNextPath = (nextPath: string) => {
-  return nextPath.startsWith("/") && !nextPath.startsWith("//");
+  try {
+    const decodedPath = decodeURIComponent(nextPath);
+    if (
+      !decodedPath.startsWith("/") ||
+      decodedPath.startsWith("//") ||
+      decodedPath.includes("\\")
+    ) {
+      return false;
+    }
+
+    const parsed = new URL(decodedPath, "https://app.kikost.com");
+    return parsed.origin === "https://app.kikost.com";
+  } catch {
+    return false;
+  }
 };
 
 const getRequiredRoleByPath = (path: string) => {
@@ -117,7 +131,7 @@ export const getDefaultRouteByRole = (role: UserRole) => {
     return "/owner";
   }
 
-  return "/";
+  return "/tenant/kost-saya";
 };
 
 export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
@@ -127,7 +141,7 @@ export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
 
   const pathWithoutQuery = nextPath.split("?")[0]?.split("#")[0] || nextPath;
   if (pathWithoutQuery === "/tenant") {
-    return "/";
+    return getDefaultRouteByRole(role);
   }
 
   const requiredRole = getRequiredRoleByPath(pathWithoutQuery);

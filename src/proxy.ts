@@ -47,9 +47,42 @@ const PRODUCTION_API_BASE_URLS: Record<string, string> = {
 const ROOT_HOSTNAMES = new Set(["kikost.com", "www.kikost.com"]);
 const BOOKING_HOSTNAMES = new Set(["booking.kikost.com"]);
 const APP_HOSTNAMES = new Set(["app.kikost.com", "dashboard.kikost.com"]);
+const KNOWN_HOSTNAMES = new Set([
+  "kikost.com",
+  "www.kikost.com",
+  "booking.kikost.com",
+  "app.kikost.com",
+  "dashboard.kikost.com",
+  "localhost",
+  "127.0.0.1",
+  "::1",
+]);
+const APP_PATH_PREFIXES = [
+  "/admin",
+  "/owner",
+  "/tenant",
+  "/auth",
+  "/verifikasi-email",
+  "/__/auth/action",
+];
+const BOOKING_PATH_PREFIXES = ["/booking"];
 
 const isSafeNextPath = (nextPath: string) => {
-  return nextPath.startsWith("/") && !nextPath.startsWith("//");
+  try {
+    const decodedPath = decodeURIComponent(nextPath);
+    if (
+      !decodedPath.startsWith("/") ||
+      decodedPath.startsWith("//") ||
+      decodedPath.includes("\\")
+    ) {
+      return false;
+    }
+
+    const parsed = new URL(decodedPath, "https://app.kikost.com");
+    return parsed.origin === "https://app.kikost.com";
+  } catch {
+    return false;
+  }
 };
 
 const getDefaultRouteByRole = (role: string) => {
@@ -61,7 +94,42 @@ const getDefaultRouteByRole = (role: string) => {
     return "/owner";
   }
 
-  return "/";
+  return "/tenant/kost-saya";
+};
+
+const pathStartsWith = (pathname: string, prefix: string) =>
+  pathname === prefix || pathname.startsWith(`${prefix}/`);
+
+const isAppPath = (pathname: string) =>
+  APP_PATH_PREFIXES.some((prefix) => pathStartsWith(pathname, prefix));
+
+const isBookingPath = (pathname: string) =>
+  BOOKING_PATH_PREFIXES.some((prefix) => pathStartsWith(pathname, prefix));
+
+const normalizeHostname = (value?: string | null) => {
+  const candidate = value?.split(",")[0]?.trim().toLowerCase() || "";
+  if (candidate.startsWith("[")) {
+    return candidate.slice(1, candidate.indexOf("]"));
+  }
+
+  return candidate.split(":")[0] || "";
+};
+
+const getRequestHostname = (req: NextRequest) => {
+  const candidates = [
+    req.headers.get("host"),
+    req.headers.get("x-forwarded-host"),
+    req.nextUrl.hostname,
+  ];
+
+  for (const candidate of candidates) {
+    const hostname = normalizeHostname(candidate);
+    if (KNOWN_HOSTNAMES.has(hostname)) {
+      return hostname;
+    }
+  }
+
+  return normalizeHostname(req.nextUrl.hostname);
 };
 
 const getRequiredRole = (pathname: string) => {
@@ -121,7 +189,7 @@ const getApiBaseUrl = (req: NextRequest) => {
     return envBaseUrl.replace(/\/$/, "");
   }
 
-  const hostname = req.nextUrl.hostname;
+  const hostname = getRequestHostname(req);
   if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
     return `${req.nextUrl.protocol}//127.0.0.1:3001`;
   }
@@ -135,13 +203,16 @@ const getApiBaseUrl = (req: NextRequest) => {
 };
 
 const buildHostRedirect = (req: NextRequest, hostname: string, pathname: string) => {
-  const redirectUrl = new URL(pathname, `${req.nextUrl.protocol}//${hostname}`);
+  const protocol = PRODUCTION_API_BASE_URLS[hostname]
+    ? "https:"
+    : req.nextUrl.protocol;
+  const redirectUrl = new URL(pathname, `${protocol}//${hostname}`);
   redirectUrl.search = req.nextUrl.search;
   return redirectUrl;
 };
 
 const getSessionCookieDomain = (req: NextRequest) => {
-  const hostname = req.nextUrl.hostname.toLowerCase();
+  const hostname = getRequestHostname(req);
   if (hostname === "kikost.com" || hostname.endsWith(".kikost.com")) {
     return ".kikost.com";
   }
@@ -312,57 +383,88 @@ const getValidatedSession = async (
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const search = req.nextUrl.search;
-  const hostname = req.nextUrl.hostname;
+  const hostname = getRequestHostname(req);
+
+  if (hostname === "www.kikost.com") {
+    return NextResponse.redirect(
+      buildHostRedirect(req, "kikost.com", pathname),
+      308
+    );
+  }
+
+  if (hostname === "dashboard.kikost.com") {
+    return NextResponse.redirect(
+      buildHostRedirect(req, "app.kikost.com", pathname),
+      308
+    );
+  }
 
   if (ROOT_HOSTNAMES.has(hostname)) {
-    if (pathname.startsWith("/booking/v2")) {
+    if (isBookingPath(pathname)) {
       return NextResponse.redirect(
-        buildHostRedirect(req, "booking.kikost.com", "/booking/v2")
+        buildHostRedirect(req, "booking.kikost.com", pathname),
+        308
       );
     }
 
-    if (
-      pathname.startsWith("/admin") ||
-      pathname.startsWith("/owner") ||
-      pathname.startsWith("/tenant")
-    ) {
-      return NextResponse.redirect(buildHostRedirect(req, "app.kikost.com", pathname));
+    if (isAppPath(pathname)) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "app.kikost.com", pathname),
+        308
+      );
     }
   }
 
   if (BOOKING_HOSTNAMES.has(hostname)) {
     if (pathname === "/") {
       return NextResponse.redirect(
-        buildHostRedirect(req, hostname, "/booking/v2")
+        buildHostRedirect(req, hostname, "/booking/v2"),
+        308
       );
     }
 
-    if (
-      pathname.startsWith("/admin") ||
-      pathname.startsWith("/owner") ||
-      pathname.startsWith("/tenant")
-    ) {
-      return NextResponse.redirect(buildHostRedirect(req, "app.kikost.com", pathname));
+    if (isAppPath(pathname)) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "app.kikost.com", pathname),
+        308
+      );
+    }
+
+    if (!isBookingPath(pathname)) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "kikost.com", pathname),
+        308
+      );
     }
   }
 
   if (APP_HOSTNAMES.has(hostname)) {
     if (pathname === "/") {
-      return NextResponse.redirect(buildHostRedirect(req, hostname, "/tenant"));
+      return NextResponse.redirect(
+        buildHostRedirect(req, "app.kikost.com", "/auth")
+      );
     }
 
-    if (pathname.startsWith("/booking/v2")) {
+    if (isBookingPath(pathname)) {
       return NextResponse.redirect(
-        buildHostRedirect(req, "booking.kikost.com", "/booking/v2")
+        buildHostRedirect(req, "booking.kikost.com", pathname),
+        308
+      );
+    }
+
+    if (!isAppPath(pathname)) {
+      return NextResponse.redirect(
+        buildHostRedirect(req, "kikost.com", pathname),
+        308
       );
     }
   }
 
-  if (pathname === "/tenant") {
-    return NextResponse.redirect(new URL("/", req.url));
+  const requiredRole = getRequiredRole(pathname);
+  if (!requiredRole && pathname !== "/auth") {
+    return NextResponse.next();
   }
 
-  const requiredRole = getRequiredRole(pathname);
   const validatedSession = await getValidatedSession(req);
   const validatedRole = validatedSession.role;
 
@@ -412,5 +514,7 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/owner/:path*", "/tenant/:path*", "/auth"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|favicon-kikost.png|robots.txt|sitemap.xml).*)",
+  ],
 };
