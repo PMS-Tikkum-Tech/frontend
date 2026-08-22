@@ -60,7 +60,6 @@ import {
   createAdminFinancialTransaction,
   deleteAdminDeposit,
   deleteAdminFinancialTransaction,
-  exportAdminFinancialTransactions,
   getAllAdminCashflowEntries,
   getAllAdminFinancialTransactions,
   getAdminFinancialDashboard,
@@ -409,11 +408,6 @@ const formatRupiahInputValue = (value: number | string) => {
 const parseRupiahInputValue = (value: string) => {
   const numericValue = value.replace(/\D/g, "");
   return numericValue ? Number(numericValue) : 0;
-};
-
-const parseFilenameFromDisposition = (contentDisposition: string) => {
-  const match = /filename="?([^"]+)"?/i.exec(contentDisposition || "");
-  return match?.[1] || "financial-transactions.xls";
 };
 
 const normalizeOptional = (value: string) => {
@@ -1076,7 +1070,7 @@ export default function AdminFinancialPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [notice, setNotice] = useState<Notice>(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"csv" | "pdf" | null>(null);
   const [isSyncingOwnerCashflows, setIsSyncingOwnerCashflows] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const [viewTransaction, setViewTransaction] =
@@ -2219,50 +2213,260 @@ export default function AdminFinancialPage() {
     }
   };
 
-  const handleExport = async () => {
-    setIsExporting(true);
+  const handleExport = async (formatType: "csv" | "pdf") => {
+    if (exportFormat) {
+      return;
+    }
+
+    setExportFormat(formatType);
     setNotice(null);
 
     try {
-      const selectedTransactionType = [
-        "income",
-        "expense",
-        "deposit",
-        "deposit_usage",
-      ].includes(category)
-        ? category
-        : undefined;
-      const result = await exportAdminFinancialTransactions({
-        search,
-        ...(category === "income" || category === "expense"
-          ? { category }
-          : {}),
-        ...(selectedTransactionType
-          ? { transaction_type: selectedTransactionType }
-          : {}),
-      });
+      const exportRows = filteredTransactions.map((transaction, index) => {
+        const details = getTransactionDetails(transaction);
+        const transactionType = getTransactionType(transaction);
+        const stayPeriod =
+          details.checkInDate || details.checkOutDate
+            ? `${details.checkInDate ? formatDate(details.checkInDate) : "-"} - ${
+                details.checkOutDate
+                  ? formatDate(details.checkOutDate)
+                  : "-"
+              }`
+            : "";
 
-      const fileName = parseFilenameFromDisposition(result.contentDisposition);
-      const blobUrl = URL.createObjectURL(result.blob);
-      const anchor = document.createElement("a");
-      anchor.href = blobUrl;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(blobUrl);
+        return {
+          number: index + 1,
+          inputDate: formatDate(getTransactionInputDate(transaction)),
+          period: stayPeriod || formatDate(transaction.transaction_date),
+          category: transactionTypeLabelMap[transactionType],
+          property: transaction.property_label || transaction.property.name || "-",
+          unit:
+            transactionType === "expense"
+              ? details.expenseUnitName || "-"
+              : transaction.unit.name || "-",
+          party: details.tenantName || details.payee || "-",
+          description: transaction.description || "-",
+          amount: Number(transaction.amount || 0),
+          receipt: transaction.receipt_url ? "Ada" : "Tidak ada",
+          createdBy: transaction.created_by.full_name || "-",
+        };
+      });
+      const datePart = new Date().toISOString().slice(0, 10);
+
+      if (formatType === "csv") {
+        const csvCell = (value: string | number) => {
+          let normalizedValue = String(value ?? "");
+          if (/^[=+\-@]/.test(normalizedValue)) {
+            normalizedValue = `'${normalizedValue}`;
+          }
+
+          return `"${normalizedValue.replaceAll('"', '""')}"`;
+        };
+        const csvRows: Array<Array<string | number>> = [
+          [
+            "No.",
+            "Tanggal Input",
+            "Periode",
+            "Kategori",
+            "Properti",
+            "Unit",
+            "Pihak/Penyewa",
+            "Deskripsi",
+            "Nominal",
+            "Lampiran",
+            "Dibuat Oleh",
+          ],
+          ...exportRows.map((row) => [
+            row.number,
+            row.inputDate,
+            row.period,
+            row.category,
+            row.property,
+            row.unit,
+            row.party,
+            row.description,
+            row.amount,
+            row.receipt,
+            row.createdBy,
+          ]),
+        ];
+        const csvContent = `\uFEFF${csvRows
+          .map((row) => row.map(csvCell).join(","))
+          .join("\r\n")}`;
+        const blobUrl = URL.createObjectURL(
+          new Blob([csvContent], { type: "text/csv;charset=utf-8" }),
+        );
+        const anchor = document.createElement("a");
+        anchor.href = blobUrl;
+        anchor.download = `laporan-keuangan-kikost-${datePart}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+          import("jspdf"),
+          import("jspdf-autotable"),
+        ]);
+        const doc = new jsPDF({
+          orientation: "landscape",
+          unit: "mm",
+          format: "a4",
+        });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const marginX = 10;
+        const generatedAt = new Date().toLocaleString("id-ID", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const exportPeriod =
+          startDate && endDate
+            ? `${formatFinancialDateLabel(startDate)} s.d. ${formatFinancialDateLabel(endDate)}`
+            : "Semua data";
+
+        doc.setProperties({
+          title: "Laporan Keuangan KIKOST",
+          subject: `Laporan transaksi keuangan periode ${exportPeriod}`,
+          author: "KIKOST",
+        });
+        doc.setFillColor(30, 39, 70);
+        doc.rect(0, 0, pageWidth, 27, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.text("LAPORAN KEUANGAN KIKOST", marginX, 11);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.text(`Periode: ${exportPeriod}`, marginX, 17);
+        doc.text(`Dicetak: ${generatedAt}`, marginX, 22);
+
+        doc.setTextColor(30, 41, 59);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text(
+          `Jumlah transaksi: ${exportRows.length.toLocaleString("id-ID")}`,
+          marginX,
+          34,
+        );
+        doc.setTextColor(5, 150, 105);
+        doc.text(
+          `Pemasukan: ${formatCurrency(filteredTransactionSummary.revenue)}`,
+          marginX + 55,
+          34,
+        );
+        doc.setTextColor(220, 38, 38);
+        doc.text(
+          `Pengeluaran: ${formatCurrency(filteredTransactionSummary.expense)}`,
+          marginX + 125,
+          34,
+        );
+        doc.setTextColor(30, 41, 59);
+        doc.text(
+          `Selisih: ${formatCurrency(filteredNetAmount)}`,
+          marginX + 205,
+          34,
+        );
+
+        autoTable(doc, {
+          startY: 39,
+          margin: { top: 15, right: marginX, bottom: 16, left: marginX },
+          head: [
+            [
+              "No.",
+              "Tanggal",
+              "Periode",
+              "Kategori",
+              "Properti",
+              "Unit",
+              "Pihak/Penyewa",
+              "Deskripsi",
+              "Nominal",
+            ],
+          ],
+          body:
+            exportRows.length > 0
+              ? exportRows.map((row) => [
+                  row.number,
+                  row.inputDate,
+                  row.period,
+                  row.category,
+                  row.property,
+                  row.unit,
+                  row.party,
+                  row.description,
+                  formatCurrency(row.amount),
+                ])
+              : [["", "Tidak ada data", "", "", "", "", "", "", ""]],
+          theme: "grid",
+          showHead: "everyPage",
+          styles: {
+            cellPadding: 1.8,
+            fontSize: 7.2,
+            lineColor: [226, 232, 240],
+            lineWidth: 0.2,
+            overflow: "linebreak",
+            textColor: [30, 41, 59],
+            valign: "middle",
+          },
+          headStyles: {
+            fillColor: [44, 98, 165],
+            fontStyle: "bold",
+            textColor: [255, 255, 255],
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252],
+          },
+          columnStyles: {
+            0: { cellWidth: 9, halign: "center" },
+            1: { cellWidth: 23 },
+            2: { cellWidth: 32 },
+            3: { cellWidth: 24 },
+            4: { cellWidth: 38 },
+            5: { cellWidth: 28 },
+            6: { cellWidth: 34 },
+            7: { cellWidth: 53 },
+            8: { cellWidth: 32, halign: "right" },
+          },
+        });
+
+        const totalPages = doc.getNumberOfPages();
+        for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+          doc.setPage(pageNumber);
+          doc.setDrawColor(226, 232, 240);
+          doc.line(marginX, pageHeight - 11, pageWidth - marginX, pageHeight - 11);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text("Dokumen internal KIKOST", marginX, pageHeight - 6.5);
+          doc.text(
+            `Halaman ${pageNumber} dari ${totalPages}`,
+            pageWidth - marginX,
+            pageHeight - 6.5,
+            { align: "right" },
+          );
+        }
+
+        doc.save(`laporan-keuangan-kikost-${datePart}.pdf`);
+      }
 
       setNotice({
         variant: "success",
-        message: "Data keuangan berhasil diekspor.",
+        message: `Data keuangan berhasil diekspor sebagai ${formatType.toUpperCase()}.`,
       });
     } catch (exportError) {
       setNotice({
         variant: "error",
-        message: getApiErrorMessage(exportError, "Gagal mengekspor data."),
+        message: getApiErrorMessage(
+          exportError,
+          `Gagal mengekspor data sebagai ${formatType.toUpperCase()}.`,
+        ),
       });
     } finally {
-      setIsExporting(false);
+      setExportFormat(null);
     }
   };
 
@@ -2292,13 +2496,24 @@ export default function AdminFinancialPage() {
             <button
               type="button"
               onClick={() => {
-                void handleExport();
+                void handleExport("csv");
               }}
-              disabled={isExporting}
+              disabled={exportFormat !== null || isLoading}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#1E2746] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Download size={16} />
-              {isExporting ? "Mengekspor..." : "Ekspor CSV"}
+              {exportFormat === "csv" ? "Mengekspor..." : "Ekspor CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void handleExport("pdf");
+              }}
+              disabled={exportFormat !== null || isLoading}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/45 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FileText size={16} />
+              {exportFormat === "pdf" ? "Mengekspor..." : "Ekspor PDF"}
             </button>
             {canManageFinancials ? (
               <>
