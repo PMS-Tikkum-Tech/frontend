@@ -104,6 +104,10 @@ const getRequiredRoleByPath = (path: string) => {
     return "tenant";
   }
 
+  if (path.startsWith("/staff")) {
+    return "staff";
+  }
+
   return null;
 };
 
@@ -131,6 +135,10 @@ export const getDefaultRouteByRole = (role: UserRole) => {
     return "/owner";
   }
 
+  if (role === "technician" || role === "housekeeper") {
+    return "/staff/tasks";
+  }
+
   return "/tenant/kost-saya";
 };
 
@@ -149,7 +157,8 @@ export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
   if (
     !requiredRole ||
     requiredRole === role ||
-    (requiredRole === "admin" && role === "finance")
+    (requiredRole === "admin" && role === "finance") ||
+    (requiredRole === "staff" && (role === "technician" || role === "housekeeper"))
   ) {
     return nextPath;
   }

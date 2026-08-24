@@ -11,7 +11,7 @@ type StoredSession = {
     id: number;
     name: string;
     email: string;
-    role: "admin" | "finance" | "owner" | "tenant";
+    role: "admin" | "finance" | "owner" | "tenant" | "housekeeper" | "technician";
     avatar?: string | null;
   };
   expiresAt?: string | null;
@@ -24,7 +24,7 @@ type RefreshResponsePayload = {
       id: number;
       full_name?: string;
       email: string;
-      role: "admin" | "finance" | "owner" | "tenant";
+      role: "admin" | "finance" | "owner" | "tenant" | "housekeeper" | "technician";
       profile_picture_url?: string | null;
     };
     token?: string;
@@ -93,7 +93,8 @@ const persistClientSession = (session: StoredSession) => {
 const isProtectedPath = (pathname: string) =>
   pathname.startsWith("/admin") ||
   pathname.startsWith("/owner") ||
-  pathname.startsWith("/tenant");
+  pathname.startsWith("/tenant") ||
+  pathname.startsWith("/staff");
 
 const redirectToAuth = () => {
   if (typeof window === "undefined") {
@@ -152,8 +153,9 @@ const refreshClient = axios.create({
 });
 
 const canRefreshSession = (session: StoredSession | null) =>
-  !session?.refreshTokenExpiresAt ||
-  !isSessionExpired(session.refreshTokenExpiresAt);
+  Boolean(session?.user) &&
+  (!session?.refreshTokenExpiresAt ||
+    !isSessionExpired(session.refreshTokenExpiresAt));
 
 const mapRefreshSession = (payload?: RefreshResponsePayload["data"] | null): StoredSession | null => {
   if (!payload?.user) {
@@ -255,6 +257,7 @@ axiosInstance.interceptors.response.use(
       isAuthFailureResponse(error) &&
       axios.isAxiosError(error) &&
       error.config &&
+      getStoredSession()?.user &&
       !isRefreshEndpoint(error.config.url) &&
       !(error.config as { _retry?: boolean })._retry
     ) {

@@ -294,6 +294,16 @@ export default function KostSayaPage() {
           tone: "blue",
           title: "Perawatan sedang dikerjakan",
         },
+        awaiting_approval: {
+          label: "Menunggu Persetujuan",
+          tone: "blue",
+          title: "Pekerjaan sedang diperiksa",
+        },
+        revision_required: {
+          label: "Perlu Perbaikan",
+          tone: "amber",
+          title: "Pekerjaan perlu diperbaiki",
+        },
         completed: {
           label: "Selesai",
           tone: "emerald",

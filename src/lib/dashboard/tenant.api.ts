@@ -103,17 +103,28 @@ export interface TenantMaintenanceRequest {
   issue: string;
   category: string;
   description?: string | null;
-  priority: "high" | "medium" | "low";
+  priority: "high" | "medium" | "low" | "urgent";
   status:
     | "unassigned"
     | "assigned"
     | "pending_vendor"
     | "in_progress"
+    | "awaiting_approval"
+    | "revision_required"
     | "completed"
     | "cancelled";
   requested_date?: string | null;
   repair_date?: string | null;
   visiting_hours?: string | null;
+  due_date?: string | null;
+  sla_due_at?: string | null;
+  sla_status?: "safe" | "approaching" | "overdue";
+  overdue?: boolean;
+  started_at?: string | null;
+  completed_at?: string | null;
+  completion_note?: string | null;
+  revision_note?: string | null;
+  cancellation_reason?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -2110,6 +2121,21 @@ export const createTenantMaintenanceRequest = async (
     data: response.data.data,
     message: response.data.message,
   };
+};
+
+export const uploadTenantMaintenancePhotos = async (
+  id: number | string,
+  photos: File[],
+) => {
+  const formData = new FormData();
+  formData.append("phase", "before");
+  photos.forEach((photo) => formData.append("photos[]", photo));
+  const response = await axiosInstance.post<ApiResponse<TenantMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/upload_photos`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return { data: response.data.data, message: response.data.message };
 };
 
 export const getTenantNotifications = async (

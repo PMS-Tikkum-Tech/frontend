@@ -10,7 +10,7 @@ const PRODUCTION_API_BASE_URLS: Record<string, string> = {
 };
 
 const normalizeLocalhost = (hostname: string) => {
-  if (hostname === "localhost" || hostname === "::1" || hostname === "0.0.0.0") {
+  if (hostname === "::1" || hostname === "0.0.0.0") {
     return "127.0.0.1";
   }
 

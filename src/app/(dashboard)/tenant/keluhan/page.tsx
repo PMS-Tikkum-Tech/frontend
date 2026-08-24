@@ -11,6 +11,7 @@ import {
 import {
   ClipboardList,
   Home,
+  ImagePlus,
   SendHorizonal,
   ShieldAlert,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import {
   createTenantMaintenanceRequest,
   getApiErrorMessage,
   getTenantCurrentStay,
+  uploadTenantMaintenancePhotos,
 } from "@/lib/dashboard/tenant.api";
 import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 
@@ -70,6 +72,7 @@ export default function ComplaintPage() {
   const [category, setCategory] = useState("general");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<PriorityValue>("medium");
+  const [supportingPhotos, setSupportingPhotos] = useState<File[]>([]);
 
   const loadUnitOptions = async () => {
     setIsLoadingUnit(true);
@@ -123,6 +126,7 @@ export default function ComplaintPage() {
     setDescription("");
     setCategory("general");
     setPriority("medium");
+    setSupportingPhotos([]);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -145,10 +149,23 @@ export default function ComplaintPage() {
       return;
     }
 
+    if (supportingPhotos.length > 5) {
+      setError("Maksimal 5 foto pendukung.");
+      return;
+    }
+    if (supportingPhotos.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
+      setError("Foto harus berformat JPEG, PNG, atau WEBP.");
+      return;
+    }
+    if (supportingPhotos.some((file) => file.size > 5 * 1024 * 1024)) {
+      setError("Ukuran setiap foto maksimal 5 MB.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await createTenantMaintenanceRequest({
+      const created = await createTenantMaintenanceRequest({
         property_id: selectedUnitOption.propertyId,
         unit_id: selectedUnitOption.unitId,
         issue: issue.trim(),
@@ -157,6 +174,9 @@ export default function ComplaintPage() {
         priority,
         requested_date: new Date().toISOString().slice(0, 10),
       });
+      if (supportingPhotos.length) {
+        await uploadTenantMaintenancePhotos(created.data.id, supportingPhotos);
+      }
 
       resetForm();
       setSuccessMessage(
@@ -300,6 +320,25 @@ export default function ComplaintPage() {
               placeholder="Jelaskan kronologi masalah, area yang terdampak, dan kondisi saat ini."
               className={textareaControlClass}
             />
+          </Field>
+
+          <Field label="Foto Pendukung (opsional, maks. 5 foto / 5 MB)">
+            <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm text-slate-600 hover:border-orange-400 hover:bg-orange-50">
+              <ImagePlus size={20} className="mb-2 text-orange-600" />
+              {supportingPhotos.length
+                ? `${supportingPhotos.length} foto dipilih`
+                : "Pilih foto kondisi sebelum pekerjaan"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  setSupportingPhotos(Array.from(event.target.files || []).slice(0, 5));
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
           </Field>
 
           {error && (

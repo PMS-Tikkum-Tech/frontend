@@ -1,4 +1,10 @@
-export type UserRole = "admin" | "finance" | "owner" | "tenant";
+export type UserRole =
+  | "admin"
+  | "finance"
+  | "owner"
+  | "tenant"
+  | "housekeeper"
+  | "technician";
 
 export type SessionUser = {
   id: number;

@@ -11,6 +11,7 @@ import {
   Menu,
   Pencil,
   Search,
+  Wrench,
   X,
 } from "lucide-react";
 import RoleGuard from "@/components/auth/RoleGuard";
@@ -134,6 +135,7 @@ export default function OwnerDashboardLayout({
   const menuItems = [
     { label: "Dasbor", href: "/owner", icon: LayoutDashboard },
     { label: "Laba & Hunian", href: "/owner/profit-hunian", icon: BarChart3 },
+    { label: "Task Maintenance", href: "/owner/tasks", icon: Wrench },
   ];
 
   return (

@@ -8,6 +8,9 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   [
     "connect-src 'self'",
+    ...(isDevelopment
+      ? ["http://127.0.0.1:3001", "http://localhost:3001"]
+      : []),
     "https://api.kikost.com",
     "https://*.googleapis.com",
     "https://*.googleusercontent.com",

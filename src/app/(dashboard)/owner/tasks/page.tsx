@@ -1,5 +1,5 @@
 import TaskManagementBoard from "@/components/maintenance/TaskManagementBoard";
 
-export default function AdminMaintenancePage() {
+export default function OwnerTasksPage() {
   return <TaskManagementBoard />;
 }

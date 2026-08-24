@@ -113,8 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const hydrateSession = async () => {
       try {
         const storedSession = getStoredSession();
+        if (!storedSession?.user) {
+          removeStoredSession();
+          if (active) {
+            setSessionState(null);
+          }
+          return;
+        }
+
         if (
-          storedSession?.refreshTokenExpiresAt &&
+          storedSession.refreshTokenExpiresAt &&
           isSessionExpired(storedSession.refreshTokenExpiresAt)
         ) {
           removeStoredSession();
@@ -125,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (storedSession?.user && active) {
+        if (active) {
           setSessionState(storedSession);
         }
 
@@ -140,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const latestStoredSession = getStoredSession();
           const refreshedSession = {
-            ...(storedSession ?? {}),
+            ...storedSession,
             ...(latestStoredSession ?? {}),
             user: freshUser,
           };

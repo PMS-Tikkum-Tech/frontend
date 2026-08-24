@@ -35,7 +35,7 @@ export default function Sidebar() {
           href="/admin/maintenance"
           className="block px-4 py-3 rounded-lg hover:bg-white/10 transition"
         >
-          Perawatan
+          Task Management
         </Link>
 
         <Link

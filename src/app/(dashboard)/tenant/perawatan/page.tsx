@@ -18,12 +18,14 @@ import { getTenantUnitDisplayName } from "@/lib/dashboard/tenant-unit-display";
 type MaintenanceFilter = "all" | "active" | "completed";
 
 const priorityLabelMap: Record<TenantMaintenanceRequest["priority"], string> = {
+  urgent: "Mendesak",
   high: "Mendesak",
   medium: "Perlu Segera",
   low: "Tidak Mendesak",
 };
 
 const priorityBadgeMap: Record<TenantMaintenanceRequest["priority"], string> = {
+  urgent: "border border-red-300 bg-red-100 text-red-700",
   high: "border border-red-200 bg-red-50 text-red-600",
   medium: "border border-yellow-200 bg-yellow-50 text-yellow-700",
   low: "border border-green-200 bg-green-50 text-green-700",
@@ -34,6 +36,8 @@ const statusLabelMap: Record<TenantMaintenanceRequest["status"], string> = {
   assigned: "Ditugaskan",
   pending_vendor: "Menunggu Vendor",
   in_progress: "Diproses",
+  awaiting_approval: "Menunggu Persetujuan",
+  revision_required: "Perlu Perbaikan",
   completed: "Selesai",
   cancelled: "Dibatalkan",
 };
@@ -43,6 +47,8 @@ const statusBadgeMap: Record<TenantMaintenanceRequest["status"], string> = {
   assigned: "border border-blue-200 bg-blue-50 text-blue-700",
   pending_vendor: "border border-purple-200 bg-purple-50 text-purple-700",
   in_progress: "border border-indigo-200 bg-indigo-50 text-indigo-700",
+  awaiting_approval: "border border-cyan-200 bg-cyan-50 text-cyan-700",
+  revision_required: "border border-rose-200 bg-rose-50 text-rose-700",
   completed: "border border-green-200 bg-green-50 text-green-700",
   cancelled: "border border-slate-200 bg-slate-100 text-slate-600",
 };
@@ -129,7 +135,9 @@ export default function TenantMaintenancePage() {
   const stats = useMemo(() => {
     const active = sortedRequests.filter((item) => !isCompletedStatus(item.status)).length;
     const completed = sortedRequests.filter((item) => isCompletedStatus(item.status)).length;
-    const urgent = sortedRequests.filter((item) => item.priority === "high").length;
+    const urgent = sortedRequests.filter(
+      (item) => item.priority === "high" || item.priority === "urgent"
+    ).length;
 
     return {
       total: sortedRequests.length,
@@ -301,6 +309,16 @@ function MaintenanceCard({ request }: { request: TenantMaintenanceRequest }) {
           </h2>
           <p className="mt-1 text-sm text-slate-600">{request.issue}</p>
           <p className="mt-1 text-xs text-slate-500">Kategori: {request.category}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Status SLA</p>
+          <p className={`mt-1 font-medium ${request.overdue ? "text-red-600" : "text-slate-800"}`}>
+            {request.sla_status === "overdue"
+              ? "Terlambat"
+              : request.sla_status === "approaching"
+                ? "Mendekati deadline"
+                : "Aman"}
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">

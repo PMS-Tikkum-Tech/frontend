@@ -360,6 +360,44 @@ export interface AdminUserUpdatePayload {
   account_status?: "active" | "inactive";
 }
 
+export type MaintenancePriority = "low" | "medium" | "high" | "urgent";
+export type MaintenanceStatus =
+  | "unassigned"
+  | "assigned"
+  | "pending_vendor"
+  | "in_progress"
+  | "awaiting_approval"
+  | "revision_required"
+  | "completed"
+  | "cancelled";
+
+export interface MaintenanceChecklistItem {
+  id: number;
+  description: string;
+  position: number;
+  required: boolean;
+  completed: boolean;
+  completed_at?: string | null;
+  completed_by?: { id?: number | null; full_name?: string | null } | null;
+}
+
+export interface MaintenancePhoto {
+  id: number;
+  url: string;
+  content_type: string;
+  byte_size: number;
+  created_at?: string | null;
+}
+
+export interface MaintenanceActivity {
+  id: number;
+  event_type?: string | null;
+  description: string;
+  actor?: { id?: number | null; full_name?: string | null } | null;
+  changes?: Record<string, unknown>;
+  created_at?: string | null;
+}
+
 export interface AdminMaintenanceRequest {
   id: number;
   property: {
@@ -372,27 +410,49 @@ export interface AdminMaintenanceRequest {
     unit_type?: string | null;
   };
   tenant: {
-    id: number;
+    id?: number | null;
     full_name?: string | null;
   };
   assigned_to: {
     id?: number | null;
     full_name?: string | null;
   };
+  title: string;
   issue: string;
   category: string;
   description?: string | null;
-  priority: "high" | "medium" | "low";
-  status:
-    | "unassigned"
-    | "assigned"
-    | "pending_vendor"
-    | "in_progress"
-    | "completed"
-    | "cancelled";
+  priority: MaintenancePriority;
+  status: MaintenanceStatus;
   requested_date?: string | null;
   repair_date?: string | null;
   visiting_hours?: string | null;
+  due_date?: string | null;
+  sla_due_at?: string | null;
+  sla_status: "safe" | "approaching" | "overdue";
+  overdue: boolean;
+  started_at?: string | null;
+  completed_at?: string | null;
+  completion_note?: string | null;
+  revision_note?: string | null;
+  cancellation_reason?: string | null;
+  approved_by?: { id?: number | null; full_name?: string | null } | null;
+  approved_at?: string | null;
+  estimated_cost?: number | null;
+  actual_cost?: number | null;
+  checklist?: MaintenanceChecklistItem[];
+  before_photos?: MaintenancePhoto[];
+  after_photos?: MaintenancePhoto[];
+  activity_history?: MaintenanceActivity[];
+  permissions: {
+    update: boolean;
+    assign: boolean;
+    manage_checklist: boolean;
+    upload_photos: boolean;
+    approve: boolean;
+    request_revision: boolean;
+    cancel: boolean;
+    allowed_transitions: MaintenanceStatus[];
+  };
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -402,20 +462,19 @@ export interface AdminMaintenanceUpdatePayload {
   unit_id?: number;
   tenant_id?: number;
   assigned_to_id?: number | null;
+  title?: string;
   issue?: string;
   category?: string;
   description?: string;
-  priority?: "high" | "medium" | "low";
-  status?:
-    | "unassigned"
-    | "assigned"
-    | "pending_vendor"
-    | "in_progress"
-    | "completed"
-    | "cancelled";
+  priority?: MaintenancePriority;
   requested_date?: string;
   repair_date?: string;
   visiting_hours?: string;
+  due_date?: string | null;
+  sla_due_at?: string | null;
+  completion_note?: string;
+  estimated_cost?: number | null;
+  actual_cost?: number | null;
 }
 
 export interface AdminFinancialTransaction {
@@ -1828,6 +1887,127 @@ export const updateAdminMaintenanceRequest = async (
     data: response.data.data,
     message: response.data.message,
   };
+};
+
+export const assignAdminMaintenanceRequest = async (
+  id: number | string,
+  assignedToId: number,
+) => {
+  const response = await axiosInstance.patch<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/assign`,
+    { assigned_to_id: assignedToId },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const transitionMaintenanceRequest = async (
+  id: number | string,
+  payload: {
+    status: MaintenanceStatus;
+    completion_note?: string;
+    revision_note?: string;
+    cancellation_reason?: string;
+  },
+) => {
+  const response = await axiosInstance.patch<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/transition`,
+    { maintenance_request: payload },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const approveMaintenanceRequest = async (id: number | string) => {
+  const response = await axiosInstance.post<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/approve`,
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const requestMaintenanceRevision = async (
+  id: number | string,
+  revisionNote: string,
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/request_revision`,
+    { revision_note: revisionNote },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const cancelMaintenanceRequest = async (
+  id: number | string,
+  cancellationReason: string,
+) => {
+  const response = await axiosInstance.post<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/cancel`,
+    { cancellation_reason: cancellationReason },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const createMaintenanceChecklistItem = async (
+  taskId: number | string,
+  payload: { description: string; position?: number; required?: boolean },
+) => {
+  const response = await axiosInstance.post<ApiResponse<MaintenanceChecklistItem>>(
+    `/api/v1/maintenance_requests/${taskId}/checklist_items`,
+    { checklist_item: payload },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const updateMaintenanceChecklistItem = async (
+  taskId: number | string,
+  itemId: number | string,
+  payload: Partial<Pick<MaintenanceChecklistItem, "description" | "position" | "required" | "completed">>,
+) => {
+  const response = await axiosInstance.patch<ApiResponse<MaintenanceChecklistItem>>(
+    `/api/v1/maintenance_requests/${taskId}/checklist_items/${itemId}`,
+    { checklist_item: payload },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const deleteMaintenanceChecklistItem = async (
+  taskId: number | string,
+  itemId: number | string,
+) => {
+  const response = await axiosInstance.delete<ApiResponse<null>>(
+    `/api/v1/maintenance_requests/${taskId}/checklist_items/${itemId}`,
+  );
+  return { message: response.data.message };
+};
+
+export const uploadMaintenancePhotos = async (
+  id: number | string,
+  phase: "before" | "after",
+  photos: File[],
+) => {
+  const formData = new FormData();
+  formData.append("phase", phase);
+  photos.forEach((photo) => formData.append("photos[]", photo));
+  const response = await axiosInstance.post<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${id}/upload_photos`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const deleteMaintenancePhoto = async (
+  taskId: number | string,
+  attachmentId: number | string,
+) => {
+  const response = await axiosInstance.delete<ApiResponse<AdminMaintenanceRequest>>(
+    `/api/v1/maintenance_requests/${taskId}/photos/${attachmentId}`,
+  );
+  return { data: response.data.data, message: response.data.message };
+};
+
+export const getMaintenancePhotoUrl = (path: string) => {
+  if (/^https?:\/\//i.test(path)) return path;
+  const baseUrl = resolveApiBaseUrl();
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
 export const deleteAdminMaintenanceRequest = async (id: number | string) => {
