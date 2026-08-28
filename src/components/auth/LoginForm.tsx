@@ -1,16 +1,19 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
-import { type AuthResult, login, resolveRoleRoute, syncFirebaseUser } from "@/lib/auth";
-import { sanitizeEmailInput } from "@/lib/form-validation";
 import {
-  getFirebaseAuthErrorMessage,
-  isFirebaseUserNotFoundError,
-  loginWithFirebaseEmail,
-} from "@/lib/firebase-email-auth";
+  type AuthResult,
+  type MfaChallengeResult,
+  type MfaSetupResult,
+  confirmMfaEnrollment,
+  login,
+  resolveRoleRoute,
+  verifyMfaChallenge,
+} from "@/lib/auth";
+import { sanitizeEmailInput } from "@/lib/form-validation";
 import {
   completeTenantEmailRegistration,
   requestTenantRegistrationEmailCode,
@@ -47,7 +50,14 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [mfaFlow, setMfaFlow] = useState<
+    MfaSetupResult | MfaChallengeResult | null
+  >(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [pendingMfaSession, setPendingMfaSession] = useState<AuthResult | null>(null);
 
   // Passwordless OTP section
   const [showLinkSection, setShowLinkSection] = useState(false);
@@ -75,52 +85,80 @@ export default function LoginForm() {
 
   const handleLogin = async () => {
     setError(null);
-    setUnverifiedEmail(null);
 
     if (!email.trim()) { setError("Email wajib diisi."); return; }
     if (!password) { setError("Kata sandi wajib diisi."); return; }
 
     setIsSubmitting(true);
     try {
-      // Try Firebase first (for tenant/Firebase users)
-      const { idToken, emailVerified } = await loginWithFirebaseEmail(
-        sanitizeEmailInput(email),
-        password
-      );
-
-      if (!emailVerified) {
-        setUnverifiedEmail(sanitizeEmailInput(email));
-        setError(
-          "Email belum diverifikasi. Daftar ulang dengan email ini untuk mendapatkan tautan baru."
-        );
+      const result = await login({
+        email: sanitizeEmailInput(email),
+        password,
+      });
+      if ("kind" in result) {
+        setMfaFlow(result);
+        setMfaCode("");
+        setMfaError(null);
         return;
       }
 
-      const syncResult = await syncFirebaseUser(idToken);
-      if ("requiresVerification" in syncResult) {
-        setUnverifiedEmail(sanitizeEmailInput(email));
-        setError("Email belum diverifikasi. Silakan cek inbox email Anda.");
-        return;
-      }
-
-      completeSession(syncResult as AuthResult);
-    } catch (firebaseError) {
-      // Firebase user not found → try backend (for admin/owner accounts)
-      if (isFirebaseUserNotFoundError(firebaseError)) {
-        try {
-          const result = await login({
-            email: sanitizeEmailInput(email),
-            password,
-          });
-          completeSession(result);
-        } catch (backendError) {
-          setError(getLoginErrorMessage(backendError));
-        }
-      } else {
-        setError(getFirebaseAuthErrorMessage(firebaseError));
-      }
+      completeSession(result);
+    } catch (backendError) {
+      setError(getLoginErrorMessage(backendError));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const resetMfaFlow = () => {
+    setMfaFlow(null);
+    setMfaCode("");
+    setMfaError(null);
+    setRecoveryCodes([]);
+    setPendingMfaSession(null);
+  };
+
+  const handleMfaVerification = async () => {
+    if (!mfaFlow) return;
+
+    const normalizedCode = mfaCode.trim();
+    if (!normalizedCode) {
+      setMfaError("Kode autentikator atau recovery code wajib diisi.");
+      return;
+    }
+
+    setIsVerifyingMfa(true);
+    setMfaError(null);
+    try {
+      if (mfaFlow.kind === "mfa-setup") {
+        const digits = normalizedCode.replace(/\D/g, "");
+        if (digits.length !== 6) {
+          setMfaError("Kode autentikator harus terdiri dari 6 digit.");
+          return;
+        }
+
+        const result = await confirmMfaEnrollment({
+          enrollmentToken: mfaFlow.enrollmentToken,
+          code: digits,
+        });
+        setPendingMfaSession(result.auth);
+        setRecoveryCodes(result.recoveryCodes);
+        setMfaFlow(null);
+        setMfaCode("");
+        return;
+      }
+
+      const isTotp = /^\d{6}$/.test(normalizedCode);
+      const result = await verifyMfaChallenge({
+        challengeToken: mfaFlow.challengeToken,
+        code: isTotp ? normalizedCode : undefined,
+        recoveryCode: isTotp ? undefined : normalizedCode,
+      });
+      completeSession(result);
+    } catch (verificationError) {
+      setMfaError(getLoginErrorMessage(verificationError));
+    } finally {
+      setIsVerifyingMfa(false);
     }
   };
 
@@ -171,6 +209,113 @@ export default function LoginForm() {
       setIsVerifyingLink(false);
     }
   };
+
+  if (pendingMfaSession && recoveryCodes.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
+          <ShieldCheck className="mt-0.5 shrink-0" size={20} />
+          <div>
+            <p className="text-sm font-semibold">MFA berhasil diaktifkan</p>
+            <p className="mt-1 text-xs leading-5">
+              Simpan recovery code berikut sekarang. Setiap kode hanya dapat
+              digunakan satu kali dan tidak akan ditampilkan kembali.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-800">
+          {recoveryCodes.map((code) => (
+            <span key={code} className="rounded bg-white px-2 py-1 text-center">
+              {code}
+            </span>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => completeSession(pendingMfaSession)}
+          className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white hover:bg-sky-700"
+        >
+          Saya sudah menyimpan, lanjutkan
+        </button>
+      </div>
+    );
+  }
+
+  if (mfaFlow) {
+    const isSetup = mfaFlow.kind === "mfa-setup";
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sky-950">
+          {isSetup ? (
+            <ShieldCheck className="mt-0.5 shrink-0" size={20} />
+          ) : (
+            <KeyRound className="mt-0.5 shrink-0" size={20} />
+          )}
+          <div>
+            <p className="text-sm font-semibold">
+              {isSetup ? "Aktifkan autentikasi dua langkah" : "Verifikasi keamanan"}
+            </p>
+            <p className="mt-1 text-xs leading-5">
+              {isSetup
+                ? "Tambahkan akun KIKOST ke aplikasi autentikator, lalu masukkan kode 6 digit yang muncul."
+                : "Masukkan kode dari aplikasi autentikator atau gunakan satu recovery code."}
+            </p>
+          </div>
+        </div>
+
+        {isSetup && (
+          <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium text-slate-600">Kunci penyiapan manual</p>
+            <code className="block break-all rounded-lg bg-slate-950 px-3 py-2 text-center text-sm tracking-wider text-white">
+              {mfaFlow.secret}
+            </code>
+            <p className="text-[11px] leading-4 text-slate-500">
+              Issuer: KIKOST. Tipe: time-based. Interval: 30 detik.
+            </p>
+          </div>
+        )}
+
+        <input
+          type="text"
+          inputMode={isSetup ? "numeric" : "text"}
+          autoComplete="one-time-code"
+          maxLength={isSetup ? 6 : 32}
+          placeholder={isSetup ? "123456" : "Kode 6 digit atau recovery code"}
+          value={mfaCode}
+          onChange={(event) => {
+            setMfaCode(isSetup ? event.target.value.replace(/\D/g, "") : event.target.value);
+            setMfaError(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void handleMfaVerification();
+          }}
+          disabled={isVerifyingMfa}
+          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-center text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-slate-50"
+        />
+        {mfaError && <p className="text-center text-xs text-red-600">{mfaError}</p>}
+        <button
+          type="button"
+          onClick={handleMfaVerification}
+          disabled={isVerifyingMfa}
+          className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
+        >
+          {isVerifyingMfa
+            ? "Memverifikasi..."
+            : isSetup
+              ? "Aktifkan MFA & Masuk"
+              : "Verifikasi & Masuk"}
+        </button>
+        <button
+          type="button"
+          onClick={resetMfaFlow}
+          disabled={isVerifyingMfa}
+          className="w-full text-sm text-slate-500 hover:text-slate-700 disabled:opacity-50"
+        >
+          Kembali ke login
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -225,25 +370,6 @@ export default function LoginForm() {
 
       {error && (
         <p className="text-center text-sm text-red-600">{error}</p>
-      )}
-
-      {unverifiedEmail && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Belum punya kata sandi?{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setShowLinkSection(true);
-              setLinkStep("email");
-              setLinkEmail(unverifiedEmail);
-              setLinkCode("");
-              setLinkError(null);
-            }}
-            className="font-semibold underline"
-          >
-            Masuk dengan kode email
-          </button>
-        </div>
       )}
 
       <button

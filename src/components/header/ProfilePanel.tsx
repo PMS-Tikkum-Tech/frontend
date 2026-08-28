@@ -129,8 +129,11 @@ export default function ProfilePanel({
         ? "Pemilik Properti"
         : "Penyewa";
   const isTenant = user?.role === "tenant";
-  const dashboardHref =
-    user?.role === "admin" || user?.role === "finance" ? "/admin" : "/owner";
+  const dashboardHref = user?.role === "finance"
+    ? "/admin/financial"
+    : user?.role === "admin"
+      ? "/admin"
+      : "/owner";
   const avatarUrl = (() => {
     if (!user?.avatar || failedAvatarKey === user.avatar) {
       return null;

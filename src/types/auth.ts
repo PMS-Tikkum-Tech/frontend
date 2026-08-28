@@ -38,6 +38,7 @@ export type BackendUser = {
   account_status?: "active" | "inactive";
   tenant_status?: "unverified" | "verified" | "basic_completed" | "active" | null;
   verification_status?: "UNVERIFIED" | "VERIFIED" | string | null;
+  mfa_enabled?: boolean;
   basic_profile_completed?: boolean;
   missing_basic_profile_fields?: string[];
   profile_picture_url?: string | null;

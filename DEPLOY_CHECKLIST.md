@@ -16,6 +16,8 @@
 - Confirm Coolify has issued a trusted certificate for every hostname. A
   Traefik default certificate means the domain is not ready for deployment.
 - Set `NEXT_PUBLIC_API_URL=https://api.kikost.com` as a Coolify Build Variable
+- Set `BACKEND_API_URL=https://api.kikost.com` as a frontend runtime variable;
+  browser API traffic is routed through the same-origin `/api/v1/*` BFF.
 - Set `NEXT_PUBLIC_SITE_URL=https://kikost.com` as a Coolify Build Variable.
   The production Docker build rejects any other API/site origin.
 - Set every enabled Firebase, Google Maps, support, and booking
@@ -34,8 +36,10 @@
   `DATABASE_URL` or the documented individual PostgreSQL variables
 - Required for email flows: `SMTP_ADDRESS`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
   `SMTP_PORT`, `SMTP_DOMAIN`, and `MAIL_FROM`
-- Set `FRONTEND_URL=https://app.kikost.com` and
-  `AUTH_COOKIE_DOMAIN=.kikost.com`.
+- Set `FRONTEND_URL=https://app.kikost.com`. Remove `AUTH_COOKIE_DOMAIN`;
+  authentication cookies must remain host-only.
+- Ensure the persistent `/app/storage` volume is writable by UID/GID `1001`
+  because the backend container runs as the non-root `rails` user.
 - Set `CORS_ORIGINS` to only the canonical applications that execute frontend
   code: `https://kikost.com,https://booking.kikost.com,https://app.kikost.com`.
   Do not include redirect-only domains.
@@ -53,16 +57,22 @@
 2. Deploy PostgreSQL and Redis.
 3. Mount the existing `/app/storage` volume before starting the backend.
 4. Deploy backend web; `bin/coolify-web` runs `rails db:prepare` before Puma.
-5. Run `bundle exec rails deployment:verify` in the new backend container.
-6. Run the transfer-proof URL rotation dry-run and apply command documented in
+5. Confirm migration `20260825090000_add_privileged_mfa.rb` completed. It
+   revokes existing admin/finance sessions; those users must enroll TOTP on
+   their next login and securely store the ten one-time recovery codes.
+6. Keep `SECRET_KEY_BASE` stable. Changing it makes existing encrypted MFA
+   secrets unreadable and requires a controlled MFA reset/re-enrollment.
+7. Run `bundle exec rails deployment:verify` in the new backend container.
+8. Run the transfer-proof URL rotation dry-run and apply command documented in
    `backend/COOLIFY_DEPLOY.md` when it has not yet run in production.
-7. Deploy the Sidekiq worker.
-8. Attach all frontend hostnames in Coolify and wait until every TLS
+9. Deploy the Sidekiq worker.
+10. Attach all frontend hostnames in Coolify and wait until every TLS
    certificate is valid.
-9. Build the frontend with the production `NEXT_PUBLIC_*` values.
-10. Verify the public domains, CORS, login/logout, tenant proof upload, admin
-   approval, image delivery, and HTTPS headers.
-11. Keep the previous images and database/storage backup until verification is
+11. Build the frontend with the production `NEXT_PUBLIC_*` values.
+12. Verify the public domains, CORS, login/logout, admin/finance MFA enrollment
+    and login, tenant proof upload, admin approval, image delivery, and HTTPS
+    headers.
+13. Keep the previous images and database/storage backup until verification is
     complete; roll back all three together if needed.
 
 ## Current local storage status

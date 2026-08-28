@@ -8,11 +8,17 @@ import {
   AUTH_REFRESH_TOKEN_COOKIE_KEY,
   AUTH_ROLE_COOKIE_KEY,
   AUTH_TOKEN_COOKIE_KEY,
-  getCookieMaxAgeSeconds,
   isSessionExpired,
 } from "@/lib/auth-cookies";
 
-type SessionRole = "admin" | "finance" | "owner" | "tenant";
+type SessionRole =
+  | "admin"
+  | "finance"
+  | "owner"
+  | "tenant"
+  | "housekeeper"
+  | "technician";
+type RequiredRole = "admin" | "finance" | "owner" | "tenant" | "staff";
 type AuthMeResponse = {
   data?: {
     role?: string;
@@ -36,6 +42,8 @@ const VALID_ROLES = new Set<SessionRole>([
   "finance",
   "owner",
   "tenant",
+  "housekeeper",
+  "technician",
 ]);
 const PRODUCTION_API_BASE_URLS: Record<string, string> = {
   "kikost.com": "https://api.kikost.com",
@@ -61,6 +69,7 @@ const APP_PATH_PREFIXES = [
   "/admin",
   "/owner",
   "/tenant",
+  "/staff",
   "/auth",
   "/verifikasi-email",
   "/__/auth/action",
@@ -86,12 +95,20 @@ const isSafeNextPath = (nextPath: string) => {
 };
 
 const getDefaultRouteByRole = (role: string) => {
-  if (role === "admin" || role === "finance") {
+  if (role === "admin") {
     return "/admin";
+  }
+
+  if (role === "finance") {
+    return "/admin/financial";
   }
 
   if (role === "owner") {
     return "/owner";
+  }
+
+  if (role === "housekeeper" || role === "technician") {
+    return "/staff/tasks";
   }
 
   return "/tenant/kost-saya";
@@ -133,6 +150,10 @@ const getRequestHostname = (req: NextRequest) => {
 };
 
 const getRequiredRole = (pathname: string) => {
+  if (pathname.startsWith("/admin/financial")) {
+    return "finance";
+  }
+
   if (pathname.startsWith("/admin")) {
     return "admin";
   }
@@ -145,8 +166,21 @@ const getRequiredRole = (pathname: string) => {
     return "tenant";
   }
 
-  return null;
+  if (pathname.startsWith("/staff")) {
+    return "staff";
+  }
+
+  return null satisfies RequiredRole | null;
 };
+
+const roleMatchesRequirement = (
+  role: SessionRole,
+  requiredRole: RequiredRole
+) =>
+  role === requiredRole ||
+  (requiredRole === "finance" && role === "admin") ||
+  (requiredRole === "staff" &&
+    (role === "housekeeper" || role === "technician"));
 
 const resolveRoleRoute = (role: SessionRole, nextPath?: string | null) => {
   if (!nextPath || !isSafeNextPath(nextPath)) {
@@ -162,8 +196,7 @@ const resolveRoleRoute = (role: SessionRole, nextPath?: string | null) => {
 
   if (
     !requiredRole ||
-    requiredRole === role ||
-    (requiredRole === "admin" && role === "finance")
+    roleMatchesRequirement(role, requiredRole)
   ) {
     return nextPath;
   }
@@ -184,21 +217,6 @@ const decodeCookieValue = (value?: string | null) => {
 };
 
 const getApiBaseUrl = (req: NextRequest) => {
-  const envBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (envBaseUrl) {
-    return envBaseUrl.replace(/\/$/, "");
-  }
-
-  const hostname = getRequestHostname(req);
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
-    return `${req.nextUrl.protocol}//127.0.0.1:3001`;
-  }
-
-  const mappedProductionApiBaseUrl = PRODUCTION_API_BASE_URLS[hostname];
-  if (mappedProductionApiBaseUrl) {
-    return mappedProductionApiBaseUrl;
-  }
-
   return req.nextUrl.origin;
 };
 
@@ -211,22 +229,12 @@ const buildHostRedirect = (req: NextRequest, hostname: string, pathname: string)
   return redirectUrl;
 };
 
-const getSessionCookieDomain = (req: NextRequest) => {
-  const hostname = getRequestHostname(req);
-  if (hostname === "kikost.com" || hostname.endsWith(".kikost.com")) {
-    return ".kikost.com";
-  }
-
-  return undefined;
-};
-
 const getSessionCookieOptions = (req: NextRequest, maxAge: number) => ({
   path: "/",
   maxAge,
   httpOnly: true,
   sameSite: "lax" as const,
   secure: req.nextUrl.protocol === "https:" || process.env.NODE_ENV === "production",
-  domain: getSessionCookieDomain(req),
 });
 
 const clearSessionCookies = (response: NextResponse, req: NextRequest) => {
@@ -255,53 +263,25 @@ const buildAuthRedirect = (req: NextRequest, nextPath: string) => {
   return response;
 };
 
-const applySessionCookies = (
+const applyUpstreamSessionCookies = (
   response: NextResponse,
-  payload: NonNullable<AuthRefreshResponse["data"]>,
-  role: SessionRole,
-  req: NextRequest
+  setCookies?: string[]
 ) => {
-  const accessMaxAge = getCookieMaxAgeSeconds(payload.expires_at);
-  const refreshMaxAge = getCookieMaxAgeSeconds(
-    payload.refresh_token_expires_at,
-    accessMaxAge
-  );
+  setCookies?.forEach((cookie) => response.headers.append("Set-Cookie", cookie));
+};
 
-  response.cookies.set({
-    name: AUTH_COOKIE_KEY,
-    value: "1",
-    ...getSessionCookieOptions(req, refreshMaxAge),
-  });
-  response.cookies.set({
-    name: AUTH_ROLE_COOKIE_KEY,
-    value: role,
-    ...getSessionCookieOptions(req, refreshMaxAge),
-  });
-  response.cookies.set({
-    name: AUTH_TOKEN_COOKIE_KEY,
-    value: payload.token || "",
-    ...getSessionCookieOptions(req, accessMaxAge),
-  });
-  response.cookies.set({
-    name: AUTH_EXPIRES_COOKIE_KEY,
-    value: payload.expires_at || "",
-    ...getSessionCookieOptions(req, accessMaxAge),
-  });
-  response.cookies.set({
-    name: AUTH_REFRESH_TOKEN_COOKIE_KEY,
-    value: payload.refresh_token || "",
-    ...getSessionCookieOptions(req, refreshMaxAge),
-  });
-  response.cookies.set({
-    name: AUTH_REFRESH_EXPIRES_COOKIE_KEY,
-    value: payload.refresh_token_expires_at || "",
-    ...getSessionCookieOptions(req, refreshMaxAge),
-  });
+const getSetCookieHeaders = (headers: Headers) => {
+  const values = (headers as Headers & { getSetCookie?: () => string[] })
+    .getSetCookie?.() ?? [];
+  if (values.length > 0) return values;
+
+  const fallback = headers.get("set-cookie");
+  return fallback ? [fallback] : [];
 };
 
 const refreshValidatedSession = async (
   req: NextRequest
-): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
+): Promise<{ role: SessionRole | null; setCookies?: string[] }> => {
   const hasRefreshCookie = Boolean(req.cookies.get(AUTH_REFRESH_TOKEN_COOKIE_KEY)?.value);
   const refreshExpiresAt = decodeCookieValue(
     req.cookies.get(AUTH_REFRESH_EXPIRES_COOKIE_KEY)?.value
@@ -337,7 +317,7 @@ const refreshValidatedSession = async (
 
     return {
       role: role as SessionRole,
-      refreshed,
+      setCookies: getSetCookieHeaders(response.headers),
     };
   } catch {
     return { role: null };
@@ -346,7 +326,7 @@ const refreshValidatedSession = async (
 
 const getValidatedSession = async (
   req: NextRequest
-): Promise<{ role: SessionRole | null; refreshed?: NonNullable<AuthRefreshResponse["data"]> }> => {
+): Promise<{ role: SessionRole | null; setCookies?: string[] }> => {
   const hasAccessCookie = Boolean(req.cookies.get(AUTH_TOKEN_COOKIE_KEY)?.value);
   const expiresAt = decodeCookieValue(req.cookies.get(AUTH_EXPIRES_COOKIE_KEY)?.value);
 
@@ -474,15 +454,12 @@ export async function proxy(req: NextRequest) {
     }
 
     if (
-      validatedRole !== requiredRole &&
-      !(requiredRole === "admin" && validatedRole === "finance")
+      !roleMatchesRequirement(validatedRole, requiredRole)
     ) {
       const response = NextResponse.redirect(
         new URL(getDefaultRouteByRole(validatedRole), req.url)
       );
-      if (validatedSession.refreshed) {
-        applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
-      }
+      applyUpstreamSessionCookies(response, validatedSession.setCookies);
       return response;
     }
   }
@@ -500,16 +477,12 @@ export async function proxy(req: NextRequest) {
         req.url
       )
     );
-    if (validatedSession.refreshed) {
-      applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
-    }
+    applyUpstreamSessionCookies(response, validatedSession.setCookies);
     return response;
   }
 
   const response = NextResponse.next();
-  if (validatedRole && validatedSession.refreshed) {
-    applySessionCookies(response, validatedSession.refreshed, validatedRole, req);
-  }
+  if (validatedRole) applyUpstreamSessionCookies(response, validatedSession.setCookies);
   return response;
 }
 

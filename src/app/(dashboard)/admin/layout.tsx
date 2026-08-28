@@ -129,7 +129,7 @@ export default function AdminDashboardLayout({
     void uploadAvatarFile(result.file);
   };
 
-  const menuItems = [
+  const adminMenuItems = [
     { label: "Dasbor", href: "/admin", icon: LayoutDashboard },
     { label: "Properti", href: "/admin/properties", icon: Building2 },
     { label: "Penyewa", href: "/admin/tenants", icon: Users },
@@ -140,6 +140,9 @@ export default function AdminDashboardLayout({
     { label: "Akun", href: "/admin/account", icon: Shield },
     { label: "Catatan Aktivitas", href: "/admin/log-activity", icon: History },
   ];
+  const menuItems = user?.role === "finance"
+    ? adminMenuItems.filter((item) => item.href === "/admin/financial")
+    : adminMenuItems;
 
   const activeMenuLabel =
     menuItems.find((item) =>

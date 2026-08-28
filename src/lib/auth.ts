@@ -66,9 +66,35 @@ export type AuthResult = {
   refreshTokenExpiresAt?: string | null;
 };
 
-export type FirebaseSyncResult =
-  | { requiresVerification: true; email: string }
-  | AuthResult;
+export type MfaSetupResult = {
+  kind: "mfa-setup";
+  enrollmentToken: string;
+  secret: string;
+  provisioningUri: string;
+  expiresAt?: string | null;
+};
+
+export type MfaChallengeResult = {
+  kind: "mfa-challenge";
+  challengeToken: string;
+  expiresAt?: string | null;
+};
+
+export type LoginResult = AuthResult | MfaSetupResult | MfaChallengeResult;
+
+type BackendMfaSetupPayload = {
+  mfa_setup_required: true;
+  enrollment_token: string;
+  secret: string;
+  provisioning_uri: string;
+  expires_at?: string | null;
+};
+
+type BackendMfaChallengePayload = {
+  mfa_required: true;
+  challenge_token: string;
+  expires_at?: string | null;
+};
 
 export const TENANT_PENDING_APPROVAL_NOTICE_STORAGE_KEY =
   "kyra.pending.tenant.approval.notice";
@@ -92,6 +118,10 @@ const isSafeNextPath = (nextPath: string) => {
 };
 
 const getRequiredRoleByPath = (path: string) => {
+  if (path.startsWith("/admin/financial")) {
+    return "finance";
+  }
+
   if (path.startsWith("/admin")) {
     return "admin";
   }
@@ -127,8 +157,12 @@ const mapAuthPayload = (payload: AuthPayload): AuthResult => ({
 });
 
 export const getDefaultRouteByRole = (role: UserRole) => {
-  if (role === "admin" || role === "finance") {
+  if (role === "admin") {
     return "/admin";
+  }
+
+  if (role === "finance") {
+    return "/admin/financial";
   }
 
   if (role === "owner") {
@@ -157,7 +191,7 @@ export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
   if (
     !requiredRole ||
     requiredRole === role ||
-    (requiredRole === "admin" && role === "finance") ||
+    (requiredRole === "finance" && role === "admin") ||
     (requiredRole === "staff" && (role === "technician" || role === "housekeeper"))
   ) {
     return nextPath;
@@ -166,10 +200,65 @@ export const resolveRoleRoute = (role: UserRole, nextPath?: string | null) => {
   return getDefaultRouteByRole(role);
 };
 
-export const login = async (data: LoginRequest): Promise<AuthResult> => {
-  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+export const login = async (data: LoginRequest): Promise<LoginResult> => {
+  const res = await axiosInstance.post<ApiResponse<
+    AuthPayload | BackendMfaSetupPayload | BackendMfaChallengePayload
+  >>(
     "/api/v1/auth/login",
     data
+  );
+  const payload = res.data.data;
+
+  if ("mfa_setup_required" in payload) {
+    return {
+      kind: "mfa-setup",
+      enrollmentToken: payload.enrollment_token,
+      secret: payload.secret,
+      provisioningUri: payload.provisioning_uri,
+      expiresAt: payload.expires_at,
+    };
+  }
+
+  if ("mfa_required" in payload) {
+    return {
+      kind: "mfa-challenge",
+      challengeToken: payload.challenge_token,
+      expiresAt: payload.expires_at,
+    };
+  }
+
+  return mapAuthPayload(payload);
+};
+
+export const confirmMfaEnrollment = async (payload: {
+  enrollmentToken: string;
+  code: string;
+}): Promise<{ auth: AuthResult; recoveryCodes: string[] }> => {
+  const res = await axiosInstance.post<ApiResponse<
+    AuthPayload & { recovery_codes?: string[] }
+  >>("/api/v1/auth/mfa/enrollment/confirm", {
+    enrollment_token: payload.enrollmentToken,
+    code: payload.code,
+  });
+
+  return {
+    auth: mapAuthPayload(res.data.data),
+    recoveryCodes: res.data.data.recovery_codes ?? [],
+  };
+};
+
+export const verifyMfaChallenge = async (payload: {
+  challengeToken: string;
+  code?: string;
+  recoveryCode?: string;
+}): Promise<AuthResult> => {
+  const res = await axiosInstance.post<ApiResponse<AuthPayload>>(
+    "/api/v1/auth/mfa/verify",
+    {
+      challenge_token: payload.challengeToken,
+      code: payload.code,
+      recovery_code: payload.recoveryCode,
+    }
   );
   return mapAuthPayload(res.data.data);
 };
@@ -306,20 +395,6 @@ export const registerTenant = async (data: RegisterRequest): Promise<AuthResult>
     data
   );
   return mapAuthPayload(res.data.data);
-};
-
-export const syncFirebaseUser = async (idToken: string): Promise<FirebaseSyncResult> => {
-  const res = await axiosInstance.post<ApiResponse<
-    { requires_verification: true; email: string } | AuthPayload
-  >>("/api/v1/auth/firebase/sync", { id_token: idToken });
-
-  const data = res.data.data;
-
-  if ("requires_verification" in data && data.requires_verification) {
-    return { requiresVerification: true, email: data.email };
-  }
-
-  return mapAuthPayload(data as AuthPayload);
 };
 
 export const getMe = async (): Promise<SessionUser> => {
