@@ -72,6 +72,18 @@ export default function Sidebar() {
         >
           Catatan Aktivitas
         </Link>
+        <Link
+          href="/admin/log-activity"
+          className="block rounded-lg px-4 py-3 transition hover:bg-white/10"
+          >
+          Catatan Aktivitas        
+        </Link>
+        <Link
+        href="/admin/log-activity"
+        className="block rounded-lg px-4 py-3 transition hover:bg-white/10"
+        >
+          Catatan Aktivitas
+        </Link>
       </nav>
 
       <div className="border-t border-white/10 p-4 sm:p-6">
