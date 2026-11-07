@@ -10,6 +10,7 @@ import {
   useMap,
   ZoomControl,
 } from "react-leaflet";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL } from "@/lib/maps/tile-layer";
 
 export type SewaMapLocation = {
   id: number;
@@ -169,11 +170,11 @@ export default function SewaLocationsMap({
       zoom={12}
       scrollWheelZoom
       zoomControl={false}
-      attributionControl={false}
       className="kyra-sewa-map relative z-0 h-full w-full"
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        url={MAP_TILE_URL}
+        attribution={MAP_TILE_ATTRIBUTION}
       />
       <ZoomControl position="bottomright" />
 

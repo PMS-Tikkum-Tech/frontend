@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { divIcon } from "leaflet";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL } from "@/lib/maps/tile-layer";
 
 type PropertyCoordinatePreviewMapProps = {
   latitude?: number | null;
@@ -64,10 +65,9 @@ export default function PropertyCoordinatePreviewMap({
         zoom={16}
         scrollWheelZoom={false}
         zoomControl={false}
-        attributionControl={false}
         className="h-full w-full"
       >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+        <TileLayer url={MAP_TILE_URL} attribution={MAP_TILE_ATTRIBUTION} />
         <Marker position={[coordinate.lat, coordinate.lng]} icon={getMarkerIcon()} />
       </MapContainer>
     </div>

@@ -9,6 +9,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL } from "@/lib/maps/tile-layer";
 
 type PropertyCoordinateMapPickerProps = {
   latitude: string;
@@ -184,10 +185,9 @@ export default function PropertyCoordinateMapPicker({
             zoom={currentCoordinate ? 16 : 12}
             scrollWheelZoom
             zoomControl
-            attributionControl={false}
             className="h-full w-full"
           >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            <TileLayer url={MAP_TILE_URL} attribution={MAP_TILE_ATTRIBUTION} />
             <MapController coordinate={markerCoordinate} onChange={onChange} />
             <Marker
               draggable

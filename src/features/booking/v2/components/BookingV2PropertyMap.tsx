@@ -10,6 +10,7 @@ import {
   ZoomControl,
   useMap,
 } from "react-leaflet";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL } from "@/lib/maps/tile-layer";
 import SafeBookingImage from "./SafeBookingImage";
 
 export type BookingV2MapLocation = {
@@ -184,10 +185,9 @@ export default function BookingV2PropertyMap({
       zoom={13}
       scrollWheelZoom
       zoomControl={false}
-      attributionControl={false}
       className="kikost-booking-v2-map h-full w-full"
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+      <TileLayer url={MAP_TILE_URL} attribution={MAP_TILE_ATTRIBUTION} />
       <ZoomControl position="bottomright" />
       <FitToLocations locations={safeLocations} />
       <FocusSelected locations={safeLocations} selectedId={selectedId} />

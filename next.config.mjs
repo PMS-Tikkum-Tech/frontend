@@ -14,6 +14,7 @@ const contentSecurityPolicy = [
     "https://*.firebaseio.com",
     "wss://*.firebaseio.com",
     "https://nominatim.openstreetmap.org",
+    "https://photon.komoot.io",
   ].join(" "),
   [
     "frame-src 'self'",

@@ -439,6 +439,79 @@ export const resolveBackendCoordinate = (
   return { lat, lng };
 };
 
+const geocodeWithNominatim = async (
+  queryText: string
+): Promise<PropertyCoordinate | null> => {
+  const params = new URLSearchParams({
+    format: "jsonv2",
+    limit: "1",
+    countrycodes: "id",
+    q: queryText,
+  });
+
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+    {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "id",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Nominatim HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as Array<{
+    lat?: unknown;
+    lon?: unknown;
+  }>;
+
+  const firstResult = Array.isArray(payload) ? payload[0] : undefined;
+  return resolveBackendCoordinate(firstResult?.lat, firstResult?.lon);
+};
+
+// Bounding box of Indonesia (west, south, east, north) for Photon.
+const INDONESIA_BBOX = "94.9,-11.1,141.1,6.1";
+
+const geocodeWithPhoton = async (
+  queryText: string
+): Promise<PropertyCoordinate | null> => {
+  const params = new URLSearchParams({
+    q: queryText,
+    limit: "5",
+    bbox: INDONESIA_BBOX,
+  });
+
+  const response = await fetch(
+    `https://photon.komoot.io/api/?${params.toString()}`,
+    { headers: { Accept: "application/json" } }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Photon HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    features?: Array<{
+      properties?: { countrycode?: unknown };
+      geometry?: { coordinates?: unknown };
+    }>;
+  };
+
+  const feature = (payload.features || []).find(
+    (item) => item.properties?.countrycode === "ID"
+  );
+  const coordinates = feature?.geometry?.coordinates;
+  if (!Array.isArray(coordinates)) {
+    return null;
+  }
+
+  // GeoJSON order is [longitude, latitude].
+  return resolveBackendCoordinate(coordinates[1], coordinates[0]);
+};
+
 export const geocodePropertyAddress = async (
   address?: string | null,
   propertyName?: string | null
@@ -459,55 +532,37 @@ export const geocodePropertyAddress = async (
   }
 
   const request = (async () => {
+    // Only cache a miss when every provider answered; a rate limit (Nominatim
+    // replies 429 without CORS headers) must not stick in localStorage.
+    let hadProviderError = false;
+    const lookup = async (
+      provider: (queryText: string) => Promise<PropertyCoordinate | null>,
+      queryText: string
+    ) => {
+      try {
+        return await provider(queryText);
+      } catch {
+        hadProviderError = true;
+        return null;
+      }
+    };
+
     try {
       const candidates = buildAddressQueryCandidates(address, propertyName);
       for (const queryText of candidates) {
-        const params = new URLSearchParams({
-          format: "jsonv2",
-          limit: "1",
-          countrycodes: "id",
-          q: queryText,
-        });
+        const coordinate =
+          (await lookup(geocodeWithNominatim, queryText)) ??
+          (await lookup(geocodeWithPhoton, queryText));
 
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-          {
-            headers: {
-              Accept: "application/json",
-              "Accept-Language": "id",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          continue;
+        if (coordinate) {
+          setCachedCoordinate(cacheKey, coordinate);
+          return coordinate;
         }
-
-        const payload = (await response.json()) as Array<{
-          lat?: unknown;
-          lon?: unknown;
-        }>;
-
-        if (!Array.isArray(payload) || payload.length === 0) {
-          continue;
-        }
-
-        const firstResult = payload[0];
-        const lat = parseCoordinateValue(firstResult?.lat, LATITUDE_RANGE);
-        const lng = parseCoordinateValue(firstResult?.lon, LONGITUDE_RANGE);
-        if (lat === null || lng === null) {
-          continue;
-        }
-
-        const coordinate = { lat, lng };
-        setCachedCoordinate(cacheKey, coordinate);
-        return coordinate;
       }
 
-      setCachedCoordinate(cacheKey, null);
-      return null;
-    } catch {
-      setCachedCoordinate(cacheKey, null);
+      if (!hadProviderError) {
+        setCachedCoordinate(cacheKey, null);
+      }
       return null;
     } finally {
       pendingGeocodeRequests.delete(cacheKey);
