@@ -463,10 +463,15 @@ export default function AddPropertyModal({
     }
 
     try {
+      // A Google error (e.g. a rejected API key) must not skip the
+      // OpenStreetMap fallback below.
       const googleGeocoded = await geocodePropertyAddressWithGoogle(
         addressInput,
         form.name
-      );
+      ).catch((error: unknown) => {
+        console.warn("[Geocode] Google Geocoding gagal:", error);
+        return null;
+      });
       const resolvedCoordinate =
         googleGeocoded?.coordinate ??
         (await geocodePropertyAddress(addressInput, form.name));

@@ -522,11 +522,6 @@ export const geocodePropertyAddressWithGoogle = async (
   address?: string | null,
   propertyName?: string | null
 ): Promise<GoogleGeocodedAddress | null> => {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
-  if (!apiKey) {
-    return null;
-  }
-
   const cacheKey = normalizeAddressKey(address);
   if (!cacheKey) {
     return null;
@@ -546,17 +541,17 @@ export const geocodePropertyAddressWithGoogle = async (
     try {
       const candidates = buildAddressQueryCandidates(address, propertyName);
       for (const queryText of candidates) {
-        const params = new URLSearchParams({
-          address: queryText,
-          key: apiKey,
-          language: "id",
-          region: "id",
-          components: "country:ID",
+        // Geocoded on the server: the Geocoding API rejects browser-restricted keys.
+        const params = new URLSearchParams({ address: queryText });
+        const response = await fetch(`/api/maps/geocode?${params.toString()}`, {
+          credentials: "same-origin",
         });
 
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`
-        );
+        if (response.status === 401 || response.status === 503) {
+          // Not signed in or no server key: skip Google and let the caller
+          // fall back to OpenStreetMap without caching a miss.
+          return null;
+        }
 
         if (!response.ok) {
           continue;

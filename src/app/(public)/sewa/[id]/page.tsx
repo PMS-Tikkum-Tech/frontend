@@ -836,7 +836,7 @@ export default function SewaPropertyDetailPage() {
             found = {
               ...found,
               photo_url: adminPhotoUrls[0] ?? found.photo_url ?? null,
-              photo_urls: PhotoUrls.length > 0 ? PhotoUrls : found.photo_urls,
+              photo_urls: adminPhotoUrls.length > 0 ? adminPhotoUrls : found.photo_urls,
               video_urls:
                 adminVideoUrls.length > 0 ? adminVideoUrls : found.video_urls,
               video_url:
